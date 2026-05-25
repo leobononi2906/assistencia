@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bononi — Assistência Técnica</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:            #F0F3F8;
+  --surface:       #FFFFFF;
+  --surface2:      #F7F9FC;
+  --border:        #E2E8F2;
+  --blue-dark:     #1A3A8F;
+  --blue-mid:      #0077CC;
+  --blue-light:    #00AAEE;
+  --blue-pale:     #E8F4FD;
+  --text-primary:  #0F1D35;
+  --text-secondary:#5A6A85;
+  --text-muted:    #9AA5B8;
+  --green:         #0F9D6E;
+  --green-bg:      #E8F8F3;
+  --red:           #D93025;
+  --red-bg:        #FEF0EF;
+  --orange:        #E07B00;
+  --orange-bg:     #FEF5E7;
+  --yellow:        #B45309;
+  --yellow-bg:     #FFFBEB;
+  --purple:        #7C3AED;
+  --purple-bg:     #F5F3FF;
+  --shadow-sm:     0 1px 3px rgba(15,29,53,0.06), 0 1px 2px rgba(15,29,53,0.04);
+  --shadow-md:     0 4px 16px rgba(15,29,53,0.08), 0 2px 4px rgba(15,29,53,0.04);
+  --shadow-lg:     0 12px 40px rgba(15,29,53,0.12);
+  --radius:        12px;
+  --radius-sm:     8px;
+  --sidebar-w:     220px;
+  --sidebar-bg:    #111827;
+}
+
+html, body {
+  height: 100%; font-family: 'DM Sans', sans-serif;
+  background: var(--bg); color: var(--text-primary);
+  font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+
+/* ── LAYOUT ── */
+.app-shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--sidebar-bg); display: flex; flex-direction: column;
+  overflow: hidden; z-index: 100;
+}
+.sidebar-brand {
+  padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.sidebar-brand-name {
+  font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.02em;
+}
+.sidebar-brand-sub {
+  font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px;
+}
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
+.sidebar-section {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.3);
+  padding: 14px 18px 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 18px; cursor: pointer; border-radius: 0;
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6);
+  transition: all 0.15s; border-left: 3px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); }
+.nav-item.active {
+  background: rgba(0,119,204,0.15); color: #fff;
+  border-left-color: var(--blue-light);
+}
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.sidebar-footer {
+  padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.07);
+  font-size: 12px; color: rgba(255,255,255,0.4);
+}
+.sidebar-user { font-weight: 600; color: rgba(255,255,255,0.7); font-size: 13px; }
+
+/* ── MAIN ── */
+.main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar {
+  height: 56px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; gap: 12px; flex-shrink: 0; box-shadow: var(--shadow-sm); z-index: 50;
+}
+.topbar-left { display: flex; flex-direction: column; gap: 1px; }
+.topbar-title { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.topbar-breadcrumb { font-size: 11px; color: var(--text-muted); }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.btn-refresh {
+  width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface2); cursor: pointer; font-size: 16px; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.btn-refresh:hover { background: var(--border); color: var(--text-primary); }
+
+.content-area { flex: 1; overflow-y: auto; }
+
+/* ── LOGIN ── */
+.login-wrap {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh; background: var(--sidebar-bg);
+}
+.login-box {
+  background: var(--surface); border-radius: 16px; padding: 40px;
+  width: 360px; box-shadow: var(--shadow-lg);
+}
+.login-logo { font-size: 32px; margin-bottom: 6px; }
+.login-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.login-sub   { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+.login-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.login-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.login-input {
+  height: 40px; padding: 0 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+  font-size: 14px; color: var(--text-primary); background: var(--surface2);
+  outline: none; transition: border-color 0.15s;
+}
+.login-input:focus { border-color: var(--blue-mid); background: #fff; }
+.login-btn {
+  width: 100%; height: 42px; background: var(--blue-dark); color: #fff;
+  border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px;
+  transition: background 0.15s;
+}
+.login-btn:hover { background: var(--blue-mid); }
+.login-err { color: var(--red); font-size: 12px; margin-top: 8px; text-align: center; min-height: 18px; }
+
+/* ── LOADING BAR ── */
+.module-loading-bar {
+  height: 2px; background: transparent; position: relative; overflow: hidden;
+}
+.module-loading-bar.loading::after {
+  content: ''; position: absolute; top: 0; left: -50%; width: 50%;
+  height: 100%; background: var(--blue-mid);
+  animation: loadbar 0.8s ease infinite;
+}
+@keyframes loadbar { to { left: 150%; } }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">🔧</div>
+    <div class="login-title">Assistência Técnica</div>
+    <div class="login-sub">Bononi Acessórios</div>
+    <div class="login-field">
+      <label class="login-label">E-mail</label>
+      <input class="login-input" id="login-email" type="email" placeholder="seu@email.com"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Senha</label>
+      <input class="login-input" id="login-senha" type="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+    <button class="login-btn" onclick="fazerLogin()" id="login-btn">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="app-shell" style="display:none">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-name">🔧 Assistência</div>
+      <div class="sidebar-brand-sub">Bononi Acessórios</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="sidebar-section">Menu</div>
+      <div class="nav-item active" data-page="ast-gestao" onclick="navegarPara('ast-gestao',this)">
+        <span class="nav-icon">📊</span> Gestão
+      </div>
+      <div class="nav-item" data-page="ast-chamados" onclick="navegarPara('ast-chamados',this)">
+        <span class="nav-icon">📋</span> Chamados
+      </div>
+      <div class="nav-item" data-page="ast-produtos" onclick="navegarPara('ast-produtos',this)">
+        <span class="nav-icon">📦</span> Produtos
+      </div>
+      <div class="nav-item" data-page="ast-config" onclick="navegarPara('ast-config',this)">
+        <span class="nav-icon">⚙️</span> Configurações
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebar-user">—</div>
+      <div style="margin-top:4px">
+        <span style="cursor:pointer;color:rgba(255,255,255,0.4);font-size:11px" onclick="fazerLogout()">Sair</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="topbar-title">Gestão da Assistência</div>
+        <div class="topbar-breadcrumb" id="topbar-breadcrumb">Assistência</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-time" id="topbar-time"></div>
+        <button class="btn-refresh" onclick="recarregarPagina()" title="Atualizar">↻</button>
+      </div>
+    </header>
+
+    <div class="module-loading-bar" id="module-loading-bar"></div>
+    <div class="content-area" id="content-area"></div>
+  </div>
+
+</div>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+'use strict';
+
+// ── CONFIG ──
+const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+window.sb = sb;
+
+// ── PÁGINAS ──
+const PAGINAS = {
+  'ast-gestao':   { titulo: 'Gestão da Assistência',  breadcrumb: 'Assistência · Gestão' },
+  'ast-chamados': { titulo: 'Chamados',                breadcrumb: 'Assistência · Chamados' },
+  'ast-produtos': { titulo: 'Produtos',                breadcrumb: 'Assistência · Produtos' },
+  'ast-config':   { titulo: 'Configurações',           breadcrumb: 'Assistência · Config' },
+};
+
+// ── ESTADO ──
+let _usuarioAtual = null;
+let _paginaAtiva  = 'ast-gestao';
+
+// ── UTILS GLOBAIS (usados pelo assistencia.js) ──
+window.getUsuario   = () => _usuarioAtual;
+window.setLastUpdate = () => {
+  const el = document.getElementById('topbar-time');
+  if (el) el.textContent = 'Atualizado ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+};
+
+// ── LOGIN ──
+window.fazerLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha  = document.getElementById('login-senha').value;
+  const erro   = document.getElementById('login-err');
+  const btn    = document.getElementById('login-btn');
+  if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha'; return; }
+  erro.textContent = ''; btn.textContent = 'Entrando...'; btn.disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if (error) {
+    erro.textContent = 'E-mail ou senha incorretos';
+    btn.textContent = 'Entrar'; btn.disabled = false;
+    return;
+  }
+  iniciarApp(data.user);
+};
+
+window.fazerLogout = async function() {
+  await sb.auth.signOut();
+  document.getElementById('app-screen').style.display   = 'none';
+  document.getElementById('login-screen').style.display = '';
+  _usuarioAtual = null;
+};
+
+// ── INICIAR APP ──
+async function iniciarApp(user) {
+  // Busca perfil do usuário
+  const { data: perfil } = await sb
+    .from('app_usuarios')
+    .select('nome, perfil, acessos')
+    .eq('email', user.email)
+    .maybeSingle();
+
+  _usuarioAtual = {
+    email: user.email,
+    nome:  perfil?.nome  || user.email.split('@')[0],
+    perfil: perfil?.perfil || 'operador',
+    acessos: perfil?.acessos || ['assistencia'],
+  };
+
+  document.getElementById('sidebar-user').textContent = _usuarioAtual.nome;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display   = '';
+
+  // Carrega módulo
+  await carregarModulo();
+  navegarPara('ast-gestao', document.querySelector('[data-page="ast-gestao"]'));
+}
+
+// ── CARREGA assistencia.js ──
+async function carregarModulo() {
+  return new Promise((resolve) => {
+    if (window.ModuloAssistencia) { resolve(); return; }
+    const bar = document.getElementById('module-loading-bar');
+    if (bar) bar.classList.add('loading');
+    const script = document.createElement('script');
+    script.src = 'assistencia.js?v=' + Date.now();
+    script.onload  = () => { if (bar) bar.classList.remove('loading'); resolve(); };
+    script.onerror = () => { if (bar) bar.classList.remove('loading'); resolve(); };
+    document.head.appendChild(script);
+  });
+}
+
+// ── NAVEGAÇÃO ──
+window.navegarPara = function(pageId, navEl) {
+  _paginaAtiva = pageId;
+
+  // Atualiza nav
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+
+  // Atualiza topbar
+  const pg = PAGINAS[pageId] || {};
+  document.getElementById('topbar-title').textContent      = pg.titulo      || pageId;
+  document.getElementById('topbar-breadcrumb').textContent = pg.breadcrumb  || 'Assistência';
+
+  // Monta conteúdo
+  const container = document.getElementById('content-area');
+  if (window.ModuloAssistencia) {
+    window.ModuloAssistencia.showPage(pageId, container, _usuarioAtual, {});
+  }
+};
+
+window.recarregarPagina = function() {
+  const navEl = document.querySelector(`[data-page="${_paginaAtiva}"]`);
+  navegarPara(_paginaAtiva, navEl);
+};
+
+// ── VERIFICA SESSÃO AO CARREGAR ──
+(async function() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await carregarModulo();
+    iniciarApp(session.user);
+  }
+})();
+</script>
+
+<!-- assistencia.js carregado dinamicamente após login -->
+</body>
+</html>
