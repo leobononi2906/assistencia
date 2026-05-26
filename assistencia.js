@@ -906,17 +906,58 @@ window.astAbrirDetalhe = async function(id) {
 
       <!-- TAB INFO -->
       <div class="ast-drawer-tab-content active" id="ast-tab-info">
-        <div class="ast-detail-grid">
+        <!-- DADOS DO CLIENTE -->
+        <div class="ast-detail-grid" style="margin-bottom:16px">
           <div class="ast-detail-field"><div class="ast-detail-lbl">Cliente ERP</div><div class="ast-detail-val">${det.cliente_nome_erp||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Contato</div><div class="ast-detail-val">${det.nome_contato||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Telefone</div><div class="ast-detail-val">${det.telefone||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Cidade / UF</div><div class="ast-detail-val">${det.cidade&&det.uf?`${det.cidade} / ${det.uf}`:'—'}</div></div>
-          <div class="ast-detail-field"><div class="ast-detail-lbl">Produto</div><div class="ast-detail-val">${det.produto_nome||det.produto_manual||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Atendente</div><div class="ast-detail-val">${det.responsavel_nome||'—'}</div></div>
         </div>
+
+        <!-- PRODUTO EDITÁVEL -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px">
+          <div class="ast-detail-lbl" style="margin-bottom:8px">Produto em Questão</div>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <input class="ast-form-input" id="info-prod-busca" placeholder="Buscar produto do catálogo..."
+                value="${det.produto_nome||det.produto_manual||''}" autocomplete="off" oninput="astBuscarProdDrawer(${id})">
+              <div id="info-prod-results" class="ast-prod-result" style="display:none"></div>
+              <input type="hidden" id="info-prod-id" value="${det.produto_id_erp||''}">
+              <div id="info-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:4px">
+                ${det.produto_nome ? `✅ ${det.produto_codigo?det.produto_codigo+' — ':''}${det.produto_nome}` : ''}
+              </div>
+            </div>
+            <button class="ast-btn ast-btn-success ast-btn-sm" style="margin-top:2px" onclick="astSalvarProdutoInfo(${id})">💾 Salvar</button>
+          </div>
+        </div>
+
+        <!-- DEFEITO + CAUSA INLINE -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px">
+          <div class="ast-detail-lbl" style="margin-bottom:10px">Diagnóstico Rápido</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+            <div class="ast-form-field">
+              <label class="ast-form-lbl">Defeito Relatado</label>
+              <select class="ast-form-select" id="info-defeito">
+                <option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}
+              </select>
+            </div>
+            <div class="ast-form-field">
+              <label class="ast-form-lbl">Causa</label>
+              <select class="ast-form-select" id="info-causa">
+                <option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarDiagnosticoRapido(${id})">💾 Salvar Diagnóstico</button>
+            <span id="info-diag-status" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+        </div>
+
         ${det.descricao_inicial?`
-          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-            <div class="ast-detail-lbl">Descrição inicial</div>
+          <div style="padding-top:14px;border-top:1px solid var(--border)">
+            <div class="ast-detail-lbl">Descrição inicial do cliente</div>
             <div style="font-size:13px;color:var(--text-primary);margin-top:6px;line-height:1.6;white-space:pre-wrap">${det.descricao_inicial}</div>
           </div>`:''}
       </div>
@@ -994,19 +1035,13 @@ window.astAbrirDetalhe = async function(id) {
       <!-- TAB DIAGNÓSTICO -->
       <div class="ast-drawer-tab-content" id="ast-tab-diagnostico">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div class="ast-form-field"><label class="ast-form-lbl">Defeito</label>
-            <select class="ast-form-select" id="diag-defeito"><option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}</select></div>
-          <div class="ast-form-field"><label class="ast-form-lbl">Causa</label>
-            <select class="ast-form-select" id="diag-causa"><option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}</select></div>
-          <div class="ast-form-field"><label class="ast-form-lbl">Solução</label>
-            <select class="ast-form-select" id="diag-solucao"><option value="">Selecione...</option>${astSelectOptions(_solucoes,det.solucao_id)}</select></div>
           <div class="ast-form-field"><label class="ast-form-lbl">Procedência</label>
             <select class="ast-form-select" id="diag-procedencia"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select></div>
         </div>
         <div class="ast-form-field" style="margin-top:14px"><label class="ast-form-lbl">Observação Interna</label>
           <textarea class="ast-form-textarea" id="diag-obs">${det.observacao_interna||''}</textarea></div>
         <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-          <button class="ast-btn ast-btn-success" onclick="astSalvarDiagnostico(${id})">💾 Salvar Diagnóstico</button>
+          <button class="ast-btn ast-btn-success" onclick="astSalvarDiagnostico(${id})">💾 Salvar</button>
           <span id="diag-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
       </div>
@@ -1140,22 +1175,105 @@ window.astSalvarFup = async function(chamadoId) {
   setTimeout(()=>{ if(statusEl) statusEl.textContent=''; },3000);
 };
 
-// Diagnóstico
-window.astSalvarDiagnostico = async function(id) {
-  const v = id => document.getElementById(id)?.value;
+// Diagnóstico rápido (aba Informações — defeito + causa)
+window.astSalvarDiagnosticoRapido = async function(id) {
+  const v = k => document.getElementById(k)?.value;
   const payload = {
-    defeito_id:     v('diag-defeito')    ?parseInt(v('diag-defeito'))    :null,
-    causa_id:       v('diag-causa')      ?parseInt(v('diag-causa'))      :null,
-    solucao_id:     v('diag-solucao')    ?parseInt(v('diag-solucao'))    :null,
-    procedencia_id: v('diag-procedencia')?parseInt(v('diag-procedencia')):null,
-    observacao_interna: v('diag-obs')||null,
+    defeito_id: v('info-defeito') ? parseInt(v('info-defeito')) : null,
+    causa_id:   v('info-causa')   ? parseInt(v('info-causa'))   : null,
     atualizado_em: new Date().toISOString(),
   };
+  const el = document.getElementById('info-diag-status');
+  if (el) el.textContent = 'Salvando...';
+  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
+  if (error) { if (el) el.textContent = '❌ ' + error.message; return; }
+  if (el) { el.textContent = '✅ Salvo!'; setTimeout(() => el.textContent = '', 3000); }
+};
+
+// Diagnóstico completo (aba Diagnóstico — procedência + obs interna)
+window.astSalvarDiagnostico = async function(id) {
+  const v = k => document.getElementById(k)?.value;
+  const payload = {
+    procedencia_id:     v('diag-procedencia') ? parseInt(v('diag-procedencia')) : null,
+    observacao_interna: v('diag-obs') || null,
+    atualizado_em:      new Date().toISOString(),
+  };
   const el = document.getElementById('diag-status');
-  if (el) el.textContent='Salvando...';
-  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if (error) { if(el) el.textContent='❌ '+error.message; return; }
-  if (el) { el.textContent='✅ Salvo!'; setTimeout(()=>el.textContent='',3000); }
+  if (el) el.textContent = 'Salvando...';
+  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
+  if (error) { if (el) el.textContent = '❌ ' + error.message; return; }
+  if (el) { el.textContent = '✅ Salvo!'; setTimeout(() => el.textContent = '', 3000); }
+};
+
+// Busca produto no drawer (aba Informações)
+let _buscaProdDrwTimer = null;
+window.astBuscarProdDrawer = function(chamadoId) {
+  clearTimeout(_buscaProdDrwTimer);
+  _buscaProdDrwTimer = setTimeout(async () => {
+    const q   = (document.getElementById('info-prod-busca')?.value || '').trim();
+    const res = document.getElementById('info-prod-results');
+    if (!res) return;
+    if (q.length < 2) { res.style.display = 'none'; return; }
+    const { data } = await window.sb.from('assist_produtos')
+      .select('id,referencia,nome,grupo,id_produto_erp').eq('ativo', true)
+      .or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0, 14);
+    if (!data?.length) {
+      res.innerHTML = '<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto encontrado</div>';
+      res.style.display = '';
+      return;
+    }
+    res.style.display = '';
+    res.innerHTML = data.map(p => `
+      <div class="ast-prod-result-item" onclick="astSelecionarProdDrawer(${p.id},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}',${p.id_produto_erp||'null'})">
+        <div>${p.nome}</div>
+        <div class="ast-prod-ref">${p.referencia||''} ${p.grupo ? '· ' + p.grupo : ''}</div>
+      </div>`).join('');
+  }, 300);
+};
+
+window.astSelecionarProdDrawer = function(id, ref, nome, idErp) {
+  document.getElementById('info-prod-id').value    = idErp || id;
+  document.getElementById('info-prod-busca').value = nome;
+  document.getElementById('info-prod-sel').textContent = `✅ ${ref ? ref + ' — ' : ''}${nome}`;
+  document.getElementById('info-prod-results').style.display = 'none';
+};
+
+// Salvar produto no chamado (aba Informações)
+window.astSalvarProdutoInfo = async function(id) {
+  const prodIdErp = document.getElementById('info-prod-id')?.value;
+  const prodNome  = document.getElementById('info-prod-busca')?.value.trim();
+  if (!prodNome) return;
+
+  // Busca dados completos se tiver id
+  let payload = { produto_manual: prodNome, atualizado_em: new Date().toISOString() };
+  if (prodIdErp) {
+    const { data: pd } = await window.sb.from('assist_produtos')
+      .select('nome,referencia,id_produto_erp')
+      .or(`id.eq.${prodIdErp},id_produto_erp.eq.${prodIdErp}`)
+      .limit(1).maybeSingle();
+    if (pd) {
+      payload.produto_nome    = pd.nome;
+      payload.produto_codigo  = pd.referencia || null;
+      payload.produto_id_erp  = pd.id_produto_erp || null;
+      payload.produto_manual  = null;
+    }
+  }
+
+  const btn = document.querySelector(`[onclick="astSalvarProdutoInfo(${id})"]`);
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+
+  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
+  if (error) {
+    alert('Erro ao salvar produto: ' + error.message);
+  } else {
+    const sel = document.getElementById('info-prod-sel');
+    if (sel) sel.textContent = `✅ ${payload.produto_codigo ? payload.produto_codigo + ' — ' : ''}${payload.produto_nome || prodNome}`;
+    // Atualiza dados locais na lista
+    const idx = astData.findIndex(r => r.id === id);
+    if (idx >= 0) { astData[idx].produto_nome = payload.produto_nome || prodNome; astAplicarFiltros(); }
+  }
+
+  if (btn) { btn.textContent = '💾 Salvar'; btn.disabled = false; }
 };
 
 // ══════════════════════════════════════════

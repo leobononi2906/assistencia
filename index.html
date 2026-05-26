@@ -190,10 +190,10 @@ html, body {
     </div>
     <div class="sidebar-nav">
       <div class="sidebar-section">Menu</div>
-      <div class="nav-item active" data-page="ast-gestao" onclick="navegarPara('ast-gestao',this)">
+      <div class="nav-item" data-page="ast-gestao" onclick="navegarPara('ast-gestao',this)">
         <span class="nav-icon">📊</span> Gestão
       </div>
-      <div class="nav-item" data-page="ast-chamados" onclick="navegarPara('ast-chamados',this)">
+      <div class="nav-item active" data-page="ast-chamados" onclick="navegarPara('ast-chamados',this)">
         <span class="nav-icon">📋</span> Chamados
       </div>
       <div class="nav-item" data-page="ast-produtos" onclick="navegarPara('ast-produtos',this)">
@@ -218,8 +218,8 @@ html, body {
   <div class="main-area">
     <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-title" id="topbar-title">Gestão da Assistência</div>
-        <div class="topbar-breadcrumb" id="topbar-breadcrumb">Assistência</div>
+        <div class="topbar-title" id="topbar-title">Chamados</div>
+        <div class="topbar-breadcrumb" id="topbar-breadcrumb">Assistência · Chamados</div>
       </div>
       <div class="topbar-right">
         <div class="topbar-time" id="topbar-time"></div>
@@ -256,7 +256,7 @@ const PAGINAS = {
 
 // ── ESTADO ──
 let _usuarioAtual = null;
-let _paginaAtiva  = 'ast-gestao';
+let _paginaAtiva  = 'ast-chamados';
 
 // ── UTILS GLOBAIS (usados pelo assistencia.js) ──
 window.getUsuario   = () => _usuarioAtual;
@@ -348,7 +348,7 @@ async function iniciarApp(user) {
   });
 
   await carregarModulo();
-  navegarPara('ast-gestao', document.querySelector('[data-page="ast-gestao"]'));
+  navegarPara('ast-chamados', document.querySelector('[data-page="ast-chamados"]'));
 }
 
 // ── CARREGA assistencia.js ──
@@ -406,5 +406,7 @@ window.recarregarPagina = function() {
 </script>
 
 <!-- assistencia.js carregado dinamicamente após login -->
+<!-- usuarios.js — gerenciamento de acesso, carregado após assistencia.js -->
+<script src="usuarios.js?v=1"></script>
 </body>
 </html>
