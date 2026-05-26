@@ -165,13 +165,13 @@ html, body {
     <div class="login-title">Assistência Técnica</div>
     <div class="login-sub">Bononi Acessórios</div>
     <div class="login-field">
-      <label class="login-label">E-mail</label>
-      <input class="login-input" id="login-email" type="email" placeholder="seu@email.com"
+      <label class="login-label">Usuário</label>
+      <input class="login-input" id="login-usuario" type="text" placeholder="ex: leo" autocomplete="username"
         onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
     </div>
     <div class="login-field">
       <label class="login-label">Senha</label>
-      <input class="login-input" id="login-senha" type="password" placeholder="••••••••"
+      <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')fazerLogin()">
     </div>
     <button class="login-btn" onclick="fazerLogin()" id="login-btn">Entrar</button>
@@ -201,6 +201,9 @@ html, body {
       </div>
       <div class="nav-item" data-page="ast-config" onclick="navegarPara('ast-config',this)">
         <span class="nav-icon">⚙️</span> Configurações
+      </div>
+      <div class="nav-item nav-admin" data-page="ast-usuarios" onclick="navegarPara('ast-usuarios',this)" style="display:none">
+        <span class="nav-icon">👥</span> Usuários
       </div>
     </div>
     <div class="sidebar-footer">
@@ -248,6 +251,7 @@ const PAGINAS = {
   'ast-chamados': { titulo: 'Chamados',                breadcrumb: 'Assistência · Chamados' },
   'ast-produtos': { titulo: 'Produtos',                breadcrumb: 'Assistência · Produtos' },
   'ast-config':   { titulo: 'Configurações',           breadcrumb: 'Assistência · Config' },
+  'ast-usuarios': { titulo: 'Usuários',                 breadcrumb: 'Assistência · Usuários' },
 };
 
 // ── ESTADO ──
@@ -261,51 +265,88 @@ window.setLastUpdate = () => {
   if (el) el.textContent = 'Atualizado ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 };
 
-// ── LOGIN ──
+// ── LOGIN SIMPLES VIA TABELA assistencia_usuarios ──
+const SESSION_KEY = 'assistencia_usuario';
+
 window.fazerLogin = async function() {
-  const email = document.getElementById('login-email').value.trim();
-  const senha  = document.getElementById('login-senha').value;
-  const erro   = document.getElementById('login-err');
-  const btn    = document.getElementById('login-btn');
-  if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha'; return; }
-  erro.textContent = ''; btn.textContent = 'Entrando...'; btn.disabled = true;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos';
-    btn.textContent = 'Entrar'; btn.disabled = false;
+  const usuario = document.getElementById('login-usuario').value.trim();
+  const senha   = document.getElementById('login-senha').value;
+  const erro    = document.getElementById('login-err');
+  const btn     = document.getElementById('login-btn');
+
+  if (!usuario || !senha) {
+    erro.textContent = 'Preencha usuário e senha';
     return;
   }
-  iniciarApp(data.user);
+
+  erro.textContent = '';
+  btn.textContent = 'Entrando...';
+  btn.disabled = true;
+
+  try {
+    const { data, error } = await sb.rpc('assistencia_login', {
+      p_usuario: usuario,
+      p_senha: senha,
+    });
+
+    if (error) throw error;
+
+    const user = Array.isArray(data) ? data[0] : data;
+    if (!user) {
+      erro.textContent = 'Usuário ou senha incorretos';
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+      return;
+    }
+
+    const sessao = {
+      id: user.id,
+      nome: user.nome,
+      usuario: user.usuario,
+      perfil: user.perfil || 'tecnico',
+      acessos: ['assistencia'],
+      login_em: new Date().toISOString(),
+    };
+
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessao));
+    await iniciarApp(sessao);
+  } catch (e) {
+    console.error('Erro no login da assistência:', e);
+    erro.textContent = 'Falha ao entrar. Verifique usuário e senha.';
+    btn.textContent = 'Entrar';
+    btn.disabled = false;
+  }
 };
 
-window.fazerLogout = async function() {
-  await sb.auth.signOut();
+window.fazerLogout = function() {
+  sessionStorage.removeItem(SESSION_KEY);
   document.getElementById('app-screen').style.display   = 'none';
   document.getElementById('login-screen').style.display = '';
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.textContent = 'Entrar'; btn.disabled = false; }
+  const senha = document.getElementById('login-senha');
+  if (senha) senha.value = '';
   _usuarioAtual = null;
 };
 
 // ── INICIAR APP ──
 async function iniciarApp(user) {
-  // Busca perfil do usuário
-  const { data: perfil } = await sb
-    .from('app_usuarios')
-    .select('nome, perfil, acessos')
-    .eq('email', user.email)
-    .maybeSingle();
-
   _usuarioAtual = {
-    email: user.email,
-    nome:  perfil?.nome  || user.email.split('@')[0],
-    perfil: perfil?.perfil || 'operador',
-    acessos: perfil?.acessos || ['assistencia'],
+    id: user.id,
+    nome: user.nome || user.usuario || 'Usuário',
+    usuario: user.usuario || '',
+    perfil: user.perfil || 'tecnico',
+    acessos: user.acessos || ['assistencia'],
   };
 
   document.getElementById('sidebar-user').textContent = _usuarioAtual.nome;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display   = '';
 
-  // Carrega módulo
+  document.querySelectorAll('.nav-admin').forEach(el => {
+    el.style.display = ['admin', 'gestor'].includes((_usuarioAtual.perfil || '').toLowerCase()) ? '' : 'none';
+  });
+
   await carregarModulo();
   navegarPara('ast-gestao', document.querySelector('[data-page="ast-gestao"]'));
 }
@@ -349,12 +390,17 @@ window.recarregarPagina = function() {
   navegarPara(_paginaAtiva, navEl);
 };
 
-// ── VERIFICA SESSÃO AO CARREGAR ──
+// ── VERIFICA SESSÃO LOCAL AO CARREGAR ──
 (async function() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    await carregarModulo();
-    iniciarApp(session.user);
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const user = JSON.parse(raw);
+    if (user?.usuario || user?.id) {
+      await iniciarApp(user);
+    }
+  } catch (e) {
+    sessionStorage.removeItem(SESSION_KEY);
   }
 })();
 </script>
