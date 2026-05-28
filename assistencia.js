@@ -11,7 +11,6 @@
   s.textContent = `
 .ast-page { padding: 20px 24px 32px; }
 .ast-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin:22px 0 10px; }
-
 .ast-cards { display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px; }
 .ast-card  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow-sm); }
 .ast-card-label { font-size:12px;color:var(--text-secondary);margin-bottom:6px; }
@@ -20,13 +19,11 @@
 .ast-card-value.green  { color:var(--green); }
 .ast-card-value.red    { color:var(--red); }
 .ast-card-value.orange { color:var(--orange); }
-.ast-card-value.purple { color:#7C3AED; }
 .ast-card-sub { font-size:11px;color:var(--text-muted);margin-top:4px; }
-
 .ast-table-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden; }
 .ast-table-header { padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
 .ast-table-title { font-size:13px;font-weight:600;color:var(--text-primary); }
-.ast-table-wrap  { overflow-x:auto;max-height:500px;overflow-y:auto; }
+.ast-table-wrap  { overflow-x:auto;max-height:520px;overflow-y:auto; }
 .ast-table { width:100%;border-collapse:collapse;font-size:13px; }
 .ast-table thead th { padding:9px 14px;background:var(--surface2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:left;position:sticky;top:0;white-space:nowrap; }
 .ast-table thead th.right,.ast-table td.right { text-align:right; }
@@ -35,28 +32,30 @@
 .ast-table tbody td { padding:10px 14px;color:var(--text-primary);vertical-align:middle; }
 .ast-mono { font-family:'DM Mono',monospace;font-size:12px; }
 .ast-loading td { text-align:center;padding:40px;color:var(--text-muted);font-size:13px; }
-
-.ast-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
-.ast-badge-novo        { background:var(--blue-pale);color:var(--blue-mid); }
-.ast-badge-andamento   { background:var(--orange-bg);color:var(--orange); }
-.ast-badge-concluido   { background:var(--green-bg);color:var(--green); }
-.ast-badge-cancelado   { background:var(--surface2);color:var(--text-muted); }
-.ast-badge-default     { background:var(--surface2);color:var(--text-secondary); }
-.ast-badge-alta        { background:var(--red-bg);color:var(--red); }
-.ast-badge-media       { background:var(--orange-bg);color:var(--orange); }
-.ast-badge-baixa       { background:var(--green-bg);color:var(--green); }
-.ast-badge-garantia    { background:#EFF6FF;color:#1D4ED8; }
-.ast-badge-nao        { background:var(--surface2);color:var(--text-muted); }
-
+.ast-badge { display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap; }
+.ast-badge-novo      { background:var(--blue-pale);color:var(--blue-mid); }
+.ast-badge-andamento { background:var(--orange-bg);color:var(--orange); }
+.ast-badge-concluido { background:var(--green-bg);color:var(--green); }
+.ast-badge-cancelado { background:var(--surface2);color:var(--text-muted); }
+.ast-badge-alta      { background:var(--red-bg);color:var(--red); }
+.ast-badge-media     { background:var(--orange-bg);color:var(--orange); }
+.ast-badge-baixa     { background:var(--green-bg);color:var(--green); }
+.ast-badge-garantia  { background:#EFF6FF;color:#1D4ED8; }
+.ast-badge-nao       { background:var(--surface2);color:var(--text-muted); }
+.ast-badge-stonni    { background:#F5F3FF;color:#7C3AED; }
+.ast-alerta-novo     { background:#DBEAFE;color:#1E40AF;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px; }
+.ast-alerta-parado   { background:#FEF0EF;color:var(--red);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px; }
+.ast-alerta-vencendo { background:#FEF9C3;color:#A16207;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px; }
+.ast-banner-novos { background:linear-gradient(135deg,#1D4ED8,#0077CC);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+.ast-banner-novos-txt { color:#fff;font-size:13px;font-weight:600; }
+.ast-banner-novos-sub { color:rgba(255,255,255,.75);font-size:12px;margin-top:2px; }
 .ast-toggle { display:flex;gap:4px; }
 .ast-toggle-btn { padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap; }
 .ast-toggle-btn.active { background:var(--blue-dark);border-color:var(--blue-dark);color:#fff; }
 .ast-toggle-btn:hover:not(.active) { background:var(--surface2); }
-
-.ast-search { height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text-primary);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:220px;transition:border-color .15s; }
+.ast-search { height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text-primary);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:200px;transition:border-color .15s; }
 .ast-search:focus { border-color:var(--blue-mid); }
 .ast-select { height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text-primary);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer; }
-
 .ast-btn { display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;border:none;white-space:nowrap; }
 .ast-btn-primary   { background:var(--blue-dark);color:#fff; }
 .ast-btn-primary:hover { background:var(--blue-mid); }
@@ -67,130 +66,108 @@
 .ast-btn-warning   { background:#FEF3C7;color:#D97706;border:1px solid #FDE68A; }
 .ast-btn-sm        { height:26px;padding:0 10px;font-size:11px; }
 .ast-btn:disabled  { opacity:.5;cursor:not-allowed; }
-
 .ast-overlay { display:none;position:fixed;inset:0;background:rgba(15,29,53,.4);z-index:200; }
 .ast-overlay.open { display:block; }
-.ast-drawer { position:fixed;top:0;right:-760px;width:760px;height:100vh;background:var(--surface);box-shadow:var(--shadow-lg);z-index:201;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden; }
+.ast-drawer { position:fixed;top:0;right:-800px;width:800px;height:100vh;background:var(--surface);box-shadow:var(--shadow-lg);z-index:201;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden; }
 .ast-drawer.open { right:0; }
-.ast-drawer-header { padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0; }
+.ast-drawer-header { padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0; }
 .ast-drawer-title  { font-size:15px;font-weight:700;color:var(--text-primary); }
-.ast-drawer-sub    { font-size:12px;color:var(--text-muted);margin-top:3px; }
+.ast-drawer-sub    { font-size:12px;color:var(--text-muted);margin-top:2px; }
 .ast-drawer-close  { width:32px;height:32px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:12px; }
 .ast-drawer-close:hover { background:var(--border);color:var(--text-primary); }
-.ast-drawer-body   { flex:1;overflow-y:auto;padding:20px 24px; }
-.ast-drawer-tabs   { display:flex;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap; }
-.ast-drawer-tab    { padding:9px 16px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap; }
-.ast-drawer-tab:hover { color:var(--text-primary); }
-.ast-drawer-tab.active { color:var(--blue-mid);border-bottom-color:var(--blue-mid); }
-.ast-drawer-tab-content { display:none; }
-.ast-drawer-tab-content.active { display:block; }
-
-.ast-stat-row  { display:flex;gap:20px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:18px; }
+.ast-drawer-body   { flex:1;overflow-y:auto; }
+.ast-drw-section { padding:16px 24px;border-bottom:1px solid var(--border); }
+.ast-drw-section:last-child { border-bottom:none; }
+.ast-drw-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px; }
+.ast-stat-row  { display:flex;gap:18px;flex-wrap:wrap; }
 .ast-stat-item { display:flex;flex-direction:column;gap:3px; }
 .ast-stat-label{ font-size:11px;color:var(--text-muted); }
 .ast-stat-val  { font-size:13px;font-weight:600;color:var(--text-primary); }
-
-.ast-detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.ast-detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
 .ast-detail-field{ display:flex;flex-direction:column;gap:3px; }
 .ast-detail-lbl  { font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted); }
 .ast-detail-val  { font-size:13px;color:var(--text-primary);font-weight:500; }
-
-.ast-fup-list { display:flex;flex-direction:column;gap:8px; }
-.ast-fup-item { background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px; }
-.ast-fup-item.whats  { border-left:3px solid #25D366; }
-.ast-fup-item.manual { border-left:3px solid var(--blue-mid); }
-.ast-fup-meta { font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;gap:6px;flex-wrap:wrap; }
-.ast-fup-msg  { font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap; }
-.ast-fup-form { background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px; }
-
-.ast-kanban       { display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start; }
-.ast-kanban-col   { min-width:255px;max-width:270px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius); }
-.ast-kanban-hdr   { padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
-.ast-kanban-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary); }
-.ast-kanban-count { background:var(--border);color:var(--text-muted);font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px; }
-.ast-kanban-cards { padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px; }
-.ast-kanban-card  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-sm); }
-.ast-kanban-card:hover { box-shadow:var(--shadow-md);transform:translateY(-1px); }
-.ast-kanban-card.parado { border-left:3px solid var(--red); }
-.ast-kanban-card-name { font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:3px; }
-.ast-kanban-card-sub  { font-size:11px;color:var(--text-muted);line-height:1.4; }
-.ast-kanban-card-foot { margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:6px; }
-
-.ast-cfg-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px; }
-.ast-cfg-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-sm); }
-.ast-cfg-title{ font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between; }
-.ast-cfg-item { display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px; }
-.ast-cfg-item:last-of-type { border-bottom:none; }
-.ast-cfg-name { flex:1;color:var(--text-primary);font-weight:500; }
-.ast-cfg-actions { display:flex;gap:4px;flex-shrink:0; }
-.ast-cfg-add { display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border); }
-.ast-cfg-input { flex:1;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;background:var(--surface2);outline:none; }
-.ast-cfg-input:focus { border-color:var(--blue-mid); }
-
-.ast-modal-ov { display:none;position:fixed;inset:0;background:rgba(15,29,53,.5);z-index:300;align-items:center;justify-content:center; }
-.ast-modal-ov.open { display:flex; }
-.ast-modal { background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:580px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden; }
-.ast-modal-hdr  { padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
-.ast-modal-title{ font-size:15px;font-weight:700;color:var(--text-primary); }
-.ast-modal-body { padding:20px 24px;overflow-y:auto;flex:1; }
-.ast-modal-foot { padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0; }
-
-.ast-form-row  { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px; }
+.ast-form-row  { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px; }
 .ast-form-row.full { grid-template-columns:1fr; }
-.ast-form-field{ display:flex;flex-direction:column;gap:5px; }
+.ast-form-field{ display:flex;flex-direction:column;gap:4px; }
 .ast-form-lbl  { font-size:12px;font-weight:600;color:var(--text-secondary); }
-.ast-form-input,.ast-form-select,.ast-form-textarea { padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-primary);background:var(--surface2);outline:none;transition:border-color .15s;width:100%; }
+.ast-form-input,.ast-form-select,.ast-form-textarea { padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-primary);background:var(--surface2);outline:none;transition:border-color .15s;width:100%; }
 .ast-form-input:focus,.ast-form-select:focus,.ast-form-textarea:focus { border-color:var(--blue-mid);background:#fff; }
-.ast-form-textarea { resize:vertical;min-height:72px; }
+.ast-form-textarea { resize:vertical;min-height:64px; }
 .ast-form-err  { color:var(--red);font-size:12px;margin-top:2px; }
-
-.ast-progress-bar  { height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:5px; }
-.ast-progress-fill { height:100%;border-radius:3px;transition:width .4s; }
-
-.ast-rank-item { display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border); }
+.ast-fup-form { background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:14px; }
+.ast-fup-list { display:flex;flex-direction:column;gap:8px; }
+.ast-fup-item { background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px; }
+.ast-fup-item.manual { border-left:3px solid var(--blue-mid); }
+.ast-fup-item.whats  { border-left:3px solid #25D366; }
+.ast-fup-meta { font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;gap:5px;flex-wrap:wrap; }
+.ast-fup-msg  { font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap; }
+.ast-os-box { background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px; }
+.ast-os-box-info { flex:1; }
+.ast-os-stonni { border-left:3px solid #7C3AED; }
+.ast-os-loja   { border-left:3px solid var(--blue-mid); }
+.ast-prod-result { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;margin-top:4px;box-shadow:var(--shadow-md); }
+.ast-prod-result-item { padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s; }
+.ast-prod-result-item:hover { background:var(--blue-pale); }
+.ast-prod-result-item:last-child { border-bottom:none; }
+.ast-prod-ref { font-size:11px;color:var(--text-muted); }
+.ast-sec-tabs { display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap; }
+.ast-sec-tab  { padding:8px 12px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap; }
+.ast-sec-tab:hover { color:var(--text-primary); }
+.ast-sec-tab.active { color:var(--blue-mid);border-bottom-color:var(--blue-mid); }
+.ast-sec-content { display:none; }
+.ast-sec-content.active { display:block; }
+.ast-hist-item { display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s; }
+.ast-hist-item:hover { background:var(--surface2);margin:0 -4px;padding:9px 4px;border-radius:var(--radius-sm); }
+.ast-hist-item:last-child { border-bottom:none; }
+.ast-progress-bar  { height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px; }
+.ast-progress-fill { height:100%;border-radius:3px; }
+.ast-rank-item { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border); }
 .ast-rank-item:last-child { border-bottom:none; }
 .ast-rank-pos  { width:22px;height:22px;background:var(--surface2);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);flex-shrink:0; }
 .ast-rank-pos.g1 { background:#FEF9C3;border-color:#EAB308;color:#A16207; }
 .ast-rank-pos.g2 { background:#F1F5F9;border-color:#94A3B8;color:#475569; }
 .ast-rank-pos.g3 { background:#FEF3C7;border-color:#D97706;color:#92400E; }
 .ast-rank-name { flex:1;font-size:13px;font-weight:500;color:var(--text-primary); }
-.ast-rank-sub  { font-size:11px;color:var(--text-muted); }
 .ast-rank-val  { font-size:13px;font-weight:700;text-align:right; }
-
-.ast-empty { text-align:center;padding:40px 20px;color:var(--text-muted);font-size:13px; }
-.ast-empty-ico { font-size:32px;margin-bottom:10px;opacity:.5; }
-
-.ast-prod-result { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:200px;overflow-y:auto;margin-top:4px; }
-.ast-prod-result-item { padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s; }
-.ast-prod-result-item:hover { background:var(--blue-pale); }
-.ast-prod-result-item:last-child { border-bottom:none; }
-.ast-prod-ref { font-size:11px;color:var(--text-muted); }
-
-/* ÍNDICE DEFEITO */
-.ast-idx-normal   { color:var(--green);font-weight:700; }
-.ast-idx-atencao  { color:var(--orange);font-weight:700; }
-.ast-idx-critico  { color:var(--red);font-weight:700; }
-.ast-idx-bar-normal  { background:var(--green); }
-.ast-idx-bar-atencao { background:var(--orange); }
-.ast-idx-bar-critico { background:var(--red); }
-
-/* NATUREZA */
-.ast-nat-garantia { background:#DBEAFE;color:#1D4ED8;border:1px solid #BFDBFE; }
-.ast-nat-nao      { background:var(--surface2);color:var(--text-muted);border:1px solid var(--border); }
-
-/* HISTÓRICO NÚMERO */
-.ast-hist-item { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s; }
-.ast-hist-item:hover { background:var(--surface2);margin:0 -8px;padding:10px 8px;border-radius:var(--radius-sm); }
-.ast-hist-item:last-child { border-bottom:none; }
-
-/* BLOQUEADO BANNER */
-.ast-bloqueado-banner { background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px; }
-
-/* GESTÃO EXTRA */
+.ast-cfg-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px; }
+.ast-cfg-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm); }
+.ast-cfg-title{ font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between; }
+.ast-cfg-item { display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px; }
+.ast-cfg-item:last-of-type { border-bottom:none; }
+.ast-cfg-name { flex:1;color:var(--text-primary);font-weight:500; }
+.ast-cfg-add  { display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border); }
+.ast-cfg-input{ flex:1;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;background:var(--surface2);outline:none; }
+.ast-cfg-input:focus { border-color:var(--blue-mid); }
+.ast-modal-ov { display:none;position:fixed;inset:0;background:rgba(15,29,53,.5);z-index:300;align-items:center;justify-content:center; }
+.ast-modal-ov.open { display:flex; }
+.ast-modal { background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:580px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden; }
+.ast-modal-hdr  { padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.ast-modal-title{ font-size:15px;font-weight:700;color:var(--text-primary); }
+.ast-modal-body { padding:18px 22px;overflow-y:auto;flex:1; }
+.ast-modal-foot { padding:13px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0; }
+.ast-bloqueado-banner { background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.ast-empty { text-align:center;padding:32px 20px;color:var(--text-muted);font-size:13px; }
+.ast-empty-ico { font-size:28px;margin-bottom:8px;opacity:.5; }
+.ast-idx-normal  { color:var(--green);font-weight:700; }
+.ast-idx-atencao { color:var(--orange);font-weight:700; }
+.ast-idx-critico { color:var(--red);font-weight:700; }
 .ast-gest-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px; }
-.ast-evolucao-bar { display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border); }
+.ast-evolucao-bar { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border); }
 .ast-evolucao-bar:last-child { border-bottom:none; }
-
+.ast-kanban       { display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start; }
+.ast-kanban-col   { min-width:248px;max-width:262px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius); }
+.ast-kanban-hdr   { padding:10px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+.ast-kanban-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary); }
+.ast-kanban-count { background:var(--border);color:var(--text-muted);font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px; }
+.ast-kanban-cards { padding:9px;display:flex;flex-direction:column;gap:7px;min-height:60px; }
+.ast-kanban-card  { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-sm); }
+.ast-kanban-card:hover { box-shadow:var(--shadow-md);transform:translateY(-1px); }
+.ast-kanban-card.parado { border-left:3px solid var(--red); }
+.ast-kanban-card.novo   { border-left:3px solid var(--blue-mid); }
+.ast-kanban-card-name { font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:2px; }
+.ast-kanban-card-sub  { font-size:11px;color:var(--text-muted);line-height:1.3; }
+.ast-kanban-card-foot { margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:4px; }
 @media (max-width:768px) {
   .ast-drawer { width:100%;right:-100%; }
   .ast-detail-grid,.ast-form-row,.ast-gest-grid { grid-template-columns:1fr; }
@@ -199,15 +176,12 @@
   `;
   document.head.appendChild(s);
 })();
-
 // ══════════════════════════════════════════
-// PÁGINAS HTML
+// HTML DAS PÁGINAS
 // ══════════════════════════════════════════
 const AST_PAGES = {
-
 'ast-gestao': `<div class="ast-page" id="page-ast-gestao">
-  <!-- KPI CARDS -->
-  <div class="ast-cards" id="ast-kpi-cards">
+  <div class="ast-cards">
     <div class="ast-card"><div class="ast-card-label">Chamados Abertos</div><div class="ast-card-value blue" id="ast-k-abertos">—</div><div class="ast-card-sub">situação atual</div></div>
     <div class="ast-card"><div class="ast-card-label">Concluídos no Mês</div><div class="ast-card-value green" id="ast-k-concluidos">—</div><div class="ast-card-sub">este mês</div></div>
     <div class="ast-card"><div class="ast-card-label">Taxa de Resolução</div><div class="ast-card-value" id="ast-k-taxa">—</div><div class="ast-card-sub">concluídos / total mês</div></div>
@@ -215,44 +189,34 @@ const AST_PAGES = {
     <div class="ast-card"><div class="ast-card-label">Parados +7 dias</div><div class="ast-card-value red" id="ast-k-parados">—</div><div class="ast-card-sub">sem follow-up</div></div>
     <div class="ast-card"><div class="ast-card-label">Pior Índice Defeito</div><div class="ast-card-value red" id="ast-k-pior-idx" style="font-size:18px;line-height:1.3">—</div><div class="ast-card-sub" id="ast-k-pior-prod">últimos 12 meses</div></div>
   </div>
-
-  <!-- LINHA: SETOR + EVOLUÇÃO -->
-  <div class="ast-gest-grid">
+  <div class="ast-gest-grid" style="margin-top:16px">
     <div class="ast-table-card">
       <div class="ast-table-header"><div class="ast-table-title">Distribuição por Setor</div></div>
-      <div style="padding:16px 20px" id="ast-setor-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+      <div style="padding:14px 18px" id="ast-setor-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
     </div>
     <div class="ast-table-card">
-      <div class="ast-table-header"><div class="ast-table-title">Evolução Mensal — Abertos vs Concluídos</div></div>
-      <div style="padding:16px 20px" id="ast-evolucao-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+      <div class="ast-table-header"><div class="ast-table-title">Evolução Mensal</div></div>
+      <div style="padding:14px 18px" id="ast-evolucao-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
     </div>
   </div>
-
-  <!-- ÍNDICE DE DEFEITO -->
-  <div class="ast-section-title">Índice de Defeito por Produto — últimos 12 meses</div>
+  <div class="ast-section-title">Índice de Defeito — últimos 12 meses</div>
   <div class="ast-table-card">
     <div class="ast-table-header">
-      <div class="ast-table-title">Chamados de garantia ÷ unidades vendidas</div>
-      <div style="display:flex;gap:8px;font-size:11px;color:var(--text-muted);align-items:center">
-        <span style="color:var(--green);font-weight:700">● Normal &lt;1%</span>
-        <span style="color:var(--orange);font-weight:700">● Atenção 1-3%</span>
-        <span style="color:var(--red);font-weight:700">● Crítico &gt;3%</span>
+      <div class="ast-table-title">Chamados garantia ÷ unidades vendidas</div>
+      <div style="display:flex;gap:10px;font-size:11px;align-items:center">
+        <span style="color:var(--green);font-weight:700">● &lt;1% normal</span>
+        <span style="color:var(--orange);font-weight:700">● 1-3% atenção</span>
+        <span style="color:var(--red);font-weight:700">● &gt;3% crítico</span>
       </div>
     </div>
     <div class="ast-table-wrap">
       <table class="ast-table">
-        <thead><tr>
-          <th>Produto</th><th class="right">Vendidos 12m</th>
-          <th class="right">Chamados</th><th class="right">Índice</th>
-          <th class="right">Tempo Médio</th><th>Situação</th>
-        </tr></thead>
+        <thead><tr><th>Produto</th><th class="right">Vendidos 12m</th><th class="right">Chamados</th><th class="right">Índice</th><th class="right">Tempo Médio</th><th>Situação</th></tr></thead>
         <tbody id="ast-indice-body"><tr class="ast-loading"><td colspan="6">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
-
-  <!-- PARADOS -->
-  <div class="ast-section-title">Chamados Parados — Ação Necessária</div>
+  <div class="ast-section-title">Chamados Parados</div>
   <div class="ast-table-card">
     <div class="ast-table-header">
       <div class="ast-table-title">Sem follow-up há mais de 7 dias</div>
@@ -265,13 +229,9 @@ const AST_PAGES = {
       </table>
     </div>
   </div>
-
-  <!-- NÚMEROS BLOQUEADOS -->
   <div class="ast-section-title">Números Bloqueados</div>
   <div class="ast-table-card">
-    <div class="ast-table-header">
-      <div class="ast-table-title">Classificados como Não-Garantia — <span id="ast-bloq-count">—</span></div>
-    </div>
+    <div class="ast-table-header"><div class="ast-table-title">Classificados como Não-Garantia — <span id="ast-bloq-count">—</span></div></div>
     <div class="ast-table-wrap">
       <table class="ast-table">
         <thead><tr><th>Telefone</th><th>Motivo</th><th>Bloqueado por</th><th>Data</th><th style="width:80px"></th></tr></thead>
@@ -282,7 +242,14 @@ const AST_PAGES = {
 </div>`,
 
 'ast-chamados': `<div class="ast-page" id="page-ast-chamados">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+  <div id="ast-banner-novos" style="display:none" class="ast-banner-novos">
+    <div>
+      <div class="ast-banner-novos-txt">🔵 <span id="ast-novos-qtd">0</span> chamados novos aguardando atendimento</div>
+      <div class="ast-banner-novos-sub">Chegaram via WhatsApp e ainda não foram abertos</div>
+    </div>
+    <button class="ast-btn ast-btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="astFiltrarNovos()">Ver apenas novos</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="ast-toggle" id="ast-view-toggle">
         <button class="ast-toggle-btn active" onclick="astSetView('lista',this)">☰ Lista</button>
@@ -290,13 +257,9 @@ const AST_PAGES = {
       </div>
       <select class="ast-select" id="ast-fil-status" onchange="astAplicarFiltros()"><option value="">Todos os status</option></select>
       <select class="ast-select" id="ast-fil-setor"  onchange="astAplicarFiltros()"><option value="">Todos os setores</option></select>
-      <select class="ast-select" id="ast-fil-prior"  onchange="astAplicarFiltros()">
-        <option value="">Todas as prioridades</option>
-        <option>Alta</option><option>Media</option><option>Baixa</option>
-      </select>
       <input class="ast-search" id="ast-busca" placeholder="Buscar cliente ou produto..." oninput="astAplicarFiltros()">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer">
-        <input type="checkbox" id="ast-ver-finalizados" onchange="astAplicarFiltros()"> Ver finalizados
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);cursor:pointer">
+        <input type="checkbox" id="ast-ver-finalizados" onchange="astAplicarFiltros()"> Finalizados
       </label>
     </div>
     <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
@@ -308,18 +271,13 @@ const AST_PAGES = {
         <div class="ast-toggle">
           <button class="ast-toggle-btn active" onclick="astSetOrdem('recente',this)">Recente</button>
           <button class="ast-toggle-btn" onclick="astSetOrdem('antigo',this)">Antigo</button>
-          <button class="ast-toggle-btn" onclick="astSetOrdem('prioridade',this)">Prioridade</button>
           <button class="ast-toggle-btn" onclick="astSetOrdem('parado',this)">Mais parado</button>
         </div>
       </div>
       <div class="ast-table-wrap">
         <table class="ast-table">
-          <thead><tr>
-            <th>#</th><th>Cliente / Telefone</th><th>Produto</th>
-            <th>Natureza</th><th>Status</th><th>Setor</th><th>Prioridade</th>
-            <th class="right">Dias</th><th class="right">s/FU</th>
-          </tr></thead>
-          <tbody id="ast-lista-body"><tr class="ast-loading"><td colspan="9">Carregando...</td></tr></tbody>
+          <thead><tr><th>#</th><th>Cliente / Telefone</th><th>Produto</th><th>Status</th><th>Setor</th><th class="right">Dias</th><th>Alertas</th></tr></thead>
+          <tbody id="ast-lista-body"><tr class="ast-loading"><td colspan="7">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -344,53 +302,37 @@ const AST_PAGES = {
     </div>
     <div class="ast-table-wrap">
       <table class="ast-table">
-        <thead><tr>
-          <th>Referência</th><th>Produto</th><th>Grupo</th>
-          <th class="right">Vendidos 12m</th><th class="right">Chamados</th>
-          <th class="right">Índice Defeito</th><th>Status</th><th style="width:80px"></th>
-        </tr></thead>
+        <thead><tr><th>Referência</th><th>Produto</th><th>Grupo</th><th class="right">Vendidos 12m</th><th class="right">Chamados</th><th class="right">Índice</th><th>Status</th><th style="width:80px"></th></tr></thead>
         <tbody id="ast-prod-body"><tr class="ast-loading"><td colspan="8">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
-    <div class="ast-table-card">
-      <div class="ast-table-header"><div class="ast-table-title">🔴 Mais Chamados</div></div>
-      <div style="padding:14px 18px" id="ast-criticos-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
-    </div>
-    <div class="ast-table-card">
-      <div class="ast-table-header"><div class="ast-table-title">🔧 Peças Mais Usadas</div></div>
-      <div style="padding:14px 18px" id="ast-pecas-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
-    </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
+    <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔴 Mais Chamados</div></div><div style="padding:12px 16px" id="ast-criticos-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
+    <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔧 Peças Mais Usadas</div></div><div style="padding:12px 16px" id="ast-pecas-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
   </div>
 </div>`,
 
 'ast-config': `<div class="ast-page" id="page-ast-config">
-  <div style="margin-bottom:20px">
-    <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações da Assistência</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:3px">Gerencie status, setores e demais opções sem precisar de suporte técnico</div>
+  <div style="margin-bottom:18px">
+    <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gerencie status, setores e demais opções sem suporte técnico</div>
   </div>
-  <div class="ast-cfg-grid" id="ast-cfg-grid">
-    <div style="color:var(--text-muted);font-size:13px">Carregando...</div>
-  </div>
+  <div class="ast-cfg-grid" id="ast-cfg-grid"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
 </div>`
 };
-
 // ══════════════════════════════════════════
-// ESTADO
+// ESTADO + HELPERS
 // ══════════════════════════════════════════
 let _container = null, _iniciado = false, _pagina = null;
 let astData = [], astFiltrados = [], astView = 'lista', astOrdem = 'recente';
-let astProdAll = [], astIndiceData = [];
+let astProdAll = [];
 let _statusList = [], _setoresList = [], _prioridadeList = [];
-let _defeitos = [], _causas = [], _solucoes = [], _procedencias = [];
+let _defeitos = [], _causas = [], _procedencias = [];
 
-// ══════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════
 const astFmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
 const astDias    = d => d ? Math.floor((Date.now() - new Date(d)) / 86400000) : null;
+
 function astDiasBadge(n) {
   if (n === null || n === undefined) return '—';
   if (n >= 14) return `<span style="color:var(--red);font-weight:700">${n}d</span>`;
@@ -411,30 +353,36 @@ function astPriorBadge(nome) {
   return `<span class="ast-badge ast-badge-${n.includes('alta')?'alta':n.includes('media')||n.includes('média')?'media':'baixa'}">${nome}</span>`;
 }
 function astNaturezaBadge(n) {
-  if (!n || n === 'garantia') return '<span class="ast-badge ast-nat-garantia">🔴 Garantia</span>';
-  return '<span class="ast-badge ast-nat-nao">⚫ Não-Garantia</span>';
+  if (!n || n === 'garantia') return '<span class="ast-badge ast-badge-garantia">🔴 Garantia</span>';
+  return '<span class="ast-badge ast-badge-nao">⚫ Não-Garantia</span>';
 }
-function astIndiceCls(pct, tipo) {
+function astAlertasBadges(r) {
+  const bits = [];
+  if (!r.visualizado) bits.push('<span class="ast-alerta-novo">🔵 NOVO</span>');
+  if ((r.dias_sem_followup||0) >= 7 && !astEhFinalizado(r)) bits.push('<span class="ast-alerta-parado">🔴 PARADO</span>');
+  const d = astDias(r.data_abertura) || 0;
+  if (d >= 23 && d <= 35 && !astEhFinalizado(r)) bits.push('<span class="ast-alerta-vencendo">🟡 GARANTIA</span>');
+  return bits.join(' ');
+}
+function astIndiceCls(pct) {
   const v = parseFloat(pct);
-  const c = v > 3 ? 'critico' : v > 1 ? 'atencao' : 'normal';
-  return tipo === 'text' ? `ast-idx-${c}` : `ast-idx-bar-${c}`;
+  return v > 3 ? 'critico' : v > 1 ? 'atencao' : 'normal';
 }
 const astEhFinalizado = r => r.finaliza_chamado === true || r.concluido === true;
 const astSelectOptions = (lista, val) => lista.map(i =>
   `<option value="${i.id}" ${i.id == val ? 'selected' : ''}>${i.nome}</option>`).join('');
 
 // ══════════════════════════════════════════
-// PRÉ-CARGA LOOKUPS
+// LOOKUPS
 // ══════════════════════════════════════════
 async function astCarregarLookups() {
   if (_statusList.length) return;
-  const [s, se, p, d, c, so, pr] = await Promise.allSettled([
+  const [s, se, p, d, c, pr] = await Promise.allSettled([
     window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem').eq('ativo',true).order('ordem'),
     window.sb.from('assist_setores').select('id,nome').eq('ativo',true).order('nome'),
     window.sb.from('assist_prioridades').select('id,nome,ordem').eq('ativo',true).order('ordem'),
     window.sb.from('assist_defeitos').select('id,nome').eq('ativo',true).order('nome'),
     window.sb.from('assist_causas').select('id,nome').eq('ativo',true).order('nome'),
-    window.sb.from('assist_solucoes').select('id,nome').eq('ativo',true).order('nome'),
     window.sb.from('assist_procedencias').select('id,nome').eq('ativo',true).order('nome'),
   ]);
   _statusList    = s.status  ==='fulfilled'?(s.value.data ||[]):[];
@@ -442,187 +390,120 @@ async function astCarregarLookups() {
   _prioridadeList= p.status  ==='fulfilled'?(p.value.data ||[]):[];
   _defeitos      = d.status  ==='fulfilled'?(d.value.data ||[]):[];
   _causas        = c.status  ==='fulfilled'?(c.value.data ||[]):[];
-  _solucoes      = so.status ==='fulfilled'?(so.value.data||[]):[];
   _procedencias  = pr.status ==='fulfilled'?(pr.value.data||[]):[];
 }
-
+function astInvalidarLookups() { _statusList=[]; _setoresList=[]; _prioridadeList=[]; }
 // ══════════════════════════════════════════
 // GESTÃO
 // ══════════════════════════════════════════
 async function astLoadGestao() {
-  await Promise.all([
-    astLoadKPIs(),
-    astLoadSetorDistrib(),
-    astLoadEvolucao(),
-    astLoadIndiceDefeito(),
-    astLoadParados(),
-    astLoadBloqueados(),
-  ]);
+  await Promise.all([astLoadKPIs(), astLoadSetorDistrib(), astLoadEvolucao(), astLoadIndiceDefeito(), astLoadParados(), astLoadBloqueados()]);
   window.setLastUpdate?.();
 }
-
 async function astLoadKPIs() {
   try {
     const { data } = await window.sb.from('assist_kpis').select('*').single();
     if (!data) return;
-    const ab = data.chamados_abertos || 0;
-    const co = data.chamados_concluidos_mes || 0;
-    const taxa = (ab + co) > 0 ? Math.round(co / (ab + co) * 100) : 0;
-    document.getElementById('ast-k-abertos').textContent   = ab;
-    document.getElementById('ast-k-concluidos').textContent= co;
-    document.getElementById('ast-k-taxa').textContent      = `${taxa}%`;
-    document.getElementById('ast-k-taxa').className        = `ast-card-value ${taxa >= 70 ? 'green' : taxa >= 40 ? 'orange' : 'red'}`;
-    document.getElementById('ast-k-tempo').textContent     = data.tempo_medio_resolucao_dias != null
-      ? `${parseFloat(data.tempo_medio_resolucao_dias).toFixed(1)}d` : '—';
-    document.getElementById('ast-k-parados').textContent   = data.chamados_parados || 0;
+    const ab = data.chamados_abertos||0, co = data.chamados_concluidos_mes||0;
+    const taxa = (ab+co)>0?Math.round(co/(ab+co)*100):0;
+    document.getElementById('ast-k-abertos').textContent    = ab;
+    document.getElementById('ast-k-concluidos').textContent = co;
+    document.getElementById('ast-k-taxa').textContent       = `${taxa}%`;
+    document.getElementById('ast-k-taxa').className         = `ast-card-value ${taxa>=70?'green':taxa>=40?'orange':'red'}`;
+    document.getElementById('ast-k-tempo').textContent      = data.tempo_medio_resolucao_dias!=null?`${parseFloat(data.tempo_medio_resolucao_dias).toFixed(1)}d`:'—';
+    document.getElementById('ast-k-parados').textContent    = data.chamados_parados||0;
   } catch(e) {}
 }
-
 async function astLoadSetorDistrib() {
-  const el = document.getElementById('ast-setor-list');
-  if (!el) return;
+  const el = document.getElementById('ast-setor-list'); if (!el) return;
   try {
-    const { data } = await window.sb.from('assist_kanban')
-      .select('setor_responsavel,concluido,finaliza_chamado,natureza').range(0,9999);
+    const { data } = await window.sb.from('assist_kanban').select('setor_responsavel,concluido,finaliza_chamado,natureza').range(0,9999);
     const map = {};
     (data||[]).forEach(r => {
-      if (astEhFinalizado(r) || r.natureza === 'nao_garantia') return;
-      const k = r.setor_responsavel || 'Sem setor';
-      map[k] = (map[k]||0) + 1;
+      if (astEhFinalizado(r)||r.natureza==='nao_garantia') return;
+      const k = r.setor_responsavel||'Sem setor'; map[k]=(map[k]||0)+1;
     });
-    const total = Object.values(map).reduce((a,v) => a+v, 0);
-    if (!total) { el.innerHTML = '<div class="ast-empty">Nenhum chamado aberto</div>'; return; }
-    el.innerHTML = Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
-      <div style="margin-bottom:12px">
+    const total = Object.values(map).reduce((a,v)=>a+v,0);
+    if (!total) { el.innerHTML='<div class="ast-empty">Nenhum chamado aberto</div>'; return; }
+    el.innerHTML = Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([s,n])=>`
+      <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
-          <span style="font-weight:500">${s}</span>
-          <span style="color:var(--text-muted)">${n} chamados</span>
+          <span style="font-weight:500">${s}</span><span style="color:var(--text-muted)">${n} chamados</span>
         </div>
-        <div class="ast-progress-bar">
-          <div class="ast-progress-fill" style="width:${Math.round(n/total*100)}%;background:var(--blue-mid)"></div>
-        </div>
+        <div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(n/total*100)}%;background:var(--blue-mid)"></div></div>
       </div>`).join('');
-  } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Erro</div>'; }
+  } catch(e) {}
 }
-
 async function astLoadEvolucao() {
-  const el = document.getElementById('ast-evolucao-list');
-  if (!el) return;
+  const el = document.getElementById('ast-evolucao-list'); if (!el) return;
   try {
-    // Busca chamados dos últimos 6 meses
-    const desde = new Date();
-    desde.setMonth(desde.getMonth() - 5);
-    desde.setDate(1);
-    const { data } = await window.sb.from('assist_chamados')
-      .select('data_abertura,data_conclusao,concluido,natureza')
-      .gte('data_abertura', desde.toISOString().slice(0,10))
-      .eq('natureza','garantia').range(0,9999);
-
-    // Agrupa por mês
+    const desde = new Date(); desde.setMonth(desde.getMonth()-5); desde.setDate(1);
+    const { data } = await window.sb.from('assist_chamados').select('data_abertura,data_conclusao,concluido,natureza')
+      .gte('data_abertura',desde.toISOString().slice(0,10)).eq('natureza','garantia').range(0,9999);
     const meses = {};
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(); d.setMonth(d.getMonth() - i); d.setDate(1);
-      const k = d.toISOString().slice(0,7);
-      meses[k] = { abertos: 0, concluidos: 0 };
-    }
+    for (let i=5;i>=0;i--) { const d=new Date();d.setMonth(d.getMonth()-i);d.setDate(1); meses[d.toISOString().slice(0,7)]={ab:0,co:0}; }
     (data||[]).forEach(r => {
-      const k = (r.data_abertura||'').slice(0,7);
-      if (meses[k]) meses[k].abertos++;
-      if (r.concluido && r.data_conclusao) {
-        const kc = r.data_conclusao.slice(0,7);
-        if (meses[kc]) meses[kc].concluidos++;
-      }
+      const k=(r.data_abertura||'').slice(0,7); if(meses[k]) meses[k].ab++;
+      if(r.concluido&&r.data_conclusao){const kc=r.data_conclusao.slice(0,7);if(meses[kc])meses[kc].co++;}
     });
-    const maxVal = Math.max(...Object.values(meses).map(m => Math.max(m.abertos, m.concluidos)), 1);
-    el.innerHTML = Object.entries(meses).map(([k, m]) => {
-      const [ano, mes] = k.split('-');
-      const nomeMes = new Date(ano, parseInt(mes)-1).toLocaleString('pt-BR',{month:'short'});
-      return `
-        <div class="ast-evolucao-bar">
-          <div style="width:32px;font-size:11px;color:var(--text-muted);flex-shrink:0">${nomeMes}</div>
-          <div style="flex:1">
-            <div style="display:flex;gap:4px;align-items:center;margin-bottom:3px">
-              <div style="height:10px;border-radius:2px;background:var(--blue-mid);width:${Math.round(m.abertos/maxVal*100)}%;min-width:2px"></div>
-              <span style="font-size:11px;color:var(--text-muted)">${m.abertos}</span>
-            </div>
-            <div style="display:flex;gap:4px;align-items:center">
-              <div style="height:10px;border-radius:2px;background:var(--green);width:${Math.round(m.concluidos/maxVal*100)}%;min-width:2px"></div>
-              <span style="font-size:11px;color:var(--text-muted)">${m.concluidos}</span>
-            </div>
+    const max = Math.max(...Object.values(meses).map(m=>Math.max(m.ab,m.co)),1);
+    el.innerHTML = Object.entries(meses).map(([k,m])=>{
+      const [ano,mes]=k.split('-');
+      const nomeMes=new Date(ano,parseInt(mes)-1).toLocaleString('pt-BR',{month:'short'});
+      return `<div class="ast-evolucao-bar">
+        <div style="width:28px;font-size:11px;color:var(--text-muted);flex-shrink:0">${nomeMes}</div>
+        <div style="flex:1">
+          <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px">
+            <div style="height:9px;border-radius:2px;background:var(--blue-mid);width:${Math.round(m.ab/max*100)}%;min-width:2px"></div>
+            <span style="font-size:11px;color:var(--text-muted)">${m.ab}</span>
           </div>
-        </div>`;
-    }).join('') + `
-      <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--text-muted)">
-        <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-mid);border-radius:2px;margin-right:4px"></span>Abertos</span>
-        <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span>Concluídos</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <div style="height:9px;border-radius:2px;background:var(--green);width:${Math.round(m.co/max*100)}%;min-width:2px"></div>
+            <span style="font-size:11px;color:var(--text-muted)">${m.co}</span>
+          </div>
+        </div>
       </div>`;
-  } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Sem dados</div>'; }
+    }).join('')+'<div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--text-muted)"><span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-mid);border-radius:2px;margin-right:3px"></span>Abertos</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:3px"></span>Concluídos</span></div>';
+  } catch(e) { el.innerHTML='<div style="color:var(--text-muted);font-size:13px">Sem dados</div>'; }
 }
-
 async function astLoadIndiceDefeito() {
-  const tbody = document.getElementById('ast-indice-body');
-  if (!tbody) return;
+  const tbody = document.getElementById('ast-indice-body'); if (!tbody) return;
   try {
-    const { data } = await window.sb.from('assist_indice_defeito')
-      .select('*').order('indice_defeito_pct', { ascending: false }).range(0,49);
-    astIndiceData = data || [];
-
-    // Card pior índice
+    const { data } = await window.sb.from('assist_indice_defeito').select('*').order('indice_defeito_pct',{ascending:false}).range(0,49);
     if (data?.length) {
       const pior = data[0];
-      const el = document.getElementById('ast-k-pior-idx');
-      const ep = document.getElementById('ast-k-pior-prod');
-      if (el) { el.textContent = `${pior.indice_defeito_pct}%`; el.className = `ast-card-value ${astIndiceCls(pior.indice_defeito_pct,'text').replace('ast-idx-','')}`; }
-      if (ep) ep.textContent = pior.produto_nome?.slice(0,30) || '—';
+      const el=document.getElementById('ast-k-pior-idx'), ep=document.getElementById('ast-k-pior-prod');
+      if(el){el.textContent=`${pior.indice_defeito_pct}%`;el.className='ast-card-value red';}
+      if(ep)ep.textContent=(pior.produto_nome||'—').slice(0,28);
     }
-
-    if (!data?.length) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="ast-empty"><div class="ast-empty-ico">📊</div>Nenhum dado ainda — vincule produtos ao catálogo da assistência</div></td></tr>';
-      return;
-    }
-    const maxPct = Math.max(...data.map(r => parseFloat(r.indice_defeito_pct)||0), 1);
+    if (!data?.length) { tbody.innerHTML='<tr><td colspan="6"><div class="ast-empty">Sem dados — adicione produtos ao catálogo</div></td></tr>'; return; }
+    const maxPct = Math.max(...data.map(r=>parseFloat(r.indice_defeito_pct)||0),1);
     tbody.innerHTML = data.map(r => {
-      const pct = parseFloat(r.indice_defeito_pct)||0;
-      const clsT = astIndiceCls(pct,'text');
-      const clsB = astIndiceCls(pct,'bar');
+      const pct=parseFloat(r.indice_defeito_pct)||0, cls=astIndiceCls(pct);
       return `<tr>
-        <td>
-          <div style="font-weight:500">${r.produto_nome||'—'}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${r.referencia||''} ${r.grupo?'· '+r.grupo:''}</div>
-        </td>
+        <td><div style="font-weight:500">${r.produto_nome||'—'}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia||''}</div></td>
         <td class="right">${parseInt(r.qtd_vendida_12m||0).toLocaleString('pt-BR')}</td>
         <td class="right">${r.chamados_garantia||0}</td>
-        <td class="right">
-          <span class="${clsT}">${pct.toFixed(2)}%</span>
-          <div class="ast-progress-bar" style="width:80px;display:inline-block;vertical-align:middle;margin-left:6px">
-            <div class="ast-progress-fill ${clsB}" style="width:${Math.round(pct/maxPct*100)}%"></div>
-          </div>
-        </td>
+        <td class="right"><span class="ast-idx-${cls}">${pct.toFixed(2)}%</span>
+          <div class="ast-progress-bar" style="width:70px;display:inline-block;vertical-align:middle;margin-left:6px">
+            <div class="ast-progress-fill" style="width:${Math.round(pct/maxPct*100)}%;background:${pct>3?'var(--red)':pct>1?'var(--orange)':'var(--green)'}"></div>
+          </div></td>
         <td class="right">${r.tempo_medio_dias||0}d</td>
-        <td>${r.chamados_abertos>0?`<span style="color:var(--orange);font-weight:600">${r.chamados_abertos} abertos</span>`:'<span style="color:var(--green)">✅ Todos resolvidos</span>'}</td>
+        <td>${r.chamados_abertos>0?`<span style="color:var(--orange);font-weight:600">${r.chamados_abertos} abertos</span>`:'<span style="color:var(--green)">✅ OK</span>'}</td>
       </tr>`;
     }).join('');
-  } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);padding:20px;text-align:center">Sem dados de índice — adicione produtos ao catálogo e registre chamados</td></tr>';
-  }
+  } catch(e) {}
 }
-
 async function astLoadParados() {
-  const tbody = document.getElementById('ast-parados-body');
-  if (!tbody) return;
+  const tbody = document.getElementById('ast-parados-body'); if (!tbody) return;
   try {
-    const { data } = await window.sb.from('assist_kanban')
-      .select('id,nome_contato,cliente_nome,produto_nome,status_nome,setor_responsavel,dias_sem_followup')
-      .gte('dias_sem_followup',7).eq('natureza','garantia')
-      .order('dias_sem_followup',{ascending:false}).range(0,49);
-    if (!data?.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--green);font-size:13px">✅ Nenhum chamado parado</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(r => `
+    const { data } = await window.sb.from('assist_kanban').select('id,nome_contato,cliente_nome,produto_nome,status_nome,setor_responsavel,dias_sem_followup')
+      .gte('dias_sem_followup',7).eq('natureza','garantia').order('dias_sem_followup',{ascending:false}).range(0,49);
+    if (!data?.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--green);font-size:13px">✅ Nenhum chamado parado</td></tr>'; return; }
+    tbody.innerHTML = data.map(r=>`
       <tr onclick="astAbrirDetalhe(${r.id})">
         <td class="ast-mono" style="color:var(--text-muted)">#${r.id}</td>
-        <td><div style="font-weight:500">${r.cliente_nome||r.nome_contato||'—'}</div></td>
+        <td style="font-weight:500">${r.cliente_nome||r.nome_contato||'—'}</td>
         <td style="color:var(--text-secondary)">${r.produto_nome||'—'}</td>
         <td>${r.setor_responsavel||'—'}</td>
         <td class="right">${astDiasBadge(r.dias_sem_followup)}</td>
@@ -630,159 +511,129 @@ async function astLoadParados() {
       </tr>`).join('');
   } catch(e) {}
 }
-
 async function astLoadBloqueados() {
-  const tbody = document.getElementById('ast-bloq-body');
-  const count = document.getElementById('ast-bloq-count');
+  const tbody = document.getElementById('ast-bloq-body'), count = document.getElementById('ast-bloq-count');
   if (!tbody) return;
   try {
-    const { data } = await window.sb.from('assist_numeros_bloqueados')
-      .select('*').eq('ativo',true).order('bloqueado_em',{ascending:false}).range(0,99);
-    if (count) count.textContent = `${(data||[]).length} números`;
-    if (!data?.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Nenhum número bloqueado</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(r => `
+    const { data } = await window.sb.from('assist_numeros_bloqueados').select('*').eq('ativo',true).order('bloqueado_em',{ascending:false}).range(0,99);
+    if (count) count.textContent=`${(data||[]).length} números`;
+    if (!data?.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">Nenhum número bloqueado</td></tr>'; return; }
+    tbody.innerHTML = data.map(r=>`
       <tr>
         <td class="ast-mono">${r.telefone||r.telefone_norm}</td>
         <td style="color:var(--text-muted)">${r.motivo||'—'}</td>
         <td style="color:var(--text-muted)">${r.bloqueado_por||'—'}</td>
         <td style="color:var(--text-muted)">${astFmtDate(r.bloqueado_em)}</td>
-        <td>
-          <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${r.id},'${(r.telefone||'').replace(/'/g,"\\'")}')">✅ Desbloquear</button>
-        </td>
+        <td><button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${r.id},'${(r.telefone||'').replace(/'/g,"\\'")}')">✅ Desbloquear</button></td>
       </tr>`).join('');
   } catch(e) {}
 }
-
 window.astDesbloquear = async function(id, tel) {
-  if (!confirm(`Desbloquear ${tel}? O número voltará a criar chamados.`)) return;
+  if (!confirm(`Desbloquear ${tel}?`)) return;
   const usuario = window.getUsuario?.();
-  await window.sb.from('assist_numeros_bloqueados').update({
-    ativo: false,
-    desbloqueado_por: usuario?.nome || null,
-    desbloqueado_em: new Date().toISOString(),
-  }).eq('id', id);
+  await window.sb.from('assist_numeros_bloqueados').update({ ativo:false, desbloqueado_por:usuario?.nome||null, desbloqueado_em:new Date().toISOString() }).eq('id',id);
   await astLoadBloqueados();
 };
-
 // ══════════════════════════════════════════
 // CHAMADOS
 // ══════════════════════════════════════════
 async function astLoadChamados() {
   try {
-    const { data } = await window.sb.from('assist_kanban').select('*')
-      .order('data_abertura',{ascending:false}).range(0,9999);
-    astData = data || [];
+    const { data } = await window.sb.from('assist_kanban').select('*').order('data_abertura',{ascending:false}).range(0,9999);
+    astData = data||[];
     astPopularSelectsFiltro();
+    const novos = astData.filter(r => !r.visualizado && r.natureza!=='nao_garantia' && !astEhFinalizado(r));
+    const banner = document.getElementById('ast-banner-novos');
+    const qtdEl  = document.getElementById('ast-novos-qtd');
+    if (banner) banner.style.display = novos.length ? '' : 'none';
+    if (qtdEl)  qtdEl.textContent = novos.length;
     astAplicarFiltros();
     window.setLastUpdate?.();
   } catch(e) {
     const b = document.getElementById('ast-lista-body');
-    if (b) b.innerHTML = '<tr><td colspan="9" style="color:var(--red);padding:20px">Erro ao carregar</td></tr>';
+    if (b) b.innerHTML='<tr><td colspan="7" style="color:var(--red);padding:20px">Erro ao carregar</td></tr>';
   }
 }
-
 function astPopularSelectsFiltro() {
-  const sSet = new Set(), seSet = new Set();
-  astData.forEach(r => { if(r.status_nome) sSet.add(r.status_nome); if(r.setor_responsavel) seSet.add(r.setor_responsavel); });
-  const ss = document.getElementById('ast-fil-status');
-  const se = document.getElementById('ast-fil-setor');
-  if (ss) ss.innerHTML = '<option value="">Todos os status</option>' + [...sSet].sort().map(s=>`<option>${s}</option>`).join('');
-  if (se) se.innerHTML = '<option value="">Todos os setores</option>' + [...seSet].sort().map(s=>`<option>${s}</option>`).join('');
+  const sSet=new Set(), seSet=new Set();
+  astData.forEach(r=>{ if(r.status_nome) sSet.add(r.status_nome); if(r.setor_responsavel) seSet.add(r.setor_responsavel); });
+  const ss=document.getElementById('ast-fil-status'), se=document.getElementById('ast-fil-setor');
+  if(ss) ss.innerHTML='<option value="">Todos os status</option>'+[...sSet].sort().map(s=>`<option>${s}</option>`).join('');
+  if(se) se.innerHTML='<option value="">Todos os setores</option>'+[...seSet].sort().map(s=>`<option>${s}</option>`).join('');
 }
-
 window.astAplicarFiltros = function() {
-  const status  = document.getElementById('ast-fil-status')?.value||'';
-  const setor   = document.getElementById('ast-fil-setor')?.value||'';
-  const prior   = document.getElementById('ast-fil-prior')?.value||'';
-  const busca   = (document.getElementById('ast-busca')?.value||'').toLowerCase();
-  const verFin  = document.getElementById('ast-ver-finalizados')?.checked;
-
+  const status = document.getElementById('ast-fil-status')?.value||'';
+  const setor  = document.getElementById('ast-fil-setor')?.value||'';
+  const busca  = (document.getElementById('ast-busca')?.value||'').toLowerCase();
+  const verFin = document.getElementById('ast-ver-finalizados')?.checked;
   astFiltrados = astData.filter(r => {
-    if (r.natureza === 'nao_garantia') return false; // nunca aparecem por padrão
+    if (r.natureza==='nao_garantia') return false;
     if (!verFin && astEhFinalizado(r)) return false;
-    if (status && r.status_nome !== status) return false;
-    if (setor  && r.setor_responsavel !== setor) return false;
-    if (prior  && (r.prioridade||'').toLowerCase() !== prior.toLowerCase()) return false;
+    if (status && r.status_nome!==status) return false;
+    if (setor  && r.setor_responsavel!==setor) return false;
     if (busca) {
-      const h = `${r.cliente_nome||''} ${r.nome_contato||''} ${r.produto_nome||''} ${r.telefone||''}`.toLowerCase();
+      const h=`${r.cliente_nome||''} ${r.nome_contato||''} ${r.produto_nome||''} ${r.telefone||''}`.toLowerCase();
       if (!h.includes(busca)) return false;
     }
     return true;
   });
-
-  const pOrd = {'alta':0,'media':1,'média':1,'baixa':2};
-  if      (astOrdem==='antigo')    astFiltrados.sort((a,b)=>new Date(a.data_abertura)-new Date(b.data_abertura));
-  else if (astOrdem==='prioridade') astFiltrados.sort((a,b)=>(pOrd[(a.prioridade||'').toLowerCase()]??9)-(pOrd[(b.prioridade||'').toLowerCase()]??9));
-  else if (astOrdem==='parado')    astFiltrados.sort((a,b)=>(b.dias_sem_followup||0)-(a.dias_sem_followup||0));
-  else                             astFiltrados.sort((a,b)=>new Date(b.data_abertura)-new Date(a.data_abertura));
-
+  if      (astOrdem==='antigo') astFiltrados.sort((a,b)=>new Date(a.data_abertura)-new Date(b.data_abertura));
+  else if (astOrdem==='parado') astFiltrados.sort((a,b)=>(b.dias_sem_followup||0)-(a.dias_sem_followup||0));
+  else                          astFiltrados.sort((a,b)=>new Date(b.data_abertura)-new Date(a.data_abertura));
   if (astView==='lista') astRenderLista(); else astRenderKanban();
 };
-
+window.astFiltrarNovos = function() {
+  document.getElementById('ast-busca').value='';
+  document.getElementById('ast-fil-status').value='';
+  document.getElementById('ast-fil-setor').value='';
+  astFiltrados = astData.filter(r => !r.visualizado && r.natureza!=='nao_garantia' && !astEhFinalizado(r));
+  astRenderLista();
+};
 function astRenderLista() {
-  const tbody = document.getElementById('ast-lista-body');
-  const count = document.getElementById('ast-lista-count');
+  const tbody=document.getElementById('ast-lista-body'), count=document.getElementById('ast-lista-count');
   if (!tbody) return;
-  if (count) count.textContent = `${astFiltrados.length} chamados`;
-  if (!astFiltrados.length) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="ast-empty"><div class="ast-empty-ico">🔍</div>Nenhum chamado encontrado</div></td></tr>';
-    return;
-  }
+  if (count) count.textContent=`${astFiltrados.length} chamados`;
+  if (!astFiltrados.length) { tbody.innerHTML='<tr><td colspan="7"><div class="ast-empty"><div class="ast-empty-ico">🔍</div>Nenhum chamado</div></td></tr>'; return; }
   tbody.innerHTML = astFiltrados.map(r => {
-    const parado = (r.dias_sem_followup||0) >= 7 && !astEhFinalizado(r);
-    return `<tr onclick="astAbrirDetalhe(${r.id})" ${parado?'style="background:var(--red-bg)"':''}>
+    const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
+    const isNovo=!r.visualizado;
+    return `<tr onclick="astAbrirDetalhe(${r.id})" style="${parado?'background:var(--red-bg)':isNovo?'background:#EFF6FF':''}">
       <td class="ast-mono" style="color:var(--text-muted)">#${r.id}</td>
-      <td><div style="font-weight:500">${r.cliente_nome||r.nome_contato||'—'}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${r.telefone||''}</div></td>
-      <td style="color:var(--text-secondary)">${r.produto_nome||'—'}</td>
-      <td>${astNaturezaBadge(r.natureza)}</td>
+      <td><div style="font-weight:500">${r.cliente_nome||r.nome_contato||'—'}</div><div style="font-size:11px;color:var(--text-muted)">${r.telefone||''}</div></td>
+      <td style="color:var(--text-secondary);font-size:12px">${r.produto_nome||'—'}</td>
       <td>${astStatusBadge(r.status_nome)}</td>
-      <td style="font-size:12px">${r.setor_responsavel||'—'}</td>
-      <td>${astPriorBadge(r.prioridade)}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${r.setor_responsavel||'—'}</td>
       <td class="right">${astDiasBadge(astDias(r.data_abertura))}</td>
-      <td class="right">${r.dias_sem_followup!=null?astDiasBadge(r.dias_sem_followup):'—'}</td>
+      <td style="white-space:nowrap">${astAlertasBadges(r)}</td>
     </tr>`;
   }).join('');
 }
-
 function astRenderKanban() {
-  const board = document.getElementById('ast-kanban-board');
-  if (!board) return;
-  const colunas = {};
-  _statusList.forEach(s => { if (!s.finaliza_chamado) colunas[s.nome] = {meta:s,items:[]}; });
-  astFiltrados.forEach(r => {
-    const k = r.status_nome||'Sem status';
-    if (!colunas[k]) colunas[k] = {meta:{},items:[]};
-    colunas[k].items.push(r);
-  });
-  const cols = Object.entries(colunas).filter(([,v]) => v.items.length > 0 || !v.meta.finaliza_chamado);
-  if (!cols.length) { board.innerHTML = '<div class="ast-empty"><div class="ast-empty-ico">✅</div>Nenhum chamado ativo</div>'; return; }
-  board.innerHTML = cols.map(([status,v]) => `
+  const board=document.getElementById('ast-kanban-board'); if (!board) return;
+  const colunas={};
+  _statusList.forEach(s=>{ if(!s.finaliza_chamado) colunas[s.nome]={meta:s,items:[]}; });
+  astFiltrados.forEach(r=>{ const k=r.status_nome||'Sem status'; if(!colunas[k]) colunas[k]={meta:{},items:[]}; colunas[k].items.push(r); });
+  const cols=Object.entries(colunas).filter(([,v])=>v.items.length>0||!v.meta.finaliza_chamado);
+  if (!cols.length) { board.innerHTML='<div class="ast-empty"><div class="ast-empty-ico">✅</div>Nenhum chamado ativo</div>'; return; }
+  board.innerHTML = cols.map(([status,v])=>`
     <div class="ast-kanban-col">
       <div class="ast-kanban-hdr"><div class="ast-kanban-title">${status}</div><div class="ast-kanban-count">${v.items.length}</div></div>
       <div class="ast-kanban-cards">
         ${v.items.length===0
-          ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px 0">Vazio</div>'
-          : v.items.map(r => {
-              const parado = (r.dias_sem_followup||0)>=7 && !astEhFinalizado(r);
-              return `<div class="ast-kanban-card ${parado?'parado':''}" onclick="astAbrirDetalhe(${r.id})">
+          ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:10px">Vazio</div>'
+          : v.items.map(r=>{
+              const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
+              return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})">
                 <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
                 <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
-                <div class="ast-kanban-card-foot">
-                  ${astPriorBadge(r.prioridade)}
-                  <span style="font-size:11px;color:var(--text-muted)">${r.dias_sem_followup!=null?astDiasBadge(r.dias_sem_followup)+' s/FU':astFmtDate(r.data_abertura)}</span>
-                </div>
+                <div class="ast-kanban-card-foot">${astPriorBadge(r.prioridade)}<div style="display:flex;gap:3px">${astAlertasBadges(r)}</div></div>
               </div>`;
             }).join('')}
       </div>
     </div>`).join('');
 }
-
 window.astSetView = function(v,btn) {
-  astView = v;
+  astView=v;
   document.getElementById('ast-view-toggle')?.querySelectorAll('.ast-toggle-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('ast-lista-view').style.display  = v==='lista' ?'':'none';
@@ -794,9 +645,8 @@ window.astSetOrdem = function(o,btn) {
   btn.closest('.ast-toggle')?.querySelectorAll('.ast-toggle-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); astAplicarFiltros();
 };
-
 // ══════════════════════════════════════════
-// DRAWER — DETALHE
+// DRAWER
 // ══════════════════════════════════════════
 function astCriarDrawer() {
   if (document.getElementById('ast-overlay')) return;
@@ -821,6 +671,13 @@ window.astAbrirDetalhe = async function(id) {
   document.getElementById('ast-drw-body').innerHTML    = '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳</div>';
 
   try {
+    // Marca visualizado
+    const localIdx = astData.findIndex(r=>r.id===id);
+    if (localIdx>=0 && !astData[localIdx].visualizado) {
+      window.sb.from('assist_chamados').update({ visualizado:true, atualizado_em:new Date().toISOString() }).eq('id',id);
+      astData[localIdx].visualizado = true;
+    }
+
     const [{ data: det }, { data: fups }, { data: pecas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
@@ -828,144 +685,152 @@ window.astAbrirDetalhe = async function(id) {
     ]);
     if (!det) throw new Error('Não encontrado');
 
-    // Histórico do número
-    const telNorm = det.telefone_normalizado || (det.telefone||'').replace(/\D/g,'');
-    const { data: historico } = await window.sb.from('assist_kanban')
-      .select('id,data_abertura,produto_nome,status_nome,concluido,natureza,dias_aberto')
-      .eq('telefone_normalizado', telNorm)
-      .neq('id', id)
-      .order('data_abertura',{ascending:false}).range(0,9);
-
-    // Verifica se número está bloqueado
-    const { data: bloqData } = await window.sb.from('assist_numeros_bloqueados')
-      .select('id,motivo,bloqueado_por').eq('telefone_norm', telNorm).eq('ativo',true).maybeSingle();
+    const telNorm = det.telefone_normalizado||(det.telefone||'').replace(/\D/g,'');
+    const [{ data: historico }, { data: bloqData }, osResp] = await Promise.all([
+      window.sb.from('assist_kanban').select('id,data_abertura,produto_nome,status_nome,concluido,natureza,dias_aberto').eq('telefone_normalizado',telNorm).neq('id',id).order('data_abertura',{ascending:false}).range(0,9),
+      window.sb.from('assist_numeros_bloqueados').select('id,motivo,bloqueado_por').eq('telefone_norm',telNorm).eq('ativo',true).maybeSingle(),
+      det.id_os ? window.sb.from('assist_os_garantia').select('*').eq('id_os',det.id_os).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+    const osData = osResp.data;
 
     document.getElementById('ast-drw-sub').textContent =
       `${det.cliente_nome_erp||det.nome_contato||'—'} · ${det.produto_nome||det.produto_manual||'Produto não vinculado'}`;
 
-    const fupsList  = fups  || [];
-    const pecasList = pecas || [];
-    const histList  = historico || [];
+    const fupsList  = fups||[];
+    const pecasList = pecas||[];
+    const histList  = historico||[];
+    const conv  = fupsList.filter(f=>f.origem==='whatsapp');
+    const acomp = fupsList.filter(f=>f.origem!=='whatsapp');
+    const diasAb = astDias(det.data_abertura)||0;
 
-    // Separa conversa WhatsApp de acompanhamento manual
-    const conv = fupsList.filter(f => f.origem === 'whatsapp');
-    const acomp= fupsList.filter(f => f.origem !== 'whatsapp');
+    const alertasHtml = [
+      !det.visualizado ? '<span class="ast-alerta-novo">🔵 NOVO — primeiro acesso</span>' : '',
+      (det.dias_sem_followup||0)>=7 && !det.concluido ? `<span class="ast-alerta-parado">🔴 PARADO há ${det.dias_sem_followup}d</span>` : '',
+      diasAb>=23 && diasAb<=35 && !det.concluido ? `<span class="ast-alerta-vencendo">🟡 GARANTIA vencendo (${diasAb}d aberto)</span>` : '',
+    ].filter(Boolean).join(' ');
 
     document.getElementById('ast-drw-body').innerHTML = `
-      ${bloqData ? `
-        <div class="ast-bloqueado-banner">
-          <div>🚫 <strong>Número bloqueado</strong> — ${bloqData.motivo||'Classificado como Não-Garantia'} por ${bloqData.bloqueado_por||'—'}</div>
-          <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${bloqData.id},'${det.telefone||''}')">Desbloquear</button>
-        </div>` : ''}
+      ${bloqData ? `<div class="ast-bloqueado-banner">
+        <div>🚫 <strong>Número bloqueado</strong> — ${bloqData.motivo||'Não-Garantia'} por ${bloqData.bloqueado_por||'—'}</div>
+        <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${bloqData.id},'${det.telefone||''}')">Desbloquear</button>
+      </div>` : ''}
 
-      <!-- NATUREZA + AÇÕES RÁPIDAS -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text-muted);font-weight:600">NATUREZA:</span>
-        <button class="ast-btn ast-btn-sm ${det.natureza==='garantia'?'ast-btn-primary':'ast-btn-secondary'}"
-          onclick="astSetNatureza(${id},'garantia',this)">🔴 Garantia</button>
-        <button class="ast-btn ast-btn-sm ${det.natureza==='nao_garantia'?'ast-btn-danger':'ast-btn-secondary'}"
-          onclick="astSetNatureza(${id},'nao_garantia',this)">⚫ Não é Garantia</button>
-        ${histList.length ? `<span style="font-size:12px;color:var(--orange);font-weight:600">⚠️ ${histList.length} chamado(s) anterior(es)</span>` : '<span style="font-size:12px;color:var(--text-muted)">Primeiro contato</span>'}
-      </div>
+      ${alertasHtml ? `<div style="padding:12px 24px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">${alertasHtml}</div>` : ''}
 
-      <!-- EDIÇÃO STATUS/SETOR/PRIORIDADE -->
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-        <div class="ast-form-field" style="flex:1;min-width:130px">
-          <label class="ast-form-lbl">Status</label>
-          <select class="ast-form-select" id="drw-sel-status">${astSelectOptions(_statusList,det.status_id)}</select>
+      <!-- ① NATUREZA + STATUS -->
+      <div class="ast-drw-section">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+          <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Natureza:</span>
+          <button class="ast-btn ast-btn-sm ${det.natureza==='garantia'?'ast-btn-primary':'ast-btn-secondary'}"
+            onclick="astSetNatureza(${id},'garantia',this)">🔴 Garantia</button>
+          <button class="ast-btn ast-btn-sm ${det.natureza==='nao_garantia'?'ast-btn-danger':'ast-btn-secondary'}"
+            onclick="astSetNatureza(${id},'nao_garantia',this)">⚫ Não é Garantia</button>
+          ${histList.length?`<span style="font-size:12px;color:var(--orange);font-weight:600;margin-left:8px">⚠️ ${histList.length} chamado(s) anterior(es)</span>`:'<span style="font-size:12px;color:var(--text-muted);margin-left:8px">Primeiro contato</span>'}
         </div>
-        <div class="ast-form-field" style="flex:1;min-width:130px">
-          <label class="ast-form-lbl">Setor</label>
-          <select class="ast-form-select" id="drw-sel-setor"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="ast-form-field" style="flex:1.5;min-width:130px">
+            <label class="ast-form-lbl">Status</label>
+            <select class="ast-form-select" id="drw-sel-status">${astSelectOptions(_statusList,det.status_id)}</select>
+          </div>
+          <div class="ast-form-field" style="flex:1;min-width:120px">
+            <label class="ast-form-lbl">Setor</label>
+            <select class="ast-form-select" id="drw-sel-setor"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
+          </div>
+          <div class="ast-form-field" style="flex:1;min-width:100px">
+            <label class="ast-form-lbl">Prioridade</label>
+            <select class="ast-form-select" id="drw-sel-prior"><option value="">—</option>${astSelectOptions(_prioridadeList,det.prioridade_id)}</select>
+          </div>
+          <button class="ast-btn ast-btn-success" style="flex-shrink:0" onclick="astSalvarEdicao(${id})">💾 Salvar</button>
         </div>
-        <div class="ast-form-field" style="flex:1;min-width:110px">
-          <label class="ast-form-lbl">Prioridade</label>
-          <select class="ast-form-select" id="drw-sel-prior"><option value="">—</option>${astSelectOptions(_prioridadeList,det.prioridade_id)}</select>
+        <div class="ast-stat-row" style="margin-top:12px">
+          <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
+          <div class="ast-stat-item"><div class="ast-stat-label">Dias aberto</div><div class="ast-stat-val">${diasAb}d</div></div>
+          <div class="ast-stat-item"><div class="ast-stat-label">Acompanhamentos</div><div class="ast-stat-val">${acomp.length}</div></div>
+          <div class="ast-stat-item"><div class="ast-stat-label">Msgs WA</div><div class="ast-stat-val">${conv.length}</div></div>
+          <div class="ast-stat-item"><div class="ast-stat-label">Próxima ação</div><div class="ast-stat-val">${astFmtDate(det.data_proxima_acao)}</div></div>
         </div>
-        <button class="ast-btn ast-btn-success" onclick="astSalvarEdicao(${id})">💾 Salvar</button>
       </div>
 
-      <!-- STATS -->
-      <div class="ast-stat-row">
-        <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
-        <div class="ast-stat-item"><div class="ast-stat-label">Dias aberto</div><div class="ast-stat-val">${astDias(det.data_abertura)??'—'}d</div></div>
-        <div class="ast-stat-item"><div class="ast-stat-label">Acompanhamentos</div><div class="ast-stat-val">${acomp.length}</div></div>
-        <div class="ast-stat-item"><div class="ast-stat-label">Msgs WhatsApp</div><div class="ast-stat-val">${conv.length}</div></div>
-        <div class="ast-stat-item"><div class="ast-stat-label">Próxima ação</div><div class="ast-stat-val">${astFmtDate(det.data_proxima_acao)}</div></div>
-      </div>
-
-      <!-- TABS -->
-      <div class="ast-drawer-tabs">
-        <div class="ast-drawer-tab active" onclick="astDrwTab('info',this)">Informações</div>
-        <div class="ast-drawer-tab" onclick="astDrwTab('acomp',this)">📋 Acompanhamento (${acomp.length})</div>
-        <div class="ast-drawer-tab" onclick="astDrwTab('conv',this)">💬 Conversa WA (${conv.length})</div>
-        <div class="ast-drawer-tab" onclick="astDrwTab('pecas',this)">Peças (${pecasList.length})</div>
-        <div class="ast-drawer-tab" onclick="astDrwTab('diagnostico',this)">Diagnóstico</div>
-        <div class="ast-drawer-tab" onclick="astDrwTab('historico',this)">📞 Histórico (${histList.length})</div>
-      </div>
-
-      <!-- TAB INFO -->
-      <div class="ast-drawer-tab-content active" id="ast-tab-info">
-        <!-- DADOS DO CLIENTE -->
-        <div class="ast-detail-grid" style="margin-bottom:16px">
-          <div class="ast-detail-field"><div class="ast-detail-lbl">Cliente ERP</div><div class="ast-detail-val">${det.cliente_nome_erp||'—'}</div></div>
+      <!-- ② CLIENTE -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">Cliente</div>
+        <div class="ast-detail-grid">
+          <div class="ast-detail-field"><div class="ast-detail-lbl">Nome ERP</div><div class="ast-detail-val">${det.cliente_nome_erp||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Contato</div><div class="ast-detail-val">${det.nome_contato||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Telefone</div><div class="ast-detail-val">${det.telefone||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Cidade / UF</div><div class="ast-detail-val">${det.cidade&&det.uf?`${det.cidade} / ${det.uf}`:'—'}</div></div>
-          <div class="ast-detail-field"><div class="ast-detail-lbl">Atendente</div><div class="ast-detail-val">${det.responsavel_nome||'—'}</div></div>
         </div>
+      </div>
 
-        <!-- PRODUTO EDITÁVEL -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px">
-          <div class="ast-detail-lbl" style="margin-bottom:8px">Produto em Questão</div>
-          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-            <div style="flex:1;min-width:200px">
-              <input class="ast-form-input" id="info-prod-busca" placeholder="Buscar produto do catálogo..."
-                value="${det.produto_nome||det.produto_manual||''}" autocomplete="off" oninput="astBuscarProdDrawer(${id})">
-              <div id="info-prod-results" class="ast-prod-result" style="display:none"></div>
-              <input type="hidden" id="info-prod-id" value="${det.produto_id_erp||''}">
-              <div id="info-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:4px">
-                ${det.produto_nome ? `✅ ${det.produto_codigo?det.produto_codigo+' — ':''}${det.produto_nome}` : ''}
-              </div>
-            </div>
-            <button class="ast-btn ast-btn-success ast-btn-sm" style="margin-top:2px" onclick="astSalvarProdutoInfo(${id})">💾 Salvar</button>
-          </div>
-        </div>
-
-        <!-- DEFEITO + CAUSA INLINE -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px">
-          <div class="ast-detail-lbl" style="margin-bottom:10px">Diagnóstico Rápido</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
-            <div class="ast-form-field">
-              <label class="ast-form-lbl">Defeito Relatado</label>
-              <select class="ast-form-select" id="info-defeito">
-                <option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}
-              </select>
-            </div>
-            <div class="ast-form-field">
-              <label class="ast-form-lbl">Causa</label>
-              <select class="ast-form-select" id="info-causa">
-                <option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}
-              </select>
+      <!-- ③ PRODUTO + DEFEITO -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">Produto & Defeito</div>
+        <div class="ast-form-row full" style="margin-bottom:10px">
+          <div class="ast-form-field">
+            <label class="ast-form-lbl">Produto reclamado</label>
+            <input class="ast-form-input" id="info-prod-busca" placeholder="Buscar no catálogo da assistência..."
+              value="${det.produto_nome||det.produto_manual||''}" autocomplete="off" oninput="astBuscarProdDrawer(${id})">
+            <div id="info-prod-results" class="ast-prod-result" style="display:none"></div>
+            <input type="hidden" id="info-prod-id" value="${det.produto_id_erp||''}">
+            <div id="info-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:3px">
+              ${det.produto_nome?`✅ ${det.produto_codigo?det.produto_codigo+' — ':''}${det.produto_nome}`:''}
             </div>
           </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarDiagnosticoRapido(${id})">💾 Salvar Diagnóstico</button>
-            <span id="info-diag-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <div class="ast-form-row">
+          <div class="ast-form-field">
+            <label class="ast-form-lbl">Defeito relatado</label>
+            <select class="ast-form-select" id="info-defeito"><option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}</select>
+          </div>
+          <div class="ast-form-field">
+            <label class="ast-form-lbl">Causa</label>
+            <select class="ast-form-select" id="info-causa"><option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}</select>
           </div>
         </div>
-
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+          <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarProdutoDefeitoCausa(${id})">💾 Salvar produto e defeito</button>
+          <span id="info-pdc-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
         ${det.descricao_inicial?`
-          <div style="padding-top:14px;border-top:1px solid var(--border)">
+          <div style="padding-top:12px;border-top:1px solid var(--border)">
             <div class="ast-detail-lbl">Descrição inicial do cliente</div>
-            <div style="font-size:13px;color:var(--text-primary);margin-top:6px;line-height:1.6;white-space:pre-wrap">${det.descricao_inicial}</div>
+            <div style="font-size:13px;color:var(--text-primary);margin-top:5px;line-height:1.6;white-space:pre-wrap">${det.descricao_inicial}</div>
           </div>`:''}
       </div>
 
-      <!-- TAB ACOMPANHAMENTO -->
-      <div class="ast-drawer-tab-content" id="ast-tab-acomp">
-        <div class="ast-fup-form">
-          <div style="font-size:12px;font-weight:700;color:var(--blue-dark);margin-bottom:10px">➕ Novo Acompanhamento</div>
+      <!-- ④ OS VINCULADA -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">OS de Garantia Vinculada</div>
+        <div id="ast-os-vinculada">
+          ${osData ? `
+            <div class="ast-os-box ${osData.tipo_garantia?.includes('Stonni')?'ast-os-stonni':'ast-os-loja'}">
+              <div style="font-size:22px">${osData.tipo_garantia?.includes('Stonni')?'🟣':'🔵'}</div>
+              <div class="ast-os-box-info">
+                <div style="font-size:13px;font-weight:600">OS #${osData.id_os} · ${osData.empresa}</div>
+                <div style="font-size:12px;color:var(--text-muted)">${osData.tipo_garantia} · ${osData.situacao_label} · ${astFmtDate(osData.data_entrada)}
+                  ${osData.dias_aberta?` · ${osData.dias_aberta}d`:''}
+                  ${osData.vl_total&&parseFloat(osData.vl_total)>0?` · R$ ${parseFloat(osData.vl_total).toLocaleString('pt-BR',{minimumFractionDigits:2})}`:''}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted)">Resp: ${osData.nome_vendedor||'—'}</div>
+              </div>
+              <button class="ast-btn ast-btn-danger ast-btn-sm" onclick="astDesvincularOS(${id})">Desvincular</button>
+            </div>` : `
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <div style="flex:1;position:relative">
+                <input class="ast-form-input" id="os-busca" placeholder="Nº da OS ou nome do vendedor..." oninput="astBuscarOS()">
+                <div id="os-results" class="ast-prod-result" style="display:none;position:absolute;z-index:10;width:100%"></div>
+              </div>
+              <button class="ast-btn ast-btn-primary ast-btn-sm" style="flex-shrink:0;margin-top:2px" onclick="astVincularOSManual(${id})">Vincular</button>
+            </div>
+            <input type="hidden" id="os-id-selecionado">
+            <div id="os-selecionado-info" style="font-size:12px;color:var(--blue-mid);margin-top:6px"></div>`}
+        </div>
+      </div>
+
+      <!-- ⑤ ACOMPANHAMENTO -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">Acompanhamento</div>
+        <div class="ast-fup-form" style="margin-bottom:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div class="ast-form-field">
               <label class="ast-form-lbl">Tipo</label>
@@ -980,103 +845,93 @@ window.astAbrirDetalhe = async function(id) {
               <input type="date" class="ast-form-input" id="fup-proxima" style="height:32px">
             </div>
           </div>
-          <textarea class="ast-form-textarea" id="fup-msg" placeholder="O que foi feito ou combinado..." style="min-height:60px;margin-bottom:10px"></textarea>
-          <button class="ast-btn ast-btn-primary" onclick="astSalvarFup(${id})">Registrar</button>
+          <textarea class="ast-form-textarea" id="fup-msg" placeholder="O que foi feito ou combinado..." style="min-height:56px;margin-bottom:10px"></textarea>
+          <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astSalvarFup(${id})">Registrar</button>
           <span id="fup-status" style="font-size:12px;margin-left:10px;color:var(--text-muted)"></span>
         </div>
         <div class="ast-fup-list" id="ast-fup-acomp-list">
-          ${acomp.length ? acomp.map(f => `
+          ${acomp.length ? acomp.map(f=>`
             <div class="ast-fup-item manual">
-              <div class="ast-fup-meta">
-                <span style="font-weight:600">${f.tipo||'Manual'}</span><span>·</span>
-                <span>${f.usuario_nome||'—'}</span><span>·</span>
-                <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
-              </div>
+              <div class="ast-fup-meta"><span style="font-weight:600">${f.tipo||'Manual'}</span><span>·</span><span>${f.usuario_nome||'—'}</span><span>·</span><span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span></div>
               <div class="ast-fup-msg">${f.mensagem||'—'}</div>
             </div>`).join('')
-            : '<div class="ast-empty"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento ainda</div>'}
+            : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento</div>'}
         </div>
       </div>
 
-      <!-- TAB CONVERSA WHATSAPP -->
-      <div class="ast-drawer-tab-content" id="ast-tab-conv">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm)">
-          💬 Histórico de mensagens recebidas via WhatsApp/Umbler — somente leitura
+      <!-- ⑥ ABAS SECUNDÁRIAS -->
+      <div class="ast-drw-section">
+        <div class="ast-sec-tabs">
+          <div class="ast-sec-tab active" onclick="astSecTab('conv',this)">💬 Conversa WA (${conv.length})</div>
+          <div class="ast-sec-tab" onclick="astSecTab('pecas',this)">🔧 Peças (${pecasList.length})</div>
+          <div class="ast-sec-tab" onclick="astSecTab('obs',this)">📝 Procedência / Obs</div>
+          <div class="ast-sec-tab" onclick="astSecTab('hist',this)">📞 Histórico (${histList.length})</div>
         </div>
-        <div class="ast-fup-list">
-          ${conv.length ? conv.map(f => `
-            <div class="ast-fup-item whats">
-              <div class="ast-fup-meta">
-                <span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span>
-                <span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span>
-                <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
-              </div>
-              <div class="ast-fup-msg">${f.mensagem||'—'}</div>
-            </div>`).join('')
-            : '<div class="ast-empty"><div class="ast-empty-ico">💬</div>Nenhuma mensagem WhatsApp</div>'}
+        <div class="ast-sec-content active" id="ast-sec-conv">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;padding:7px 10px;background:var(--surface2);border-radius:var(--radius-sm)">
+            💬 Mensagens recebidas via WhatsApp/Umbler — somente leitura
+          </div>
+          <div class="ast-fup-list">
+            ${conv.length ? conv.map(f=>`
+              <div class="ast-fup-item whats">
+                <div class="ast-fup-meta"><span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span><span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span><span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span></div>
+                <div class="ast-fup-msg">${f.mensagem||'—'}</div>
+              </div>`).join('')
+              : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">💬</div>Nenhuma mensagem</div>'}
+          </div>
         </div>
-      </div>
-
-      <!-- TAB PEÇAS -->
-      <div class="ast-drawer-tab-content" id="ast-tab-pecas">
-        ${pecasList.length ? `
-          <table class="ast-table">
-            <thead><tr><th>Peça</th><th>Código</th><th class="right">Qtd</th><th>Obs</th></tr></thead>
-            <tbody>${pecasList.map(p=>`
-              <tr><td>${p.peca_nome||'—'}</td>
-              <td class="ast-mono" style="color:var(--text-muted)">${p.codigo_peca||'—'}</td>
-              <td class="right">${p.quantidade||1}</td>
-              <td style="color:var(--text-muted)">${p.observacao||'—'}</td></tr>`).join('')}
-            </tbody>
-          </table>`
-          : '<div class="ast-empty"><div class="ast-empty-ico">🔧</div>Nenhuma peça registrada</div>'}
-      </div>
-
-      <!-- TAB DIAGNÓSTICO -->
-      <div class="ast-drawer-tab-content" id="ast-tab-diagnostico">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div class="ast-form-field"><label class="ast-form-lbl">Procedência</label>
-            <select class="ast-form-select" id="diag-procedencia"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select></div>
+        <div class="ast-sec-content" id="ast-sec-pecas">
+          ${pecasList.length ? `
+            <table class="ast-table">
+              <thead><tr><th>Peça</th><th>Código</th><th class="right">Qtd</th><th>Obs</th></tr></thead>
+              <tbody>${pecasList.map(p=>`<tr><td>${p.peca_nome||'—'}</td><td class="ast-mono" style="color:var(--text-muted)">${p.codigo_peca||'—'}</td><td class="right">${p.quantidade||1}</td><td style="color:var(--text-muted)">${p.observacao||'—'}</td></tr>`).join('')}</tbody>
+            </table>` : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">🔧</div>Nenhuma peça</div>'}
         </div>
-        <div class="ast-form-field" style="margin-top:14px"><label class="ast-form-lbl">Observação Interna</label>
-          <textarea class="ast-form-textarea" id="diag-obs">${det.observacao_interna||''}</textarea></div>
-        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-          <button class="ast-btn ast-btn-success" onclick="astSalvarDiagnostico(${id})">💾 Salvar</button>
-          <span id="diag-status" style="font-size:12px;color:var(--text-muted)"></span>
+        <div class="ast-sec-content" id="ast-sec-obs">
+          <div class="ast-form-row" style="margin-bottom:10px">
+            <div class="ast-form-field">
+              <label class="ast-form-lbl">Procedência</label>
+              <select class="ast-form-select" id="sec-procedencia"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
+            </div>
+          </div>
+          <div class="ast-form-field" style="margin-bottom:10px">
+            <label class="ast-form-lbl">Observação Interna</label>
+            <textarea class="ast-form-textarea" id="sec-obs">${det.observacao_interna||''}</textarea>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarProcedenciaObs(${id})">💾 Salvar</button>
+            <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
         </div>
-      </div>
-
-      <!-- TAB HISTÓRICO DO NÚMERO -->
-      <div class="ast-drawer-tab-content" id="ast-tab-historico">
-        ${histList.length===0
-          ? '<div class="ast-empty"><div class="ast-empty-ico">📞</div>Primeiro atendimento deste número</div>'
-          : `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">${histList.length} chamado(s) anterior(es) deste número</div>
-             ${histList.map(h => `
-              <div class="ast-hist-item" onclick="astAbrirDetalhe(${h.id})">
-                <div style="font-size:22px">${h.concluido?'✅':'🔄'}</div>
-                <div style="flex:1">
-                  <div style="font-size:13px;font-weight:600;color:var(--text-primary)">#${h.id} · ${h.produto_nome||'Produto não informado'}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">${astFmtDate(h.data_abertura)} · ${astNaturezaBadge(h.natureza)}</div>
-                </div>
-                <div style="text-align:right">
-                  ${astStatusBadge(h.status_nome)}
-                  <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${h.dias_aberto||0}d aberto</div>
-                </div>
-              </div>`).join('')}`}
+        <div class="ast-sec-content" id="ast-sec-hist">
+          ${histList.length===0
+            ? '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📞</div>Primeiro atendimento deste número</div>'
+            : `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">${histList.length} chamado(s) anterior(es)</div>
+               ${histList.map(h=>`
+                <div class="ast-hist-item" onclick="astAbrirDetalhe(${h.id})">
+                  <div style="font-size:20px">${h.concluido?'✅':'🔄'}</div>
+                  <div style="flex:1">
+                    <div style="font-size:13px;font-weight:600">#${h.id} · ${h.produto_nome||'—'}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">${astFmtDate(h.data_abertura)}</div>
+                  </div>
+                  <div style="text-align:right">${astStatusBadge(h.status_nome)}<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.dias_aberto||0}d</div></div>
+                </div>`).join('')}`}
+        </div>
       </div>
     `;
   } catch(e) {
     console.error(e);
-    document.getElementById('ast-drw-body').innerHTML =
-      `<div style="padding:20px;color:var(--red)">Erro ao carregar #${id}: ${e.message}</div>`;
+    document.getElementById('ast-drw-body').innerHTML=`<div style="padding:20px;color:var(--red)">Erro ao carregar #${id}: ${e.message}</div>`;
   }
 };
-
-window.astDrwTab = function(tab,btn) {
-  document.querySelectorAll('.ast-drawer-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.ast-drawer-tab-content').forEach(t=>t.classList.remove('active'));
+// ══════════════════════════════════════════
+// DRAWER — AÇÕES
+// ══════════════════════════════════════════
+window.astSecTab = function(tab,btn) {
+  document.querySelectorAll('.ast-sec-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ast-sec-content').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById(`ast-tab-${tab}`)?.classList.add('active');
+  document.getElementById(`ast-sec-${tab}`)?.classList.add('active');
 };
 window.astFecharDetalhe = function() {
   document.getElementById('ast-overlay')?.classList.remove('open');
@@ -1088,13 +943,13 @@ window.astSalvarEdicao = async function(id) {
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
   const priorId  = document.getElementById('drw-sel-prior')?.value;
-  const statusObj= _statusList.find(s=>s.id==statusId);
+  const statusObj = _statusList.find(s=>s.id==statusId);
   const btn = document.querySelector(`[onclick="astSalvarEdicao(${id})"]`);
-  if (btn) { btn.textContent='Salvando...'; btn.disabled=true; }
+  if(btn){btn.textContent='Salvando...';btn.disabled=true;}
   const payload = {
-    status_id:            statusId?parseInt(statusId):null,
-    setor_responsavel_id: setorId ?parseInt(setorId) :null,
-    prioridade_id:        priorId ?parseInt(priorId) :null,
+    status_id:            statusId ? parseInt(statusId) : null,
+    setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
+    prioridade_id:        priorId  ? parseInt(priorId)  : null,
     atualizado_em:        new Date().toISOString(),
     concluido:            statusObj?.finaliza_chamado||false,
   };
@@ -1102,196 +957,177 @@ window.astSalvarEdicao = async function(id) {
   const { error } = await window.sb.from('assist_chamados').update(payload).eq('id',id);
   if (error) { alert('Erro: '+error.message); }
   else {
-    if (btn) { btn.textContent='✅ Salvo!'; btn.disabled=false; }
-    setTimeout(()=>{ if(btn) btn.textContent='💾 Salvar'; },2000);
-    const idx = astData.findIndex(r=>r.id===id);
-    if (idx>=0) {
-      if (statusObj) { astData[idx].status_nome=statusObj.nome; astData[idx].finaliza_chamado=statusObj.finaliza_chamado; astData[idx].concluido=statusObj.finaliza_chamado; }
+    if(btn){btn.textContent='✅ Salvo!';setTimeout(()=>{btn.textContent='💾 Salvar';},2000);}
+    const idx=astData.findIndex(r=>r.id===id);
+    if(idx>=0){
+      if(statusObj){astData[idx].status_nome=statusObj.nome;astData[idx].finaliza_chamado=statusObj.finaliza_chamado;astData[idx].concluido=statusObj.finaliza_chamado;}
       astAplicarFiltros();
     }
   }
-  if (btn) btn.disabled=false;
+  if(btn)btn.disabled=false;
 };
 
-// Classificar natureza
+// Natureza
 window.astSetNatureza = async function(id, natureza, btn) {
-  if (natureza === 'nao_garantia') {
-    if (!confirm('Classificar como NÃO-GARANTIA?\n\nO chamado será fechado e o número bloqueado — não criará mais chamados automaticamente.')) return;
-  }
-  btn.disabled = true;
+  if(natureza==='nao_garantia'&&!confirm('Classificar como NÃO-GARANTIA?\nO chamado será fechado e o número bloqueado.')) return;
+  btn.disabled=true;
   const usuario = window.getUsuario?.();
-  const det = await window.sb.from('assist_chamados').select('telefone,telefone_normalizado,nome_contato').eq('id',id).single();
+  const { data: det } = await window.sb.from('assist_chamados').select('telefone,telefone_normalizado').eq('id',id).single();
   const payload = { natureza, atualizado_em: new Date().toISOString() };
-  if (natureza === 'nao_garantia') { payload.concluido = true; payload.data_conclusao = new Date().toISOString(); }
+  if(natureza==='nao_garantia'){payload.concluido=true;payload.data_conclusao=new Date().toISOString();}
   await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if (natureza === 'nao_garantia' && det.data) {
-    const telNorm = det.data.telefone_normalizado || (det.data.telefone||'').replace(/\D/g,'');
+  if(natureza==='nao_garantia'&&det){
+    const telNorm=det.telefone_normalizado||(det.telefone||'').replace(/\D/g,'');
     await window.sb.from('assist_numeros_bloqueados').upsert({
-      telefone: det.data.telefone||telNorm,
-      telefone_norm: telNorm,
-      motivo: 'Classificado como Não-Garantia',
-      bloqueado_por: usuario?.nome||null,
-    }, { onConflict: 'telefone_norm' });
+      telefone:det.telefone||telNorm, telefone_norm:telNorm,
+      motivo:'Classificado como Não-Garantia', bloqueado_por:usuario?.nome||null,
+    },{onConflict:'telefone_norm'});
   }
-  // Atualiza UI
-  const idx = astData.findIndex(r=>r.id===id);
-  if (idx>=0) { astData[idx].natureza=natureza; if(natureza==='nao_garantia') astData[idx].concluido=true; astAplicarFiltros(); }
+  const idx=astData.findIndex(r=>r.id===id);
+  if(idx>=0){astData[idx].natureza=natureza;if(natureza==='nao_garantia')astData[idx].concluido=true;astAplicarFiltros();}
   astFecharDetalhe();
   btn.disabled=false;
 };
 
-// Follow-up manual
-window.astSalvarFup = async function(chamadoId) {
-  const tipo    = document.getElementById('fup-tipo')?.value;
-  const msg     = document.getElementById('fup-msg')?.value.trim();
-  const proxima = document.getElementById('fup-proxima')?.value;
-  const statusEl= document.getElementById('fup-status');
-  if (!msg) { if(statusEl) statusEl.textContent='⚠️ Escreva uma mensagem'; return; }
-  if (statusEl) statusEl.textContent='Salvando...';
-  const usuario = window.getUsuario?.();
-  const { error } = await window.sb.from('assist_followups').insert({
-    chamado_id: chamadoId, tipo, mensagem: msg,
-    origem: 'manual', usuario_nome: usuario?.nome||null,
-    criado_em: new Date().toISOString(),
-  });
-  if (error) { if(statusEl) statusEl.textContent='❌ '+error.message; return; }
-  const upd = { data_ultimo_followup: new Date().toISOString(), atualizado_em: new Date().toISOString() };
-  if (proxima) upd.data_proxima_acao = proxima;
-  await window.sb.from('assist_chamados').update(upd).eq('id',chamadoId);
-  if (statusEl) statusEl.textContent='✅ Registrado!';
-  document.getElementById('fup-msg').value='';
-  document.getElementById('fup-proxima').value='';
-  const lista = document.getElementById('ast-fup-acomp-list');
-  if (lista) {
-    lista.insertAdjacentHTML('afterbegin',`
-      <div class="ast-fup-item manual">
-        <div class="ast-fup-meta"><span style="font-weight:600">${tipo}</span><span>·</span>
-          <span>${usuario?.nome||'—'}</span><span>·</span><span>${new Date().toLocaleString('pt-BR')}</span></div>
-        <div class="ast-fup-msg">${msg}</div>
-      </div>`);
-    const tabBtn = document.querySelector('.ast-drawer-tab[onclick*="acomp"]');
-    if (tabBtn) { const n=parseInt(tabBtn.textContent.match(/\d+/)?.[0]||0); tabBtn.textContent=`📋 Acompanhamento (${n+1})`; }
-  }
-  setTimeout(()=>{ if(statusEl) statusEl.textContent=''; },3000);
-};
-
-// Diagnóstico rápido (aba Informações — defeito + causa)
-window.astSalvarDiagnosticoRapido = async function(id) {
-  const v = k => document.getElementById(k)?.value;
-  const payload = {
-    defeito_id: v('info-defeito') ? parseInt(v('info-defeito')) : null,
-    causa_id:   v('info-causa')   ? parseInt(v('info-causa'))   : null,
-    atualizado_em: new Date().toISOString(),
-  };
-  const el = document.getElementById('info-diag-status');
-  if (el) el.textContent = 'Salvando...';
-  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
-  if (error) { if (el) el.textContent = '❌ ' + error.message; return; }
-  if (el) { el.textContent = '✅ Salvo!'; setTimeout(() => el.textContent = '', 3000); }
-};
-
-// Diagnóstico completo (aba Diagnóstico — procedência + obs interna)
-window.astSalvarDiagnostico = async function(id) {
-  const v = k => document.getElementById(k)?.value;
-  const payload = {
-    procedencia_id:     v('diag-procedencia') ? parseInt(v('diag-procedencia')) : null,
-    observacao_interna: v('diag-obs') || null,
-    atualizado_em:      new Date().toISOString(),
-  };
-  const el = document.getElementById('diag-status');
-  if (el) el.textContent = 'Salvando...';
-  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
-  if (error) { if (el) el.textContent = '❌ ' + error.message; return; }
-  if (el) { el.textContent = '✅ Salvo!'; setTimeout(() => el.textContent = '', 3000); }
-};
-
-// Busca produto no drawer (aba Informações)
-let _buscaProdDrwTimer = null;
+// Produto + Defeito + Causa
+let _buscaProdDrwTimer=null;
 window.astBuscarProdDrawer = function(chamadoId) {
   clearTimeout(_buscaProdDrwTimer);
-  _buscaProdDrwTimer = setTimeout(async () => {
-    const q   = (document.getElementById('info-prod-busca')?.value || '').trim();
-    const res = document.getElementById('info-prod-results');
-    if (!res) return;
-    if (q.length < 2) { res.style.display = 'none'; return; }
-    const { data } = await window.sb.from('assist_produtos')
-      .select('id,referencia,nome,grupo,id_produto_erp').eq('ativo', true)
-      .or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0, 14);
-    if (!data?.length) {
-      res.innerHTML = '<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto encontrado</div>';
-      res.style.display = '';
-      return;
-    }
-    res.style.display = '';
-    res.innerHTML = data.map(p => `
+  _buscaProdDrwTimer=setTimeout(async()=>{
+    const q=(document.getElementById('info-prod-busca')?.value||'').trim();
+    const res=document.getElementById('info-prod-results'); if(!res)return;
+    if(q.length<2){res.style.display='none';return;}
+    const{data}=await window.sb.from('assist_produtos').select('id,referencia,nome,grupo,id_produto_erp').eq('ativo',true)
+      .or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,14);
+    if(!data?.length){res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto</div>';res.style.display='';return;}
+    res.style.display='';
+    res.innerHTML=data.map(p=>`
       <div class="ast-prod-result-item" onclick="astSelecionarProdDrawer(${p.id},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}',${p.id_produto_erp||'null'})">
-        <div>${p.nome}</div>
-        <div class="ast-prod-ref">${p.referencia||''} ${p.grupo ? '· ' + p.grupo : ''}</div>
+        <div>${p.nome}</div><div class="ast-prod-ref">${p.referencia||''} ${p.grupo?'· '+p.grupo:''}</div>
       </div>`).join('');
-  }, 300);
+  },300);
 };
-
-window.astSelecionarProdDrawer = function(id, ref, nome, idErp) {
-  document.getElementById('info-prod-id').value    = idErp || id;
-  document.getElementById('info-prod-busca').value = nome;
-  document.getElementById('info-prod-sel').textContent = `✅ ${ref ? ref + ' — ' : ''}${nome}`;
-  document.getElementById('info-prod-results').style.display = 'none';
+window.astSelecionarProdDrawer = function(id,ref,nome,idErp) {
+  document.getElementById('info-prod-id').value=idErp||id;
+  document.getElementById('info-prod-busca').value=nome;
+  document.getElementById('info-prod-sel').textContent=`✅ ${ref?ref+' — ':''}${nome}`;
+  document.getElementById('info-prod-results').style.display='none';
 };
-
-// Salvar produto no chamado (aba Informações)
-window.astSalvarProdutoInfo = async function(id) {
-  const prodIdErp = document.getElementById('info-prod-id')?.value;
-  const prodNome  = document.getElementById('info-prod-busca')?.value.trim();
-  if (!prodNome) return;
-
-  // Busca dados completos se tiver id
-  let payload = { produto_manual: prodNome, atualizado_em: new Date().toISOString() };
-  if (prodIdErp) {
-    const { data: pd } = await window.sb.from('assist_produtos')
-      .select('nome,referencia,id_produto_erp')
-      .or(`id.eq.${prodIdErp},id_produto_erp.eq.${prodIdErp}`)
-      .limit(1).maybeSingle();
-    if (pd) {
-      payload.produto_nome    = pd.nome;
-      payload.produto_codigo  = pd.referencia || null;
-      payload.produto_id_erp  = pd.id_produto_erp || null;
-      payload.produto_manual  = null;
+window.astSalvarProdutoDefeitoCausa = async function(id) {
+  const prodIdErp=document.getElementById('info-prod-id')?.value;
+  const prodNome =document.getElementById('info-prod-busca')?.value.trim();
+  const defeitoId=document.getElementById('info-defeito')?.value;
+  const causaId  =document.getElementById('info-causa')?.value;
+  const el=document.getElementById('info-pdc-status');
+  if(el)el.textContent='Salvando...';
+  let payload={defeito_id:defeitoId?parseInt(defeitoId):null,causa_id:causaId?parseInt(causaId):null,atualizado_em:new Date().toISOString()};
+  if(prodNome){
+    payload.produto_manual=prodNome;
+    if(prodIdErp){
+      const{data:pd}=await window.sb.from('assist_produtos').select('nome,referencia,id_produto_erp').or(`id.eq.${prodIdErp},id_produto_erp.eq.${prodIdErp}`).limit(1).maybeSingle();
+      if(pd){payload.produto_nome=pd.nome;payload.produto_codigo=pd.referencia||null;payload.produto_id_erp=pd.id_produto_erp||null;payload.produto_manual=null;}
     }
   }
-
-  const btn = document.querySelector(`[onclick="astSalvarProdutoInfo(${id})"]`);
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-
-  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', id);
-  if (error) {
-    alert('Erro ao salvar produto: ' + error.message);
-  } else {
-    const sel = document.getElementById('info-prod-sel');
-    if (sel) sel.textContent = `✅ ${payload.produto_codigo ? payload.produto_codigo + ' — ' : ''}${payload.produto_nome || prodNome}`;
-    // Atualiza dados locais na lista
-    const idx = astData.findIndex(r => r.id === id);
-    if (idx >= 0) { astData[idx].produto_nome = payload.produto_nome || prodNome; astAplicarFiltros(); }
-  }
-
-  if (btn) { btn.textContent = '💾 Salvar'; btn.disabled = false; }
+  const{error}=await window.sb.from('assist_chamados').update(payload).eq('id',id);
+  if(error){if(el)el.textContent='❌ '+error.message;return;}
+  if(el){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
+  const idx=astData.findIndex(r=>r.id===id);
+  if(idx>=0&&prodNome){astData[idx].produto_nome=payload.produto_nome||prodNome;astAplicarFiltros();}
 };
 
+// Procedência + Obs
+window.astSalvarProcedenciaObs = async function(id) {
+  const v=k=>document.getElementById(k)?.value;
+  const payload={procedencia_id:v('sec-procedencia')?parseInt(v('sec-procedencia')):null,observacao_interna:v('sec-obs')||null,atualizado_em:new Date().toISOString()};
+  const el=document.getElementById('sec-obs-status');
+  if(el)el.textContent='Salvando...';
+  const{error}=await window.sb.from('assist_chamados').update(payload).eq('id',id);
+  if(error){if(el)el.textContent='❌ '+error.message;return;}
+  if(el){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
+};
+
+// Follow-up
+window.astSalvarFup = async function(chamadoId) {
+  const tipo=document.getElementById('fup-tipo')?.value;
+  const msg =(document.getElementById('fup-msg')?.value||'').trim();
+  const prox=document.getElementById('fup-proxima')?.value;
+  const el  =document.getElementById('fup-status');
+  if(!msg){if(el)el.textContent='⚠️ Escreva uma mensagem';return;}
+  if(el)el.textContent='Salvando...';
+  const usuario=window.getUsuario?.();
+  const{error}=await window.sb.from('assist_followups').insert({chamado_id:chamadoId,tipo,mensagem:msg,origem:'manual',usuario_nome:usuario?.nome||null,criado_em:new Date().toISOString()});
+  if(error){if(el)el.textContent='❌ '+error.message;return;}
+  const upd={data_ultimo_followup:new Date().toISOString(),atualizado_em:new Date().toISOString()};
+  if(prox)upd.data_proxima_acao=prox;
+  await window.sb.from('assist_chamados').update(upd).eq('id',chamadoId);
+  if(el)el.textContent='✅ Registrado!';
+  document.getElementById('fup-msg').value='';
+  document.getElementById('fup-proxima').value='';
+  const lista=document.getElementById('ast-fup-acomp-list');
+  if(lista){
+    lista.insertAdjacentHTML('afterbegin',`<div class="ast-fup-item manual">
+      <div class="ast-fup-meta"><span style="font-weight:600">${tipo}</span><span>·</span><span>${usuario?.nome||'—'}</span><span>·</span><span>${new Date().toLocaleString('pt-BR')}</span></div>
+      <div class="ast-fup-msg">${msg}</div></div>`);
+  }
+  setTimeout(()=>{if(el)el.textContent='';},3000);
+};
+
+// OS — busca e vinculação
+let _osTimer=null;
+window.astBuscarOS = function() {
+  clearTimeout(_osTimer);
+  _osTimer=setTimeout(async()=>{
+    const q=(document.getElementById('os-busca')?.value||'').trim();
+    const res=document.getElementById('os-results'); if(!res)return;
+    if(q.length<2){res.style.display='none';return;}
+    const isNum=/^\d+$/.test(q);
+    let query=window.sb.from('assist_os_garantia').select('id_os,empresa,tipo_garantia,situacao_label,data_entrada,vl_total,nome_vendedor,dias_aberta').order('data_entrada',{ascending:false}).range(0,19);
+    if(isNum) query=query.eq('id_os',parseInt(q));
+    else      query=query.ilike('nome_vendedor',`%${q}%`);
+    const{data}=await query;
+    if(!data?.length){res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhuma OS encontrada</div>';res.style.display='';return;}
+    res.style.display='';
+    res.innerHTML=data.map(o=>`
+      <div class="ast-prod-result-item" onclick="astSelecionarOS(${o.id_os},'${o.empresa}','${o.tipo_garantia}','${o.situacao_label}')">
+        <div style="font-weight:600">OS #${o.id_os} · ${o.empresa} · ${o.tipo_garantia}</div>
+        <div class="ast-prod-ref">${o.situacao_label} · ${astFmtDate(o.data_entrada)} · R$ ${parseFloat(o.vl_total||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${o.nome_vendedor||'—'}</div>
+      </div>`).join('');
+  },350);
+};
+window.astSelecionarOS = function(idOs,empresa,tipo,situacao) {
+  document.getElementById('os-id-selecionado').value=idOs;
+  document.getElementById('os-selecionado-info').textContent=`✅ OS #${idOs} · ${empresa} · ${tipo} · ${situacao}`;
+  document.getElementById('os-results').style.display='none';
+  document.getElementById('os-busca').value=`OS #${idOs}`;
+};
+window.astVincularOSManual = async function(chamadoId) {
+  const idOs=parseInt(document.getElementById('os-id-selecionado')?.value||'0');
+  if(!idOs){alert('Selecione uma OS primeiro');return;}
+  const{error}=await window.sb.from('assist_chamados').update({id_os:idOs,atualizado_em:new Date().toISOString()}).eq('id',chamadoId);
+  if(error){alert('Erro: '+error.message);return;}
+  astAbrirDetalhe(chamadoId);
+};
+window.astDesvincularOS = async function(chamadoId) {
+  if(!confirm('Desvincular a OS deste chamado?'))return;
+  await window.sb.from('assist_chamados').update({id_os:null,atualizado_em:new Date().toISOString()}).eq('id',chamadoId);
+  astAbrirDetalhe(chamadoId);
+};
 // ══════════════════════════════════════════
 // MODAL NOVO CHAMADO
 // ══════════════════════════════════════════
 function astCriarModalNovo() {
-  if (document.getElementById('ast-modal-novo')) return;
+  if(document.getElementById('ast-modal-novo'))return;
   document.body.insertAdjacentHTML('beforeend',`
     <div class="ast-modal-ov" id="ast-modal-novo">
       <div class="ast-modal">
         <div class="ast-modal-hdr"><div class="ast-modal-title">Novo Chamado</div>
-          <button class="ast-drawer-close" onclick="astFecharModalNovo()">✕</button></div>
+          <button style="width:32px;height:32px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-muted)" onclick="astFecharModalNovo()">✕</button></div>
         <div class="ast-modal-body">
           <div id="novo-bloq-aviso" style="display:none" class="ast-bloqueado-banner">
             🚫 <strong>Número bloqueado</strong> — <span id="novo-bloq-motivo"></span>
             <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquearNoModal()">Desbloquear</button>
           </div>
-          <div id="novo-hist-aviso" style="display:none;background:var(--orange-bg);border:1px solid #FDE68A;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--orange)"></div>
+          <div id="novo-hist-aviso" style="display:none;background:var(--orange-bg);border:1px solid #FDE68A;border-radius:var(--radius-sm);padding:9px 13px;margin-bottom:12px;font-size:12px;color:var(--orange)"></div>
           <div class="ast-form-row">
             <div class="ast-form-field">
               <label class="ast-form-lbl">Telefone *</label>
@@ -1302,26 +1138,20 @@ function astCriarModalNovo() {
               <input class="ast-form-input" id="novo-nome" placeholder="Nome do cliente">
             </div>
           </div>
-          <div class="ast-form-row full" style="margin-bottom:6px">
+          <div class="ast-form-row full">
             <div class="ast-form-field">
               <label class="ast-form-lbl">Produto</label>
-              <input class="ast-form-input" id="novo-prod-busca" placeholder="Digite para buscar produto do catálogo..." autocomplete="off" oninput="astBuscarProdutoModal()">
+              <input class="ast-form-input" id="novo-prod-busca" placeholder="Buscar produto do catálogo..." autocomplete="off" oninput="astBuscarProdutoModal()">
               <div id="novo-prod-results" class="ast-prod-result" style="display:none"></div>
               <input type="hidden" id="novo-prod-id">
-              <div id="novo-prod-sel" style="font-size:12px;color:var(--blue-mid);margin-top:4px"></div>
+              <div id="novo-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:3px"></div>
             </div>
           </div>
           <div class="ast-form-row">
             <div class="ast-form-field"><label class="ast-form-lbl">Setor</label>
               <select class="ast-form-select" id="novo-setor"><option value="">Selecione...</option></select></div>
-            <div class="ast-form-field"><label class="ast-form-lbl">Prioridade</label>
-              <select class="ast-form-select" id="novo-prior"><option value="">Selecione...</option></select></div>
-          </div>
-          <div class="ast-form-row">
             <div class="ast-form-field"><label class="ast-form-lbl">Status Inicial</label>
               <select class="ast-form-select" id="novo-status"></select></div>
-            <div class="ast-form-field"><label class="ast-form-lbl">Próxima ação</label>
-              <input type="date" class="ast-form-input" id="novo-proxima"></div>
           </div>
           <div class="ast-form-row full">
             <div class="ast-form-field"><label class="ast-form-lbl">Descrição do Problema</label>
@@ -1336,114 +1166,73 @@ function astCriarModalNovo() {
       </div>
     </div>`);
 }
-
-let _novoBloqId = null;
+let _novoBloqId=null;
 window.astVerificarTelefone = async function() {
-  const tel = (document.getElementById('novo-tel')?.value||'').replace(/\D/g,'');
-  if (tel.length < 10) return;
-  const avisoB = document.getElementById('novo-bloq-aviso');
-  const avisoH = document.getElementById('novo-hist-aviso');
-  const btn    = document.getElementById('novo-btn');
-  _novoBloqId  = null;
-
-  const [{ data: bloq }, { data: hist }, { data: cliente }] = await Promise.all([
+  const tel=(document.getElementById('novo-tel')?.value||'').replace(/\D/g,'');
+  if(tel.length<10)return;
+  const avisoB=document.getElementById('novo-bloq-aviso'), avisoH=document.getElementById('novo-hist-aviso'), btn=document.getElementById('novo-btn');
+  _novoBloqId=null;
+  const[{data:bloq},{data:hist},{data:clientes}]=await Promise.all([
     window.sb.from('assist_numeros_bloqueados').select('id,motivo,bloqueado_por').eq('telefone_norm',tel).eq('ativo',true).maybeSingle(),
     window.sb.from('assist_kanban').select('id,status_nome,produto_nome,data_abertura').eq('telefone_normalizado',tel).order('data_abertura',{ascending:false}).range(0,4),
-    window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente')
-      .or(`telefone_norm1.eq.${tel},telefone_norm2.eq.${tel},telefone_norm3.eq.${tel}`).limit(1),
+    window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente').or(`telefone_norm1.eq.${tel},telefone_norm2.eq.${tel},telefone_norm3.eq.${tel}`).limit(1),
   ]);
-
-  if (bloq) {
-    _novoBloqId = bloq.id;
-    if (avisoB) { avisoB.style.display=''; document.getElementById('novo-bloq-motivo').textContent=`${bloq.motivo||'Não-Garantia'} · por ${bloq.bloqueado_por||'—'}`; }
-    if (btn) btn.disabled=true;
-  } else {
-    if (avisoB) avisoB.style.display='none';
-    if (btn) btn.disabled=false;
-  }
-
-  if (hist?.length && avisoH) {
-    avisoH.style.display='';
-    avisoH.innerHTML=`⚠️ Este número tem <strong>${hist.length} chamado(s) anterior(es)</strong>:<br>${hist.slice(0,3).map(h=>`#${h.id} · ${h.produto_nome||'—'} · ${astStatusBadge(h.status_nome)}`).join('<br>')}`;
-  } else if (avisoH) { avisoH.style.display='none'; }
-
-  if (cliente?.data?.[0]) {
-    const nome = document.getElementById('novo-nome');
-    if (nome && !nome.value) nome.value = cliente.data[0].nome_cliente||'';
-  }
+  if(bloq){_novoBloqId=bloq.id;if(avisoB){avisoB.style.display='';document.getElementById('novo-bloq-motivo').textContent=`${bloq.motivo||'Não-Garantia'} · por ${bloq.bloqueado_por||'—'}`;}if(btn)btn.disabled=true;}
+  else{if(avisoB)avisoB.style.display='none';if(btn)btn.disabled=false;}
+  if(hist?.length&&avisoH){avisoH.style.display='';avisoH.innerHTML=`⚠️ <strong>${hist.length} chamado(s) anterior(es)</strong>: `+hist.slice(0,3).map(h=>`#${h.id} ${astStatusBadge(h.status_nome)}`).join(' · ');}
+  else if(avisoH)avisoH.style.display='none';
+  if(clientes?.[0]){const n=document.getElementById('novo-nome');if(n&&!n.value)n.value=clientes[0].nome_cliente||'';}
 };
-
-window.astDesbloquearNoModal = async function() {
-  if (!_novoBloqId) return;
-  const usuario = window.getUsuario?.();
-  await window.sb.from('assist_numeros_bloqueados').update({
-    ativo:false, desbloqueado_por:usuario?.nome||null, desbloqueado_em:new Date().toISOString()
-  }).eq('id',_novoBloqId);
+window.astDesbloquearNoModal=async function(){
+  if(!_novoBloqId)return;
+  const usuario=window.getUsuario?.();
+  await window.sb.from('assist_numeros_bloqueados').update({ativo:false,desbloqueado_por:usuario?.nome||null,desbloqueado_em:new Date().toISOString()}).eq('id',_novoBloqId);
   _novoBloqId=null;
   document.getElementById('novo-bloq-aviso').style.display='none';
   document.getElementById('novo-btn').disabled=false;
 };
-
-window.astAbrirModalNovo = async function() {
+window.astAbrirModalNovo=async function(){
   astCriarModalNovo();
   await astCarregarLookups();
-  const el = id => document.getElementById(id);
-  if (el('novo-setor'))  el('novo-setor').innerHTML  = '<option value="">Selecione...</option>'+astSelectOptions(_setoresList,null);
-  if (el('novo-prior'))  el('novo-prior').innerHTML  = '<option value="">Selecione...</option>'+astSelectOptions(_prioridadeList,null);
-  if (el('novo-status')) el('novo-status').innerHTML = astSelectOptions(_statusList,_statusList[0]?.id);
+  const ss=document.getElementById('novo-setor'), st=document.getElementById('novo-status');
+  if(ss)ss.innerHTML='<option value="">Selecione...</option>'+astSelectOptions(_setoresList,null);
+  if(st)st.innerHTML=astSelectOptions(_statusList,_statusList[0]?.id);
   document.getElementById('ast-modal-novo').classList.add('open');
 };
-window.astFecharModalNovo = function() {
-  document.getElementById('ast-modal-novo')?.classList.remove('open');
-};
-
+window.astFecharModalNovo=function(){document.getElementById('ast-modal-novo')?.classList.remove('open');};
 let _buscaProdTimer=null;
-window.astBuscarProdutoModal = function() {
+window.astBuscarProdutoModal=function(){
   clearTimeout(_buscaProdTimer);
   _buscaProdTimer=setTimeout(async()=>{
-    const q=(document.getElementById('novo-prod-busca')?.value||'').trim();
-    const res=document.getElementById('novo-prod-results');
-    if (!res) return;
-    if (q.length<2) { res.style.display='none'; return; }
-    const {data}=await window.sb.from('assist_produtos').select('id,referencia,nome,grupo').eq('ativo',true)
-      .or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,14);
-    if (!data?.length) { res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto encontrado</div>'; res.style.display=''; return; }
+    const q=(document.getElementById('novo-prod-busca')?.value||'').trim(), res=document.getElementById('novo-prod-results');
+    if(!res||q.length<2){if(res)res.style.display='none';return;}
+    const{data}=await window.sb.from('assist_produtos').select('id,referencia,nome,grupo').eq('ativo',true).or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,14);
+    if(!data?.length){res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto</div>';res.style.display='';return;}
     res.style.display='';
-    res.innerHTML=data.map(p=>`
-      <div class="ast-prod-result-item" onclick="astSelecionarProdModal(${p.id},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}')">
-        <div>${p.nome}</div><div class="ast-prod-ref">${p.referencia||''} ${p.grupo?'· '+p.grupo:''}</div>
-      </div>`).join('');
+    res.innerHTML=data.map(p=>`<div class="ast-prod-result-item" onclick="astSelecionarProdModal(${p.id},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}')"><div>${p.nome}</div><div class="ast-prod-ref">${p.referencia||''} ${p.grupo?'· '+p.grupo:''}</div></div>`).join('');
   },300);
 };
-window.astSelecionarProdModal = function(id,ref,nome) {
+window.astSelecionarProdModal=function(id,ref,nome){
   document.getElementById('novo-prod-id').value=id;
   document.getElementById('novo-prod-busca').value=nome;
   document.getElementById('novo-prod-sel').textContent=`✅ ${ref?ref+' — ':''}${nome}`;
   document.getElementById('novo-prod-results').style.display='none';
 };
-
-window.astSalvarNovo = async function() {
-  const v = id => document.getElementById(id)?.value;
-  const tel=v('novo-tel')?.trim();
-  const erro=document.getElementById('novo-erro');
-  if (!tel) { if(erro) erro.textContent='⚠️ Telefone é obrigatório'; return; }
-  if (erro) erro.textContent='';
+window.astSalvarNovo=async function(){
+  const v=id=>document.getElementById(id)?.value;
+  const tel=v('novo-tel')?.trim(), erro=document.getElementById('novo-erro');
+  if(!tel){if(erro)erro.textContent='⚠️ Telefone é obrigatório';return;}
+  if(erro)erro.textContent='';
   const btn=document.getElementById('novo-btn');
-  if (btn) { btn.textContent='Salvando...'; btn.disabled=true; }
-  try {
+  if(btn){btn.textContent='Salvando...';btn.disabled=true;}
+  try{
     const telNum=tel.replace(/\D/g,'');
-    // Verifica bloqueio antes de salvar
-    const {data:bloq}=await window.sb.from('assist_numeros_bloqueados').select('id').eq('telefone_norm',telNum).eq('ativo',true).maybeSingle();
-    if (bloq) { if(erro) erro.textContent='🚫 Número bloqueado. Desbloqueie antes de criar.'; if(btn){btn.textContent='Salvar Chamado';btn.disabled=false;} return; }
-
+    const{data:bloq}=await window.sb.from('assist_numeros_bloqueados').select('id').eq('telefone_norm',telNum).eq('ativo',true).maybeSingle();
+    if(bloq){if(erro)erro.textContent='🚫 Número bloqueado.';if(btn){btn.textContent='Salvar Chamado';btn.disabled=false;}return;}
     const prodId=v('novo-prod-id');
     let prodNome=v('novo-prod-busca')||null, prodCod=null, prodIdErp=null;
-    if (prodId) {
-      const {data:pd}=await window.sb.from('assist_produtos').select('nome,referencia,id_produto_erp').eq('id',parseInt(prodId)).single();
-      if (pd) { prodNome=pd.nome; prodCod=pd.referencia; prodIdErp=pd.id_produto_erp; }
-    }
-    const {data:lk}=await window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente')
-      .or(`telefone_norm1.eq.${telNum},telefone_norm2.eq.${telNum},telefone_norm3.eq.${telNum}`).limit(1);
+    if(prodId){const{data:pd}=await window.sb.from('assist_produtos').select('nome,referencia,id_produto_erp').eq('id',parseInt(prodId)).single();if(pd){prodNome=pd.nome;prodCod=pd.referencia;prodIdErp=pd.id_produto_erp;}}
+    const{data:lk}=await window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente').or(`telefone_norm1.eq.${telNum},telefone_norm2.eq.${telNum},telefone_norm3.eq.${telNum}`).limit(1);
     const cli=lk?.[0];
     const statusObj=_statusList.find(s=>s.id==v('novo-status'));
     const usuario=window.getUsuario?.();
@@ -1456,96 +1245,55 @@ window.astSalvarNovo = async function() {
       produto_codigo:prodCod||null, produto_nome:prodNome||null,
       status_id:v('novo-status')?parseInt(v('novo-status')):(_statusList[0]?.id||null),
       setor_responsavel_id:v('novo-setor')?parseInt(v('novo-setor')):null,
-      prioridade_id:v('novo-prior')?parseInt(v('novo-prior')):null,
       descricao_inicial:v('novo-desc')||null,
-      data_proxima_acao:v('novo-proxima')||null,
       responsavel_nome:usuario?.nome||null,
-      natureza:'garantia',
+      natureza:'garantia', visualizado:false,
       concluido:statusObj?.finaliza_chamado||false,
     };
-    const {data:novo,error}=await window.sb.from('assist_chamados').insert(payload).select().single();
-    if (error) throw error;
-    if (v('novo-desc')&&novo?.id) {
-      await window.sb.from('assist_followups').insert({
-        chamado_id:novo.id, tipo:'Abertura', mensagem:v('novo-desc'),
-        origem:'manual', usuario_nome:usuario?.nome||null,
-      });
-    }
+    const{data:novo,error}=await window.sb.from('assist_chamados').insert(payload).select().single();
+    if(error)throw error;
+    if(v('novo-desc')&&novo?.id){await window.sb.from('assist_followups').insert({chamado_id:novo.id,tipo:'Abertura',mensagem:v('novo-desc'),origem:'manual',usuario_nome:usuario?.nome||null});}
     astFecharModalNovo();
     await astLoadChamados();
-    ['novo-tel','novo-nome','novo-prod-busca','novo-prod-id','novo-desc','novo-proxima'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-    const s=document.getElementById('novo-prod-sel'); if(s) s.textContent='';
-  } catch(e) {
-    if(erro) erro.textContent='❌ '+e.message;
-  } finally {
-    if(btn){btn.textContent='Salvar Chamado';btn.disabled=false;}
-  }
+    ['novo-tel','novo-nome','novo-prod-busca','novo-prod-id','novo-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    const s=document.getElementById('novo-prod-sel');if(s)s.textContent='';
+  }catch(e){if(erro)erro.textContent='❌ '+e.message;}
+  finally{if(btn){btn.textContent='Salvar Chamado';btn.disabled=false;}}
 };
-
 // ══════════════════════════════════════════
-// PRODUTOS — catálogo + análise
+// PRODUTOS
 // ══════════════════════════════════════════
 async function astLoadProdutos() {
   try {
-    const [{data:prods},{data:indice}]=await Promise.all([
+    const[{data:prods},{data:indice}]=await Promise.all([
       window.sb.from('assist_produtos').select('*').order('nome').range(0,9999),
-      window.sb.from('assist_indice_defeito').select('id_produto,chamados_garantia,qtd_vendida_12m,indice_defeito_pct,classificacao').range(0,9999),
+      window.sb.from('assist_indice_defeito').select('id_produto,chamados_garantia,qtd_vendida_12m,indice_defeito_pct').range(0,9999),
     ]);
     astProdAll=prods||[];
-    const idxMap={};
-    (indice||[]).forEach(r=>{ idxMap[r.id_produto]=r; });
-    const c=document.getElementById('ast-prod-count');
-    if(c) c.textContent=`${astProdAll.filter(p=>p.ativo).length} ativos`;
-    astRenderProdTabela(astProdAll, idxMap);
-  } catch(e) {}
-
-  try {
-    const {data}=await window.sb.from('assist_produtos_criticos').select('*').order('total_chamados',{ascending:false}).range(0,9);
+    const idxMap={};(indice||[]).forEach(r=>{idxMap[r.id_produto]=r;});
+    const c=document.getElementById('ast-prod-count');if(c)c.textContent=`${astProdAll.filter(p=>p.ativo!==false).length} ativos`;
+    astRenderProdTabela(astProdAll,idxMap);
+  }catch(e){}
+  try{
+    const{data}=await window.sb.from('assist_produtos_criticos').select('*').order('total_chamados',{ascending:false}).range(0,9);
     const el=document.getElementById('ast-criticos-list');
-    if (el&&data?.length) {
-      const max=data[0].total_chamados||1;
-      el.innerHTML=data.map((r,i)=>`
-        <div class="ast-rank-item">
-          <div class="ast-rank-pos ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${i+1}</div>
-          <div style="flex:1"><div class="ast-rank-name">${r.produto_nome||'—'}</div>
-            <div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(r.total_chamados/max*100)}%;background:var(--red)"></div></div>
-          </div>
-          <div class="ast-rank-val">${r.total_chamados}<div class="ast-rank-sub">${r.chamados_abertos||0} abertos</div></div>
-        </div>`).join('');
-    } else if(el) el.innerHTML='<div class="ast-empty">Sem dados</div>';
-  } catch(e) {}
-
-  try {
-    const {data}=await window.sb.from('assist_pecas_utilizadas_resumo').select('*').order('qtd_total_usada',{ascending:false}).range(0,9);
+    if(el&&data?.length){const max=data[0].total_chamados||1;el.innerHTML=data.map((r,i)=>`<div class="ast-rank-item"><div class="ast-rank-pos ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${i+1}</div><div style="flex:1"><div class="ast-rank-name">${r.produto_nome||'—'}</div><div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(r.total_chamados/max*100)}%;background:var(--red)"></div></div></div><div class="ast-rank-val">${r.total_chamados}<div style="font-size:11px;color:var(--text-muted)">${r.chamados_abertos||0} abertos</div></div></div>`).join('');}
+    else if(el)el.innerHTML='<div class="ast-empty">Sem dados</div>';
+  }catch(e){}
+  try{
+    const{data}=await window.sb.from('assist_pecas_utilizadas_resumo').select('*').order('qtd_total_usada',{ascending:false}).range(0,9);
     const el=document.getElementById('ast-pecas-list');
-    if (el&&data?.length) {
-      const max=data[0].qtd_total_usada||1;
-      el.innerHTML=data.map((r,i)=>`
-        <div class="ast-rank-item">
-          <div class="ast-rank-pos ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${i+1}</div>
-          <div style="flex:1"><div class="ast-rank-name">${r.peca_nome||'—'}</div>
-            <div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(r.qtd_total_usada/max*100)}%;background:var(--blue-mid)"></div></div>
-          </div>
-          <div class="ast-rank-val">${r.qtd_total_usada}un<div class="ast-rank-sub">${r.qtd_chamados||0} chamados</div></div>
-        </div>`).join('');
-    } else if(el) el.innerHTML='<div class="ast-empty">Sem peças</div>';
-  } catch(e) {}
+    if(el&&data?.length){const max=data[0].qtd_total_usada||1;el.innerHTML=data.map((r,i)=>`<div class="ast-rank-item"><div class="ast-rank-pos ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${i+1}</div><div style="flex:1"><div class="ast-rank-name">${r.peca_nome||'—'}</div><div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(r.qtd_total_usada/max*100)}%;background:var(--blue-mid)"></div></div></div><div class="ast-rank-val">${r.qtd_total_usada}un<div style="font-size:11px;color:var(--text-muted)">${r.qtd_chamados||0} chamados</div></div></div>`).join('');}
+    else if(el)el.innerHTML='<div class="ast-empty">Sem dados</div>';
+  }catch(e){}
   window.setLastUpdate?.();
 }
-
-function astRenderProdTabela(data, idxMap={}) {
-  const tbody=document.getElementById('ast-prod-body');
-  if (!tbody) return;
-  if (!data.length) {
-    tbody.innerHTML='<tr><td colspan="8"><div class="ast-empty"><div class="ast-empty-ico">📦</div>Nenhum produto. Clique em "+ Adicionar Produto".</div></td></tr>';
-    return;
-  }
+function astRenderProdTabela(data,idxMap={}) {
+  const tbody=document.getElementById('ast-prod-body');if(!tbody)return;
+  if(!data.length){tbody.innerHTML='<tr><td colspan="8"><div class="ast-empty"><div class="ast-empty-ico">📦</div>Nenhum produto. Clique em "+ Adicionar Produto".</div></td></tr>';return;}
   tbody.innerHTML=data.map(p=>{
-    const idx=idxMap[p.id_produto_erp];
-    const pct=idx?parseFloat(idx.indice_defeito_pct):null;
-    const idxHtml=pct!=null
-      ? `<span class="${astIndiceCls(pct,'text')}">${pct.toFixed(2)}%</span>`
-      : '<span style="color:var(--text-muted)">—</span>';
+    const idx=idxMap[p.id_produto_erp], pct=idx?parseFloat(idx.indice_defeito_pct):null;
+    const idxHtml=pct!=null?`<span class="ast-idx-${astIndiceCls(pct)}">${pct.toFixed(2)}%</span>`:'<span style="color:var(--text-muted)">—</span>';
     return `<tr>
       <td class="ast-mono" style="color:var(--text-muted)">${p.referencia||'—'}</td>
       <td style="font-weight:500">${p.nome}</td>
@@ -1554,44 +1302,31 @@ function astRenderProdTabela(data, idxMap={}) {
       <td class="right">${idx?idx.chamados_garantia:'—'}</td>
       <td class="right">${idxHtml}</td>
       <td>${p.ativo!==false?'<span class="ast-badge ast-badge-concluido">Ativo</span>':'<span class="ast-badge ast-badge-cancelado">Inativo</span>'}</td>
-      <td><button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astToggleProduto(${p.id},${!p.ativo})">${p.ativo!==false?'🚫 Desativar':'✅ Ativar'}</button></td>
+      <td><button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astToggleProduto(${p.id},${p.ativo===false})">${p.ativo!==false?'🚫 Desativar':'✅ Ativar'}</button></td>
     </tr>`;
   }).join('');
 }
+window.astFiltrarProdutos=function(){const q=(document.getElementById('ast-prod-busca')?.value||'').toLowerCase();astRenderProdTabela(q?astProdAll.filter(p=>p.nome.toLowerCase().includes(q)||(p.referencia||'').toLowerCase().includes(q)):astProdAll);};
+window.astToggleProduto=async function(id,novoAtivo){await window.sb.from('assist_produtos').update({ativo:novoAtivo,atualizado_em:new Date().toISOString()}).eq('id',id);const idx=astProdAll.findIndex(p=>p.id===id);if(idx>=0)astProdAll[idx].ativo=novoAtivo;astRenderProdTabela(astProdAll);};
 
-window.astFiltrarProdutos=function(){
-  const q=(document.getElementById('ast-prod-busca')?.value||'').toLowerCase();
-  astRenderProdTabela(q?astProdAll.filter(p=>p.nome.toLowerCase().includes(q)||(p.referencia||'').toLowerCase().includes(q)):astProdAll);
-};
-window.astToggleProduto=async function(id,novoAtivo){
-  await window.sb.from('assist_produtos').update({ativo:novoAtivo,atualizado_em:new Date().toISOString()}).eq('id',id);
-  const idx=astProdAll.findIndex(p=>p.id===id);
-  if(idx>=0) astProdAll[idx].ativo=novoAtivo;
-  astRenderProdTabela(astProdAll);
-};
-
-// Modal adicionar produto do ERP
 function astCriarModalProduto(){
-  if(document.getElementById('ast-modal-prod')) return;
+  if(document.getElementById('ast-modal-prod'))return;
   document.body.insertAdjacentHTML('beforeend',`
     <div class="ast-modal-ov" id="ast-modal-prod">
       <div class="ast-modal">
         <div class="ast-modal-hdr"><div class="ast-modal-title">Adicionar Produto do ERP</div>
-          <button class="ast-drawer-close" onclick="astFecharModalProduto()">✕</button></div>
+          <button style="width:32px;height:32px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-muted)" onclick="astFecharModalProduto()">✕</button></div>
         <div class="ast-modal-body">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Busque na base de produtos do ERP e adicione ao catálogo da assistência.</div>
-          <div class="ast-form-field" style="margin-bottom:10px">
-            <label class="ast-form-lbl">Buscar no ERP</label>
-            <input class="ast-form-input" id="mp-busca" placeholder="Nome ou referência..." oninput="astBuscarERP()">
-          </div>
-          <div id="mp-results" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none"></div>
-          <div id="mp-sel" style="display:none;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:12px 14px;margin-top:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--blue-dark);margin-bottom:4px">Selecionado:</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Busque na base do ERP e adicione ao catálogo da assistência.</div>
+          <div class="ast-form-field" style="margin-bottom:8px"><label class="ast-form-lbl">Buscar</label>
+            <input class="ast-form-input" id="mp-busca" placeholder="Nome ou referência do produto..." oninput="astBuscarERP()"></div>
+          <div id="mp-results" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none"></div>
+          <div id="mp-sel" style="display:none;background:var(--blue-pale);border:1px solid var(--blue-light);border-radius:var(--radius-sm);padding:10px 13px;margin-top:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--blue-dark);margin-bottom:3px">Selecionado:</div>
             <div id="mp-sel-nome" style="font-size:14px;font-weight:600"></div>
             <div id="mp-sel-ref"  style="font-size:12px;color:var(--text-muted)"></div>
           </div>
-          <input type="hidden" id="mp-id-erp"><input type="hidden" id="mp-ref">
-          <input type="hidden" id="mp-nome"><input type="hidden" id="mp-grupo"><input type="hidden" id="mp-sub">
+          <input type="hidden" id="mp-id-erp"><input type="hidden" id="mp-ref"><input type="hidden" id="mp-nome"><input type="hidden" id="mp-grupo"><input type="hidden" id="mp-sub">
           <div id="mp-erro" class="ast-form-err" style="margin-top:8px"></div>
         </div>
         <div class="ast-modal-foot">
@@ -1601,69 +1336,54 @@ function astCriarModalProduto(){
       </div>
     </div>`);
 }
-window.astAbrirModalProduto=function(){ astCriarModalProduto(); document.getElementById('ast-modal-prod').classList.add('open'); };
-window.astFecharModalProduto=function(){ document.getElementById('ast-modal-prod')?.classList.remove('open'); };
-
+window.astAbrirModalProduto=function(){astCriarModalProduto();document.getElementById('ast-modal-prod').classList.add('open');};
+window.astFecharModalProduto=function(){document.getElementById('ast-modal-prod')?.classList.remove('open');};
 let _erpTimer=null;
 window.astBuscarERP=function(){
   clearTimeout(_erpTimer);
   _erpTimer=setTimeout(async()=>{
-    const q=(document.getElementById('mp-busca')?.value||'').trim();
-    const res=document.getElementById('mp-results');
+    const q=(document.getElementById('mp-busca')?.value||'').trim(), res=document.getElementById('mp-results');
     if(!res||q.length<2){if(res)res.style.display='none';return;}
-    res.style.display=''; res.innerHTML='<div style="padding:12px;color:var(--text-muted);font-size:13px">Buscando...</div>';
-    const {data}=await window.sb.from('comp_produtos_consolidado').select('id_produto,referencia,nome,grupo,subgrupo')
-      .or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,29);
-    if(!data?.length){res.innerHTML='<div style="padding:12px;color:var(--text-muted);font-size:13px">Nenhum produto</div>';return;}
-    res.innerHTML=data.map(p=>`
-      <div class="ast-prod-result-item" onclick="astSelecionarERP(${p.id_produto},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}','${(p.grupo||'').replace(/'/g,"\\'")}','${(p.subgrupo||'').replace(/'/g,"\\'")}')">
-        <div style="font-weight:500">${p.nome}</div>
-        <div class="ast-prod-ref">${p.referencia||''} ${p.grupo?'· '+p.grupo:''}</div>
-      </div>`).join('');
+    res.style.display='';res.innerHTML='<div style="padding:10px;color:var(--text-muted);font-size:13px">Buscando...</div>';
+    const{data}=await window.sb.from('comp_produtos_consolidado').select('id_produto,referencia,nome,grupo,subgrupo').or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,29);
+    if(!data?.length){res.innerHTML='<div style="padding:10px;color:var(--text-muted);font-size:13px">Nenhum produto</div>';return;}
+    res.innerHTML=data.map(p=>`<div class="ast-prod-result-item" onclick="astSelecionarERP(${p.id_produto},'${(p.referencia||'').replace(/'/g,"\\'")}','${p.nome.replace(/'/g,"\\'")}','${(p.grupo||'').replace(/'/g,"\\'")}','${(p.subgrupo||'').replace(/'/g,"\\'")}')"><div style="font-weight:500">${p.nome}</div><div class="ast-prod-ref">${p.referencia||''} ${p.grupo?'· '+p.grupo:''}</div></div>`).join('');
   },350);
 };
 window.astSelecionarERP=function(idErp,ref,nome,grupo,sub){
-  ['mp-id-erp','mp-ref','mp-nome','mp-grupo','mp-sub'].forEach((id,i)=>{
-    const e=document.getElementById(id); if(e) e.value=[idErp,ref,nome,grupo,sub][i];
-  });
+  ['mp-id-erp','mp-ref','mp-nome','mp-grupo','mp-sub'].forEach((id,i)=>{const e=document.getElementById(id);if(e)e.value=[idErp,ref,nome,grupo,sub][i];});
   document.getElementById('mp-sel-nome').textContent=nome;
   document.getElementById('mp-sel-ref').textContent=`Ref: ${ref||'—'} · ${grupo||''}`;
   document.getElementById('mp-sel').style.display='';
   document.getElementById('mp-results').style.display='none';
-  const btn=document.getElementById('mp-btn'); if(btn) btn.disabled=false;
+  const btn=document.getElementById('mp-btn');if(btn)btn.disabled=false;
 };
 window.astAdicionarProduto=async function(){
-  const v=id=>document.getElementById(id)?.value;
-  const nome=v('mp-nome'); const erro=document.getElementById('mp-erro');
+  const v=id=>document.getElementById(id)?.value, nome=v('mp-nome'), erro=document.getElementById('mp-erro');
   if(!nome){if(erro)erro.textContent='Selecione um produto';return;}
-  const {data:existe}=await window.sb.from('assist_produtos').select('id').eq('id_produto_erp',parseInt(v('mp-id-erp'))).maybeSingle();
-  if(existe){if(erro)erro.textContent='⚠️ Produto já está no catálogo';return;}
-  const btn=document.getElementById('mp-btn'); if(btn){btn.textContent='Adicionando...';btn.disabled=true;}
+  const{data:existe}=await window.sb.from('assist_produtos').select('id').eq('id_produto_erp',parseInt(v('mp-id-erp'))).maybeSingle();
+  if(existe){if(erro)erro.textContent='⚠️ Produto já no catálogo';return;}
+  const btn=document.getElementById('mp-btn');if(btn){btn.textContent='Adicionando...';btn.disabled=true;}
   const usuario=window.getUsuario?.();
-  const {error}=await window.sb.from('assist_produtos').insert({
-    id_produto_erp:parseInt(v('mp-id-erp')),referencia:v('mp-ref')||null,
-    nome,grupo:v('mp-grupo')||null,subgrupo:v('mp-sub')||null,ativo:true,criado_por:usuario?.nome||null,
-  });
+  const{error}=await window.sb.from('assist_produtos').insert({id_produto_erp:parseInt(v('mp-id-erp')),referencia:v('mp-ref')||null,nome,grupo:v('mp-grupo')||null,subgrupo:v('mp-sub')||null,ativo:true,criado_por:usuario?.nome||null});
   if(error){if(erro)erro.textContent='❌ '+error.message;if(btn){btn.textContent='Adicionar ao Catálogo';btn.disabled=false;}return;}
   astFecharModalProduto();
   await astLoadProdutos();
 };
 
 // ══════════════════════════════════════════
-// CONFIGURAÇÕES — CRUD
+// CONFIGURAÇÕES
 // ══════════════════════════════════════════
 const CFG_TABLES=[
-  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',        extra:'finaliza_chamado'},
+  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',       extra:'finaliza_chamado'},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
   {id:'prioridades', tabela:'assist_prioridades',  titulo:'⚡ Prioridades'},
   {id:'defeitos',    tabela:'assist_defeitos',     titulo:'🔴 Defeitos'},
   {id:'causas',      tabela:'assist_causas',       titulo:'🔍 Causas'},
-  {id:'solucoes',    tabela:'assist_solucoes',     titulo:'✅ Soluções'},
   {id:'procedencias',tabela:'assist_procedencias', titulo:'📦 Procedências'},
 ];
 async function astLoadConfig(){
-  const grid=document.getElementById('ast-cfg-grid');
-  if(!grid) return;
+  const grid=document.getElementById('ast-cfg-grid');if(!grid)return;
   grid.innerHTML='<div style="color:var(--text-muted);font-size:13px">Carregando...</div>';
   const results=await Promise.allSettled(CFG_TABLES.map(c=>window.sb.from(c.tabela).select('*').order('nome')));
   grid.innerHTML=CFG_TABLES.map((c,i)=>{
@@ -1671,11 +1391,11 @@ async function astLoadConfig(){
     const items=rows.map(r=>`
       <div class="ast-cfg-item" id="cfg-item-${c.id}-${r.id}">
         <span class="ast-cfg-name" id="cfg-nm-${c.id}-${r.id}">${r.nome}</span>
-        ${c.extra==='finaliza_chamado'?`<span style="font-size:10px;color:var(--text-muted)">${r.finaliza_chamado?'Finaliza':''}</span>`:''}
-        <span class="ast-badge ${r.ativo!==false?'ast-badge-novo':'ast-badge-cancelado'}" style="font-size:10px">${r.ativo!==false?'Ativo':'Inativo'}</span>
-        <div class="ast-cfg-actions">
+        ${c.extra==='finaliza_chamado'&&r.finaliza_chamado?`<span style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 5px;border-radius:8px;font-weight:600">Finaliza</span>`:''}
+        <span class="ast-badge ${r.ativo!==false?'ast-badge-concluido':'ast-badge-cancelado'}" style="font-size:10px">${r.ativo!==false?'Ativo':'Inativo'}</span>
+        <div style="display:flex;gap:3px">
           <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}','${r.nome.replace(/'/g,"\\'")}')">✏️</button>
-          <button class="ast-btn ${r.ativo!==false?'ast-btn-danger':'ast-btn-success'} ast-btn-sm" onclick="astCfgToggle('${c.tabela}',${r.id},${!r.ativo})">${r.ativo!==false?'🚫':'✅'}</button>
+          <button class="ast-btn ${r.ativo!==false?'ast-btn-danger':'ast-btn-success'} ast-btn-sm" onclick="astCfgToggle('${c.tabela}',${r.id},${!(r.ativo!==false)})">${r.ativo!==false?'🚫':'✅'}</button>
         </div>
       </div>`).join('');
     return `<div class="ast-cfg-card">
@@ -1690,31 +1410,27 @@ async function astLoadConfig(){
   window.setLastUpdate?.();
 }
 window.astCfgAdicionar=async function(tabela,cfgId){
-  const input=document.getElementById(`cfg-new-${cfgId}`);
-  const nome=input?.value.trim(); if(!nome) return;
-  const{error}=await window.sb.from(tabela).insert({nome});
+  const input=document.getElementById(`cfg-new-${cfgId}`), nome=input?.value.trim();if(!nome)return;
+  const{error}=await window.sb.from(tabela).insert({nome,ativo:true});
   if(error){alert('Erro: '+error.message);return;}
-  input.value=''; _statusList=[];_setoresList=[];_prioridadeList=[];
-  await astLoadConfig();
+  input.value='';astInvalidarLookups();await astLoadConfig();
 };
 window.astCfgToggle=async function(tabela,id,novoAtivo){
   await window.sb.from(tabela).update({ativo:novoAtivo,atualizado_em:new Date().toISOString()}).eq('id',id);
-  _statusList=[];_setoresList=[];_prioridadeList=[];
-  await astLoadConfig();
+  astInvalidarLookups();await astLoadConfig();
 };
 window.astCfgEditar=function(cfgId,rowId,tabela,nomeAtual){
-  const el=document.getElementById(`cfg-nm-${cfgId}-${rowId}`); if(!el) return;
-  el.innerHTML=`<input class="ast-cfg-input" style="width:100%" value="${nomeAtual}" id="cfg-edit-${cfgId}-${rowId}"
+  const el=document.getElementById(`cfg-nm-${cfgId}-${rowId}`);if(!el)return;
+  el.innerHTML=`<input class="ast-cfg-input" style="width:100%;max-width:150px" value="${nomeAtual}" id="cfg-edit-${cfgId}-${rowId}"
     onkeydown="if(event.key==='Enter')astCfgSalvarEdit('${tabela}','${cfgId}',${rowId});if(event.key==='Escape')astLoadConfig()">
-    <button class="ast-btn ast-btn-success ast-btn-sm" style="margin-top:4px" onclick="astCfgSalvarEdit('${tabela}','${cfgId}',${rowId})">✅</button>
-    <button class="ast-btn ast-btn-secondary ast-btn-sm" style="margin-top:4px" onclick="astLoadConfig()">✕</button>`;
+    <button class="ast-btn ast-btn-success ast-btn-sm" style="margin-left:4px" onclick="astCfgSalvarEdit('${tabela}','${cfgId}',${rowId})">✅</button>
+    <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astLoadConfig()">✕</button>`;
   document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.focus();
 };
 window.astCfgSalvarEdit=async function(tabela,cfgId,rowId){
-  const novoNome=document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.value.trim(); if(!novoNome) return;
+  const novoNome=document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.value.trim();if(!novoNome)return;
   await window.sb.from(tabela).update({nome:novoNome,atualizado_em:new Date().toISOString()}).eq('id',rowId);
-  _statusList=[];_setoresList=[];_prioridadeList=[];
-  await astLoadConfig();
+  astInvalidarLookups();await astLoadConfig();
 };
 
 // ══════════════════════════════════════════
@@ -1727,10 +1443,10 @@ const AST_LOADERS={
   'ast-config':   astLoadConfig,
 };
 
-window.ModuloAssistencia={
-  showPage(pageId,container){
+window.ModuloAssistencia = {
+  showPage(pageId, container) {
     _container=container; _pagina=pageId;
-    if(!_iniciado){
+    if (!_iniciado) {
       const w=document.createElement('div'); w.id='ast-pages';
       Object.entries(AST_PAGES).forEach(([pid,html])=>{
         const t=document.createElement('div'); t.innerHTML=html;
@@ -1739,13 +1455,14 @@ window.ModuloAssistencia={
       container.innerHTML=''; container.appendChild(w); _iniciado=true;
     }
     container.querySelectorAll('.ast-page').forEach(p=>p.style.display='none');
-    container.querySelector(`#page-${pageId}`)?.style.setProperty('display','');
+    const target=container.querySelector(`#page-${pageId}`);
+    if(target)target.style.display='';
     AST_LOADERS[pageId]?.();
   },
-  onFiltroChange(){},
-  destroy(){
-    _iniciado=false;_pagina=null;
-    astData=[];astFiltrados=[];astProdAll=[];astIndiceData=[];
+  onFiltroChange() {},
+  destroy() {
+    _iniciado=false; _pagina=null;
+    astData=[];astFiltrados=[];astProdAll=[];
     _statusList=[];_setoresList=[];_prioridadeList=[];
   }
 };
