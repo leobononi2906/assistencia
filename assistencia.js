@@ -693,29 +693,29 @@ window.astAbrirDetalhe = async function(id) {
     ]);
     const osData = osResp.data;
 
-    document.getElementById('ast-drw-sub').textContent =
-      `${det.cliente_nome_erp||det.nome_contato||'—'} · ${det.produto_nome||det.produto_manual||'Produto não vinculado'}`;
+    document.getElementById('ast-drw-sub').innerHTML =
+      `${det.cliente_nome_erp||det.nome_contato||'—'} · ${det.produto_nome||det.produto_manual||'Produto não vinculado'}`
+      + (alertasHtml ? `&nbsp;&nbsp;${alertasHtml}` : '');
 
     const fupsList  = fups||[];
     const pecasList = pecas||[];
     const histList  = historico||[];
-    const conv  = fupsList.filter(f=>f.origem==='whatsapp');
-    const acomp = fupsList.filter(f=>f.origem!=='whatsapp');
+    const conv  = fupsList.filter(f=>f.tipo==='whatsapp');
+    const acomp = fupsList.filter(f=>f.tipo!=='whatsapp');
     const diasAb = astDias(det.data_abertura)||0;
 
-    const alertasHtml = [
-      !det.visualizado ? '<span class="ast-alerta-novo">🔵 NOVO — primeiro acesso</span>' : '',
-      (det.dias_sem_followup||0)>=7 && !det.concluido ? `<span class="ast-alerta-parado">🔴 PARADO há ${det.dias_sem_followup}d</span>` : '',
-      diasAb>=23 && diasAb<=35 && !det.concluido ? `<span class="ast-alerta-vencendo">🟡 GARANTIA vencendo (${diasAb}d aberto)</span>` : '',
-    ].filter(Boolean).join(' ');
+    const alertasBits = [
+      !det.visualizado ? '<span class="ast-alerta-novo">🔵 NOVO</span>' : '',
+      (det.dias_sem_followup||0)>=7 && !det.concluido ? `<span class="ast-alerta-parado">🔴 PARADO ${det.dias_sem_followup}d</span>` : '',
+      diasAb>=23 && diasAb<=35 && !det.concluido ? `<span class="ast-alerta-vencendo">🟡 GARANTIA ${diasAb}d</span>` : '',
+    ].filter(Boolean);
+    const alertasHtml = alertasBits.join(' ');
 
     document.getElementById('ast-drw-body').innerHTML = `
       ${bloqData ? `<div class="ast-bloqueado-banner">
         <div>🚫 <strong>Número bloqueado</strong> — ${bloqData.motivo||'Não-Garantia'} por ${bloqData.bloqueado_por||'—'}</div>
         <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${bloqData.id},'${det.telefone||''}')">Desbloquear</button>
       </div>` : ''}
-
-      ${alertasHtml ? `<div style="padding:12px 24px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">${alertasHtml}</div>` : ''}
 
       <!-- ① NATUREZA + STATUS -->
       <div class="ast-drw-section">
@@ -829,7 +829,7 @@ window.astAbrirDetalhe = async function(id) {
 
       <!-- ⑤ ACOMPANHAMENTO -->
       <div class="ast-drw-section">
-        <div class="ast-drw-section-title">Acompanhamento</div>
+        <div class="ast-drw-section-title">Acompanhamento da equipe</div>
         <div class="ast-fup-form" style="margin-bottom:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div class="ast-form-field">
@@ -855,7 +855,7 @@ window.astAbrirDetalhe = async function(id) {
               <div class="ast-fup-meta"><span style="font-weight:600">${f.tipo||'Manual'}</span><span>·</span><span>${f.usuario_nome||'—'}</span><span>·</span><span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span></div>
               <div class="ast-fup-msg">${f.mensagem||'—'}</div>
             </div>`).join('')
-            : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento</div>'}
+            : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento registrado</div>'}
         </div>
       </div>
 
@@ -868,16 +868,19 @@ window.astAbrirDetalhe = async function(id) {
           <div class="ast-sec-tab" onclick="astSecTab('hist',this)">📞 Histórico (${histList.length})</div>
         </div>
         <div class="ast-sec-content active" id="ast-sec-conv">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;padding:7px 10px;background:var(--surface2);border-radius:var(--radius-sm)">
-            💬 Mensagens recebidas via WhatsApp/Umbler — somente leitura
-          </div>
           <div class="ast-fup-list">
-            ${conv.length ? conv.map(f=>`
+            ${conv.length ? [...conv].reverse().map(f=>`
               <div class="ast-fup-item whats">
-                <div class="ast-fup-meta"><span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span><span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span><span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span></div>
+                <div class="ast-fup-meta">
+                  <span style="color:#25D366;font-weight:600">💬 WhatsApp</span>
+                  <span>·</span>
+                  <span>${f.usuario_nome||det.nome_contato||'—'}</span>
+                  <span>·</span>
+                  <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
+                </div>
                 <div class="ast-fup-msg">${f.mensagem||'—'}</div>
               </div>`).join('')
-              : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">💬</div>Nenhuma mensagem</div>'}
+              : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">💬</div>Nenhuma mensagem do WhatsApp</div>'}
           </div>
         </div>
         <div class="ast-sec-content" id="ast-sec-pecas">
