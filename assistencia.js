@@ -658,10 +658,54 @@ function astCriarDrawer() {
         <button class="ast-drawer-close" onclick="astFecharDetalhe()">✕</button>
       </div>
       <div class="ast-drawer-body" id="ast-drw-body"><div style="text-align:center;padding:40px;color:var(--text-muted)">⏳</div></div>
+      <div class="ast-drawer-footer" id="ast-drw-footer" style="display:none;padding:12px 24px;border-top:2px solid var(--blue-mid);background:var(--surface);flex-shrink:0;display:none;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;font-size:12px;color:var(--blue-mid);font-weight:600">⚠️ Há alterações não salvas</div>
+        <button class="ast-btn ast-btn-secondary" onclick="astDescartarAlteracoes()">Descartar</button>
+        <button class="ast-btn ast-btn-success" id="ast-drw-save-btn" onclick="astSalvarTudo()">💾 Salvar alterações</button>
+      </div>
     </div>`);
 }
 
+// DIRTY TRACKING STATE
+let _drwChamadoId = null;
+let _drwDirty = false;
+function astMarcarAlterado() {
+  if (_drwDirty) return;
+  _drwDirty = true;
+  const footer = document.getElementById('ast-drw-footer');
+  if (footer) { footer.style.display = 'flex'; }
+}
+function astResetDirty() {
+  _drwDirty = false;
+  const footer = document.getElementById('ast-drw-footer');
+  if (footer) { footer.style.display = 'none'; }
+}
+window.astDescartarAlteracoes = function() {
+  if (!confirm('Descartar alterações?')) return;
+  astResetDirty();
+  if (_drwChamadoId) astAbrirDetalhe(_drwChamadoId);
+};
+window.astSalvarTudo = async function() {
+  if (!_drwChamadoId) return;
+  const btn = document.getElementById('ast-drw-save-btn');
+  if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
+  try {
+    await Promise.all([
+      astSalvarEdicao(_drwChamadoId, true),
+      astSalvarProdutoDefeitoCausa(_drwChamadoId, true),
+      astSalvarProcedenciaObs(_drwChamadoId, true),
+    ]);
+    astResetDirty();
+    if (btn) { btn.textContent = '✅ Salvo!'; setTimeout(()=>{ btn.textContent='💾 Salvar alterações'; btn.disabled=false; }, 1800); }
+  } catch(e) {
+    alert('Erro ao salvar: ' + e.message);
+    if (btn) { btn.textContent = '💾 Salvar alterações'; btn.disabled = false; }
+  }
+};
+
 window.astAbrirDetalhe = async function(id) {
+  _drwChamadoId = id;
+  astResetDirty();
   astCriarDrawer();
   await astCarregarLookups();
   document.getElementById('ast-overlay').classList.add('open');
@@ -681,7 +725,7 @@ window.astAbrirDetalhe = async function(id) {
     const [{ data: det }, { data: fups }, { data: pecas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
-      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}),
+      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).range(0,99),
     ]);
     if (!det) throw new Error('Não encontrado');
 
@@ -692,10 +736,6 @@ window.astAbrirDetalhe = async function(id) {
       det.id_os ? window.sb.from('assist_os_garantia').select('*').eq('id_os',det.id_os).maybeSingle() : Promise.resolve({ data: null }),
     ]);
     const osData = osResp.data;
-
-    document.getElementById('ast-drw-sub').innerHTML =
-      `${det.cliente_nome_erp||det.nome_contato||'—'} · ${det.produto_nome||det.produto_manual||'Produto não vinculado'}`
-      + (alertasHtml ? `&nbsp;&nbsp;${alertasHtml}` : '');
 
     const fupsList  = fups||[];
     const pecasList = pecas||[];
@@ -710,6 +750,10 @@ window.astAbrirDetalhe = async function(id) {
       diasAb>=23 && diasAb<=35 && !det.concluido ? `<span class="ast-alerta-vencendo">🟡 GARANTIA ${diasAb}d</span>` : '',
     ].filter(Boolean);
     const alertasHtml = alertasBits.join(' ');
+
+    document.getElementById('ast-drw-sub').innerHTML =
+      `${det.cliente_nome_erp||det.nome_contato||'—'} · ${det.produto_nome||det.produto_manual||'Produto não vinculado'}`
+      + (alertasHtml ? `&nbsp;&nbsp;${alertasHtml}` : '');
 
     document.getElementById('ast-drw-body').innerHTML = `
       ${bloqData ? `<div class="ast-bloqueado-banner">
@@ -730,17 +774,16 @@ window.astAbrirDetalhe = async function(id) {
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
           <div class="ast-form-field" style="flex:1.5;min-width:130px">
             <label class="ast-form-lbl">Status</label>
-            <select class="ast-form-select" id="drw-sel-status">${astSelectOptions(_statusList,det.status_id)}</select>
+            <select class="ast-form-select" id="drw-sel-status" onchange="astMarcarAlterado()">${astSelectOptions(_statusList,det.status_id)}</select>
           </div>
           <div class="ast-form-field" style="flex:1;min-width:120px">
             <label class="ast-form-lbl">Setor</label>
-            <select class="ast-form-select" id="drw-sel-setor"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
+            <select class="ast-form-select" id="drw-sel-setor" onchange="astMarcarAlterado()"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
           </div>
           <div class="ast-form-field" style="flex:1;min-width:100px">
             <label class="ast-form-lbl">Prioridade</label>
-            <select class="ast-form-select" id="drw-sel-prior"><option value="">—</option>${astSelectOptions(_prioridadeList,det.prioridade_id)}</select>
+            <select class="ast-form-select" id="drw-sel-prior" onchange="astMarcarAlterado()"><option value="">—</option>${astSelectOptions(_prioridadeList,det.prioridade_id)}</select>
           </div>
-          <button class="ast-btn ast-btn-success" style="flex-shrink:0" onclick="astSalvarEdicao(${id})">💾 Salvar</button>
         </div>
         <div class="ast-stat-row" style="margin-top:12px">
           <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
@@ -769,7 +812,7 @@ window.astAbrirDetalhe = async function(id) {
           <div class="ast-form-field">
             <label class="ast-form-lbl">Produto reclamado</label>
             <input class="ast-form-input" id="info-prod-busca" placeholder="Buscar no catálogo da assistência..."
-              value="${det.produto_nome||det.produto_manual||''}" autocomplete="off" oninput="astBuscarProdDrawer(${id})">
+              value="${det.produto_nome||det.produto_manual||''}" autocomplete="off" oninput="astMarcarAlterado();astBuscarProdDrawer(${id})">
             <div id="info-prod-results" class="ast-prod-result" style="display:none"></div>
             <input type="hidden" id="info-prod-id" value="${det.produto_id_erp||''}">
             <div id="info-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:3px">
@@ -780,17 +823,14 @@ window.astAbrirDetalhe = async function(id) {
         <div class="ast-form-row">
           <div class="ast-form-field">
             <label class="ast-form-lbl">Defeito relatado</label>
-            <select class="ast-form-select" id="info-defeito"><option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}</select>
+            <select class="ast-form-select" id="info-defeito" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}</select>
           </div>
           <div class="ast-form-field">
             <label class="ast-form-lbl">Causa</label>
-            <select class="ast-form-select" id="info-causa"><option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}</select>
+            <select class="ast-form-select" id="info-causa" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}</select>
           </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-          <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarProdutoDefeitoCausa(${id})">💾 Salvar produto e defeito</button>
-          <span id="info-pdc-status" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
+        <div style="height:4px" id="info-pdc-status-wrap"><span id="info-pdc-status" style="font-size:12px;color:var(--text-muted)"></span></div>
         ${det.descricao_inicial?`
           <div style="padding-top:12px;border-top:1px solid var(--border)">
             <div class="ast-detail-lbl">Descrição inicial do cliente</div>
@@ -894,17 +934,14 @@ window.astAbrirDetalhe = async function(id) {
           <div class="ast-form-row" style="margin-bottom:10px">
             <div class="ast-form-field">
               <label class="ast-form-lbl">Procedência</label>
-              <select class="ast-form-select" id="sec-procedencia"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
+              <select class="ast-form-select" id="sec-procedencia" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
             </div>
           </div>
           <div class="ast-form-field" style="margin-bottom:10px">
             <label class="ast-form-lbl">Observação Interna</label>
-            <textarea class="ast-form-textarea" id="sec-obs">${det.observacao_interna||''}</textarea>
+            <textarea class="ast-form-textarea" id="sec-obs" oninput="astMarcarAlterado()">${det.observacao_interna||''}</textarea>
           </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astSalvarProcedenciaObs(${id})">💾 Salvar</button>
-            <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
-          </div>
+          <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
         <div class="ast-sec-content" id="ast-sec-hist">
           ${histList.length===0
@@ -942,13 +979,11 @@ window.astFecharDetalhe = function() {
 };
 
 // Salvar status/setor/prioridade
-window.astSalvarEdicao = async function(id) {
+window.astSalvarEdicao = async function(id, silent=false) {
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
   const priorId  = document.getElementById('drw-sel-prior')?.value;
   const statusObj = _statusList.find(s=>s.id==statusId);
-  const btn = document.querySelector(`[onclick="astSalvarEdicao(${id})"]`);
-  if(btn){btn.textContent='Salvando...';btn.disabled=true;}
   const payload = {
     status_id:            statusId ? parseInt(statusId) : null,
     setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
@@ -958,16 +993,14 @@ window.astSalvarEdicao = async function(id) {
   };
   if (statusObj?.finaliza_chamado) payload.data_conclusao = new Date().toISOString();
   const { error } = await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if (error) { alert('Erro: '+error.message); }
+  if (error) { if(!silent) alert('Erro: '+error.message); else throw new Error(error.message); }
   else {
-    if(btn){btn.textContent='✅ Salvo!';setTimeout(()=>{btn.textContent='💾 Salvar';},2000);}
     const idx=astData.findIndex(r=>r.id===id);
     if(idx>=0){
       if(statusObj){astData[idx].status_nome=statusObj.nome;astData[idx].finaliza_chamado=statusObj.finaliza_chamado;astData[idx].concluido=statusObj.finaliza_chamado;}
       astAplicarFiltros();
     }
   }
-  if(btn)btn.disabled=false;
 };
 
 // Natureza
@@ -1016,13 +1049,13 @@ window.astSelecionarProdDrawer = function(id,ref,nome,idErp) {
   document.getElementById('info-prod-sel').textContent=`✅ ${ref?ref+' — ':''}${nome}`;
   document.getElementById('info-prod-results').style.display='none';
 };
-window.astSalvarProdutoDefeitoCausa = async function(id) {
+window.astSalvarProdutoDefeitoCausa = async function(id, silent=false) {
   const prodIdErp=document.getElementById('info-prod-id')?.value;
   const prodNome =document.getElementById('info-prod-busca')?.value.trim();
   const defeitoId=document.getElementById('info-defeito')?.value;
   const causaId  =document.getElementById('info-causa')?.value;
   const el=document.getElementById('info-pdc-status');
-  if(el)el.textContent='Salvando...';
+  if(el&&!silent)el.textContent='Salvando...';
   let payload={defeito_id:defeitoId?parseInt(defeitoId):null,causa_id:causaId?parseInt(causaId):null,atualizado_em:new Date().toISOString()};
   if(prodNome){
     payload.produto_manual=prodNome;
@@ -1032,8 +1065,8 @@ window.astSalvarProdutoDefeitoCausa = async function(id) {
     }
   }
   const{error}=await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if(error){if(el)el.textContent='❌ '+error.message;return;}
-  if(el){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
+  if(error){if(el&&!silent)el.textContent='❌ '+error.message;if(silent)throw new Error(error.message);return;}
+  if(el&&!silent){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
   const idx=astData.findIndex(r=>r.id===id);
   if(idx>=0&&prodNome){astData[idx].produto_nome=payload.produto_nome||prodNome;astAplicarFiltros();}
 };
@@ -1045,8 +1078,8 @@ window.astSalvarProcedenciaObs = async function(id) {
   const el=document.getElementById('sec-obs-status');
   if(el)el.textContent='Salvando...';
   const{error}=await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if(error){if(el)el.textContent='❌ '+error.message;return;}
-  if(el){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
+  if(error){if(el&&!silent)el.textContent='❌ '+error.message;if(silent)throw new Error(error.message);return;}
+  if(el&&!silent){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
 };
 
 // Follow-up
