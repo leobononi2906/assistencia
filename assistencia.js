@@ -252,8 +252,8 @@ const AST_PAGES = {
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="ast-toggle" id="ast-view-toggle">
-        <button class="ast-toggle-btn active" onclick="astSetView('lista',this)">☰ Lista</button>
-        <button class="ast-toggle-btn" onclick="astSetView('kanban',this)">⬜ Kanban</button>
+        <button class="ast-toggle-btn" onclick="astSetView('lista',this)">☰ Lista</button>
+        <button class="ast-toggle-btn active" onclick="astSetView('kanban',this)">⬜ Kanban</button>
       </div>
       <select class="ast-select" id="ast-fil-status" onchange="astAplicarFiltros()"><option value="">Todos os status</option></select>
       <select class="ast-select" id="ast-fil-setor"  onchange="astAplicarFiltros()"><option value="">Todos os setores</option></select>
@@ -264,7 +264,7 @@ const AST_PAGES = {
     </div>
     <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
   </div>
-  <div id="ast-lista-view">
+  <div id="ast-lista-view" style="display:none">
     <div class="ast-table-card">
       <div class="ast-table-header">
         <div class="ast-table-title">Chamados — <span id="ast-lista-count">—</span></div>
@@ -282,7 +282,7 @@ const AST_PAGES = {
       </div>
     </div>
   </div>
-  <div id="ast-kanban-view" style="display:none">
+  <div id="ast-kanban-view">
     <div class="ast-kanban" id="ast-kanban-board"></div>
   </div>
 </div>`,
@@ -325,7 +325,7 @@ const AST_PAGES = {
 // ESTADO + HELPERS
 // ══════════════════════════════════════════
 let _container = null, _iniciado = false, _pagina = null;
-let astData = [], astFiltrados = [], astView = 'lista', astOrdem = 'recente';
+let astData = [], astFiltrados = [], astView = 'kanban', astOrdem = 'recente';
 let astProdAll = [];
 let _statusList = [], _setoresList = [], _prioridadeList = [];
 let _defeitos = [], _causas = [], _procedencias = [];
@@ -359,7 +359,7 @@ function astNaturezaBadge(n) {
 function astAlertasBadges(r) {
   const bits = [];
   if (!r.visualizado) bits.push('<span class="ast-alerta-novo">🔵 NOVO</span>');
-  if ((r.dias_sem_followup||0) >= 7 && !astEhFinalizado(r)) bits.push('<span class="ast-alerta-parado">🔴 PARADO</span>');
+  const dsf = r.dias_sem_followup||0; if (dsf >= 7 && !astEhFinalizado(r)) bits.push(`<span class="ast-alerta-parado">🔴 PARADO ${dsf}d</span>`);
   const d = astDias(r.data_abertura) || 0;
   if (d >= 23 && d <= 35 && !astEhFinalizado(r)) bits.push('<span class="ast-alerta-vencendo">🟡 GARANTIA</span>');
   return bits.join(' ');
@@ -669,13 +669,13 @@ function astCriarDrawer() {
 // DIRTY TRACKING STATE
 let _drwChamadoId = null;
 let _drwDirty = false;
-function astMarcarAlterado() {
+window.astMarcarAlterado = function() {
   if (_drwDirty) return;
   _drwDirty = true;
   const footer = document.getElementById('ast-drw-footer');
   if (footer) { footer.style.display = 'flex'; }
 }
-function astResetDirty() {
+window.astResetDirty = function() {
   _drwDirty = false;
   const footer = document.getElementById('ast-drw-footer');
   if (footer) { footer.style.display = 'none'; }
@@ -725,7 +725,7 @@ window.astAbrirDetalhe = async function(id) {
     const [{ data: det }, { data: fups }, { data: pecas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
-      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).range(0,99),
+      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100),
     ]);
     if (!det) throw new Error('Não encontrado');
 
@@ -787,11 +787,17 @@ window.astAbrirDetalhe = async function(id) {
         </div>
         <div class="ast-stat-row" style="margin-top:12px">
           <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
-          <div class="ast-stat-item"><div class="ast-stat-label">Dias aberto</div><div class="ast-stat-val">${diasAb}d</div></div>
+          <div class="ast-stat-item"><div class="ast-stat-label">Dias aberto</div><div class="ast-stat-val ${diasAb>=14?'red':diasAb>=7?'orange':''}">${diasAb}d</div></div>
           <div class="ast-stat-item"><div class="ast-stat-label">Acompanhamentos</div><div class="ast-stat-val">${acomp.length}</div></div>
           <div class="ast-stat-item"><div class="ast-stat-label">Msgs WA</div><div class="ast-stat-val">${conv.length}</div></div>
           <div class="ast-stat-item"><div class="ast-stat-label">Próxima ação</div><div class="ast-stat-val">${astFmtDate(det.data_proxima_acao)}</div></div>
         </div>
+        ${(det.dias_sem_followup||0)>=7&&!det.concluido?`
+        <div style="margin-top:10px;background:#FEF0EF;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">🔴</span>
+          <div><div style="font-size:13px;font-weight:700;color:var(--red)">Chamado parado há ${det.dias_sem_followup}d sem follow-up</div>
+          <div style="font-size:12px;color:var(--text-muted)">Registre um acompanhamento abaixo para atualizar</div></div>
+        </div>`:''}
       </div>
 
       <!-- ② CLIENTE -->
@@ -899,12 +905,10 @@ window.astAbrirDetalhe = async function(id) {
         </div>
       </div>
 
-      <!-- ⑥ ABAS SECUNDÁRIAS -->
+      <!-- ⑥ ABAS: Conversa WA + Histórico -->
       <div class="ast-drw-section">
         <div class="ast-sec-tabs">
           <div class="ast-sec-tab active" onclick="astSecTab('conv',this)">💬 Conversa WA (${conv.length})</div>
-          <div class="ast-sec-tab" onclick="astSecTab('pecas',this)">🔧 Peças (${pecasList.length})</div>
-          <div class="ast-sec-tab" onclick="astSecTab('obs',this)">📝 Procedência / Obs</div>
           <div class="ast-sec-tab" onclick="astSecTab('hist',this)">📞 Histórico (${histList.length})</div>
         </div>
         <div class="ast-sec-content active" id="ast-sec-conv">
@@ -923,26 +927,6 @@ window.astAbrirDetalhe = async function(id) {
               : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">💬</div>Nenhuma mensagem do WhatsApp</div>'}
           </div>
         </div>
-        <div class="ast-sec-content" id="ast-sec-pecas">
-          ${pecasList.length ? `
-            <table class="ast-table">
-              <thead><tr><th>Peça</th><th>Código</th><th class="right">Qtd</th><th>Obs</th></tr></thead>
-              <tbody>${pecasList.map(p=>`<tr><td>${p.peca_nome||'—'}</td><td class="ast-mono" style="color:var(--text-muted)">${p.codigo_peca||'—'}</td><td class="right">${p.quantidade||1}</td><td style="color:var(--text-muted)">${p.observacao||'—'}</td></tr>`).join('')}</tbody>
-            </table>` : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">🔧</div>Nenhuma peça</div>'}
-        </div>
-        <div class="ast-sec-content" id="ast-sec-obs">
-          <div class="ast-form-row" style="margin-bottom:10px">
-            <div class="ast-form-field">
-              <label class="ast-form-lbl">Procedência</label>
-              <select class="ast-form-select" id="sec-procedencia" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
-            </div>
-          </div>
-          <div class="ast-form-field" style="margin-bottom:10px">
-            <label class="ast-form-lbl">Observação Interna</label>
-            <textarea class="ast-form-textarea" id="sec-obs" oninput="astMarcarAlterado()">${det.observacao_interna||''}</textarea>
-          </div>
-          <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
         <div class="ast-sec-content" id="ast-sec-hist">
           ${histList.length===0
             ? '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📞</div>Primeiro atendimento deste número</div>'
@@ -957,6 +941,22 @@ window.astAbrirDetalhe = async function(id) {
                   <div style="text-align:right">${astStatusBadge(h.status_nome)}<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.dias_aberto||0}d</div></div>
                 </div>`).join('')}`}
         </div>
+      </div>
+
+      <!-- ⑦ PROCEDÊNCIA + OBS (inline, sem aba) -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">Procedência & Observação</div>
+        <div class="ast-form-row" style="margin-bottom:10px">
+          <div class="ast-form-field">
+            <label class="ast-form-lbl">Procedência</label>
+            <select class="ast-form-select" id="sec-procedencia" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
+          </div>
+        </div>
+        <div class="ast-form-field">
+          <label class="ast-form-lbl">Observação Interna</label>
+          <textarea class="ast-form-textarea" id="sec-obs" oninput="astMarcarAlterado()">${det.observacao_interna||''}</textarea>
+        </div>
+        <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
       </div>
     `;
   } catch(e) {
