@@ -693,7 +693,6 @@ window.astSalvarTudo = async function() {
     await Promise.all([
       astSalvarEdicao(_drwChamadoId, true),
       astSalvarProdutoDefeitoCausa(_drwChamadoId, true),
-      astSalvarProcedenciaObs(_drwChamadoId, true),
     ]);
     astResetDirty();
     if (btn) { btn.textContent = '✅ Salvo!'; setTimeout(()=>{ btn.textContent='💾 Salvar alterações'; btn.disabled=false; }, 1800); }
@@ -725,7 +724,7 @@ window.astAbrirDetalhe = async function(id) {
     const [{ data: det }, { data: fups }, { data: pecas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
-      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100),
+      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
 
@@ -901,63 +900,40 @@ window.astAbrirDetalhe = async function(id) {
               <div class="ast-fup-meta"><span style="font-weight:600">${f.tipo||'Manual'}</span><span>·</span><span>${f.usuario_nome||'—'}</span><span>·</span><span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span></div>
               <div class="ast-fup-msg">${f.mensagem||'—'}</div>
             </div>`).join('')
-            : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento registrado</div>'}
+            : '<div class="ast-empty" style="padding:12px 0"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento registrado</div>'}
         </div>
-      </div>
-
-      <!-- ⑥ ABAS: Conversa WA + Histórico -->
-      <div class="ast-drw-section">
-        <div class="ast-sec-tabs">
-          <div class="ast-sec-tab active" onclick="astSecTab('conv',this)">💬 Conversa WA (${conv.length})</div>
-          <div class="ast-sec-tab" onclick="astSecTab('hist',this)">📞 Histórico (${histList.length})</div>
-        </div>
-        <div class="ast-sec-content active" id="ast-sec-conv">
+        ${conv.length ? `
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">💬 Conversa WhatsApp (${conv.length})</div>
           <div class="ast-fup-list">
-            ${conv.length ? [...conv].reverse().map(f=>`
+            ${[...conv].reverse().map(f=>`
               <div class="ast-fup-item whats">
                 <div class="ast-fup-meta">
-                  <span style="color:#25D366;font-weight:600">💬 WhatsApp</span>
-                  <span>·</span>
-                  <span>${f.usuario_nome||det.nome_contato||'—'}</span>
-                  <span>·</span>
+                  <span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span>
+                  <span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span>
                   <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
                 </div>
                 <div class="ast-fup-msg">${f.mensagem||'—'}</div>
-              </div>`).join('')
-              : '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">💬</div>Nenhuma mensagem do WhatsApp</div>'}
+              </div>`).join('')}
           </div>
-        </div>
-        <div class="ast-sec-content" id="ast-sec-hist">
-          ${histList.length===0
-            ? '<div class="ast-empty" style="padding:20px"><div class="ast-empty-ico">📞</div>Primeiro atendimento deste número</div>'
-            : `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">${histList.length} chamado(s) anterior(es)</div>
-               ${histList.map(h=>`
-                <div class="ast-hist-item" onclick="astAbrirDetalhe(${h.id})">
-                  <div style="font-size:20px">${h.concluido?'✅':'🔄'}</div>
-                  <div style="flex:1">
-                    <div style="font-size:13px;font-weight:600">#${h.id} · ${h.produto_nome||'—'}</div>
-                    <div style="font-size:11px;color:var(--text-muted)">${astFmtDate(h.data_abertura)}</div>
-                  </div>
-                  <div style="text-align:right">${astStatusBadge(h.status_nome)}<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.dias_aberto||0}d</div></div>
-                </div>`).join('')}`}
-        </div>
+        </div>` : ''}
       </div>
 
-      <!-- ⑦ PROCEDÊNCIA + OBS (inline, sem aba) -->
+      <!-- ⑥ HISTÓRICO DO CLIENTE -->
+      ${histList.length ? `
       <div class="ast-drw-section">
-        <div class="ast-drw-section-title">Procedência & Observação</div>
-        <div class="ast-form-row" style="margin-bottom:10px">
-          <div class="ast-form-field">
-            <label class="ast-form-lbl">Procedência</label>
-            <select class="ast-form-select" id="sec-procedencia" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_procedencias,det.procedencia_id)}</select>
-          </div>
-        </div>
-        <div class="ast-form-field">
-          <label class="ast-form-lbl">Observação Interna</label>
-          <textarea class="ast-form-textarea" id="sec-obs" oninput="astMarcarAlterado()">${det.observacao_interna||''}</textarea>
-        </div>
-        <span id="sec-obs-status" style="font-size:12px;color:var(--text-muted)"></span>
-      </div>
+        <div class="ast-drw-section-title">📞 Histórico do cliente (${histList.length} chamado(s) anterior(es))</div>
+        ${histList.map(h=>`
+          <div class="ast-hist-item" onclick="astAbrirDetalhe(${h.id})">
+            <div style="font-size:20px">${h.concluido?'✅':'🔄'}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">#${h.id} · ${h.produto_nome||'—'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${astFmtDate(h.data_abertura)}</div>
+            </div>
+            <div style="text-align:right">${astStatusBadge(h.status_nome)}<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${h.dias_aberto||0}d</div></div>
+          </div>`).join('')}
+      </div>` : ''}
+
     `;
   } catch(e) {
     console.error(e);
@@ -979,7 +955,7 @@ window.astFecharDetalhe = function() {
 };
 
 // Salvar status/setor/prioridade
-window.astSalvarEdicao = async function(id, silent=false) {
+window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
   const priorId  = document.getElementById('drw-sel-prior')?.value;
@@ -1049,7 +1025,7 @@ window.astSelecionarProdDrawer = function(id,ref,nome,idErp) {
   document.getElementById('info-prod-sel').textContent=`✅ ${ref?ref+' — ':''}${nome}`;
   document.getElementById('info-prod-results').style.display='none';
 };
-window.astSalvarProdutoDefeitoCausa = async function(id, silent=false) {
+window.astSalvarProdutoDefeitoCausa = async function(id, _silent) { var silent=!!_silent;
   const prodIdErp=document.getElementById('info-prod-id')?.value;
   const prodNome =document.getElementById('info-prod-busca')?.value.trim();
   const defeitoId=document.getElementById('info-defeito')?.value;
@@ -1489,6 +1465,10 @@ window.ModuloAssistencia = {
         if(t.firstElementChild) w.appendChild(t.firstElementChild);
       });
       container.innerHTML=''; container.appendChild(w); _iniciado=true;
+      // Default: sempre abre em Chamados/Kanban
+      if (!pageId || pageId === 'ast-gestao') {
+        pageId = 'ast-chamados'; _pagina = pageId;
+      }
     }
     container.querySelectorAll('.ast-page').forEach(p=>p.style.display='none');
     const target=container.querySelector(`#page-${pageId}`);
