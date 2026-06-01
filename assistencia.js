@@ -180,6 +180,52 @@
 // HTML DAS PÁGINAS
 // ══════════════════════════════════════════
 const AST_PAGES = {
+'ast-chamados': `<div class="ast-page" id="page-ast-chamados">
+  <div id="ast-banner-novos" style="display:none" class="ast-banner-novos">
+    <div>
+      <div class="ast-banner-novos-txt">🔵 <span id="ast-novos-qtd">0</span> chamados novos aguardando atendimento</div>
+      <div class="ast-banner-novos-sub">Chegaram via WhatsApp e ainda não foram abertos</div>
+    </div>
+    <button class="ast-btn ast-btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="astFiltrarNovos()">Ver apenas novos</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="ast-toggle" id="ast-view-toggle">
+        <button class="ast-toggle-btn" onclick="astSetView('lista',this)">☰ Lista</button>
+        <button class="ast-toggle-btn active" onclick="astSetView('kanban',this)">⬜ Kanban</button>
+      </div>
+      <select class="ast-select" id="ast-fil-status" onchange="astAplicarFiltros()"><option value="">Todos os status</option></select>
+      <select class="ast-select" id="ast-fil-setor"  onchange="astAplicarFiltros()"><option value="">Todos os setores</option></select>
+      <input class="ast-search" id="ast-busca" placeholder="Buscar cliente ou produto..." oninput="astAplicarFiltros()">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);cursor:pointer">
+        <input type="checkbox" id="ast-ver-finalizados" onchange="astAplicarFiltros()"> Finalizados
+      </label>
+    </div>
+    <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
+  </div>
+  <div id="ast-lista-view" style="display:none">
+    <div class="ast-table-card">
+      <div class="ast-table-header">
+        <div class="ast-table-title">Chamados — <span id="ast-lista-count">—</span></div>
+        <div class="ast-toggle">
+          <button class="ast-toggle-btn active" onclick="astSetOrdem('recente',this)">Recente</button>
+          <button class="ast-toggle-btn" onclick="astSetOrdem('antigo',this)">Antigo</button>
+          <button class="ast-toggle-btn" onclick="astSetOrdem('parado',this)">Mais parado</button>
+        </div>
+      </div>
+      <div class="ast-table-wrap">
+        <table class="ast-table">
+          <thead><tr><th>#</th><th>Cliente / Telefone</th><th>Produto</th><th>Status</th><th>Setor</th><th class="right">Dias</th><th>Alertas</th></tr></thead>
+          <tbody id="ast-lista-body"><tr class="ast-loading"><td colspan="7">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="ast-kanban-view">
+    <div class="ast-kanban" id="ast-kanban-board"></div>
+  </div>
+</div>`,
+
 'ast-gestao': `<div class="ast-page" id="page-ast-gestao">
   <div class="ast-cards">
     <div class="ast-card"><div class="ast-card-label">Chamados Abertos</div><div class="ast-card-value blue" id="ast-k-abertos">—</div><div class="ast-card-sub">situação atual</div></div>
@@ -238,52 +284,6 @@ const AST_PAGES = {
         <tbody id="ast-bloq-body"><tr class="ast-loading"><td colspan="5">Carregando...</td></tr></tbody>
       </table>
     </div>
-  </div>
-</div>`,
-
-'ast-chamados': `<div class="ast-page" id="page-ast-chamados">
-  <div id="ast-banner-novos" style="display:none" class="ast-banner-novos">
-    <div>
-      <div class="ast-banner-novos-txt">🔵 <span id="ast-novos-qtd">0</span> chamados novos aguardando atendimento</div>
-      <div class="ast-banner-novos-sub">Chegaram via WhatsApp e ainda não foram abertos</div>
-    </div>
-    <button class="ast-btn ast-btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="astFiltrarNovos()">Ver apenas novos</button>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <div class="ast-toggle" id="ast-view-toggle">
-        <button class="ast-toggle-btn" onclick="astSetView('lista',this)">☰ Lista</button>
-        <button class="ast-toggle-btn active" onclick="astSetView('kanban',this)">⬜ Kanban</button>
-      </div>
-      <select class="ast-select" id="ast-fil-status" onchange="astAplicarFiltros()"><option value="">Todos os status</option></select>
-      <select class="ast-select" id="ast-fil-setor"  onchange="astAplicarFiltros()"><option value="">Todos os setores</option></select>
-      <input class="ast-search" id="ast-busca" placeholder="Buscar cliente ou produto..." oninput="astAplicarFiltros()">
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);cursor:pointer">
-        <input type="checkbox" id="ast-ver-finalizados" onchange="astAplicarFiltros()"> Finalizados
-      </label>
-    </div>
-    <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
-  </div>
-  <div id="ast-lista-view" style="display:none">
-    <div class="ast-table-card">
-      <div class="ast-table-header">
-        <div class="ast-table-title">Chamados — <span id="ast-lista-count">—</span></div>
-        <div class="ast-toggle">
-          <button class="ast-toggle-btn active" onclick="astSetOrdem('recente',this)">Recente</button>
-          <button class="ast-toggle-btn" onclick="astSetOrdem('antigo',this)">Antigo</button>
-          <button class="ast-toggle-btn" onclick="astSetOrdem('parado',this)">Mais parado</button>
-        </div>
-      </div>
-      <div class="ast-table-wrap">
-        <table class="ast-table">
-          <thead><tr><th>#</th><th>Cliente / Telefone</th><th>Produto</th><th>Status</th><th>Setor</th><th class="right">Dias</th><th>Alertas</th></tr></thead>
-          <tbody id="ast-lista-body"><tr class="ast-loading"><td colspan="7">Carregando...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  <div id="ast-kanban-view">
-    <div class="ast-kanban" id="ast-kanban-board"></div>
   </div>
 </div>`,
 
@@ -392,7 +392,7 @@ async function astCarregarLookups() {
   _causas        = c.status  ==='fulfilled'?(c.value.data ||[]):[];
   _procedencias  = pr.status ==='fulfilled'?(pr.value.data||[]):[];
 }
-function astInvalidarLookups() { _statusList=[]; _setoresList=[]; _prioridadeList=[]; }
+function astInvalidarLookups() { _statusList=[]; _setoresList=[]; }
 // ══════════════════════════════════════════
 // GESTÃO
 // ══════════════════════════════════════════
@@ -608,30 +608,83 @@ function astRenderLista() {
     </tr>`;
   }).join('');
 }
+const AST_KANBAN_ORDER_KEY = 'ast_kanban_col_order';
+function astGetColOrder() {
+  try { return JSON.parse(localStorage.getItem(AST_KANBAN_ORDER_KEY)||'[]'); } catch { return []; }
+}
+function astSetColOrder(order) {
+  try { localStorage.setItem(AST_KANBAN_ORDER_KEY, JSON.stringify(order)); } catch {}
+}
 function astRenderKanban() {
   const board=document.getElementById('ast-kanban-board'); if (!board) return;
   const colunas={};
   _statusList.forEach(s=>{ if(!s.finaliza_chamado) colunas[s.nome]={meta:s,items:[]}; });
   astFiltrados.forEach(r=>{ const k=r.status_nome||'Sem status'; if(!colunas[k]) colunas[k]={meta:{},items:[]}; colunas[k].items.push(r); });
-  const cols=Object.entries(colunas).filter(([,v])=>v.items.length>0||!v.meta.finaliza_chamado);
-  if (!cols.length) { board.innerHTML='<div class="ast-empty"><div class="ast-empty-ico">✅</div>Nenhum chamado ativo</div>'; return; }
-  board.innerHTML = cols.map(([status,v])=>`
-    <div class="ast-kanban-col">
-      <div class="ast-kanban-hdr"><div class="ast-kanban-title">${status}</div><div class="ast-kanban-count">${v.items.length}</div></div>
+  // Só colunas com cards
+  const colsComCards = Object.entries(colunas).filter(([,v])=>v.items.length>0);
+  if (!colsComCards.length) { board.innerHTML='<div class="ast-empty"><div class="ast-empty-ico">✅</div>Nenhum chamado ativo</div>'; return; }
+  // Aplicar ordem salva
+  const savedOrder = astGetColOrder();
+  colsComCards.sort((a,b)=>{
+    const ia = savedOrder.indexOf(a[0]);
+    const ib = savedOrder.indexOf(b[0]);
+    if (ia===-1&&ib===-1) return 0;
+    if (ia===-1) return 1;
+    if (ib===-1) return -1;
+    return ia-ib;
+  });
+  board.innerHTML = colsComCards.map(([status,v])=>`
+    <div class="ast-kanban-col" draggable="true" data-col="${status}"
+      ondragstart="astKanbanDragStart(event)"
+      ondragover="astKanbanDragOver(event)"
+      ondrop="astKanbanDrop(event)"
+      ondragend="astKanbanDragEnd(event)">
+      <div class="ast-kanban-hdr" style="cursor:grab">
+        <div class="ast-kanban-title">${status}</div>
+        <div class="ast-kanban-count">${v.items.length}</div>
+      </div>
       <div class="ast-kanban-cards">
-        ${v.items.length===0
-          ? '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:10px">Vazio</div>'
-          : v.items.map(r=>{
-              const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
-              return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})">
-                <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
-                <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
-                <div class="ast-kanban-card-foot">${astPriorBadge(r.prioridade)}<div style="display:flex;gap:3px">${astAlertasBadges(r)}</div></div>
-              </div>`;
-            }).join('')}
+        ${v.items.map(r=>{
+          const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
+          return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})">
+            <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
+            <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
+            <div class="ast-kanban-card-foot"><div style="display:flex;gap:3px">${astAlertasBadges(r)}</div></div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`).join('');
 }
+// Drag-and-drop de colunas
+let _dragSrcCol = null;
+window.astKanbanDragStart = function(e) {
+  _dragSrcCol = e.currentTarget;
+  e.currentTarget.style.opacity='0.4';
+  e.dataTransfer.effectAllowed='move';
+};
+window.astKanbanDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const over = e.currentTarget;
+  if (_dragSrcCol && over !== _dragSrcCol) {
+    const board = over.parentNode;
+    const cols = [...board.children];
+    const srcIdx = cols.indexOf(_dragSrcCol);
+    const tgtIdx = cols.indexOf(over);
+    if (srcIdx < tgtIdx) board.insertBefore(_dragSrcCol, over.nextSibling);
+    else board.insertBefore(_dragSrcCol, over);
+  }
+};
+window.astKanbanDrop = function(e) { e.preventDefault(); };
+window.astKanbanDragEnd = function(e) {
+  e.currentTarget.style.opacity='';
+  // Salvar nova ordem
+  const board = document.getElementById('ast-kanban-board');
+  if (board) {
+    const order = [...board.children].map(c=>c.dataset.col).filter(Boolean);
+    astSetColOrder(order);
+  }
+};
 window.astSetView = function(v,btn) {
   astView=v;
   document.getElementById('ast-view-toggle')?.querySelectorAll('.ast-toggle-btn').forEach(b=>b.classList.remove('active'));
@@ -763,11 +816,8 @@ window.astAbrirDetalhe = async function(id) {
       <!-- ① NATUREZA + STATUS -->
       <div class="ast-drw-section">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-          <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">Natureza:</span>
-          <button class="ast-btn ast-btn-sm ${det.natureza==='garantia'?'ast-btn-primary':'ast-btn-secondary'}"
-            onclick="astSetNatureza(${id},'garantia',this)">🔴 Garantia</button>
           <button class="ast-btn ast-btn-sm ${det.natureza==='nao_garantia'?'ast-btn-danger':'ast-btn-secondary'}"
-            onclick="astSetNatureza(${id},'nao_garantia',this)">⚫ Não é Garantia</button>
+            onclick="astSetNatureza(${id},'nao_garantia',this)">🚫 Descartar — Não é atendimento de garantia</button>
           ${histList.length?`<span style="font-size:12px;color:var(--orange);font-weight:600;margin-left:8px">⚠️ ${histList.length} chamado(s) anterior(es)</span>`:'<span style="font-size:12px;color:var(--text-muted);margin-left:8px">Primeiro contato</span>'}
         </div>
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
@@ -779,10 +829,7 @@ window.astAbrirDetalhe = async function(id) {
             <label class="ast-form-lbl">Setor</label>
             <select class="ast-form-select" id="drw-sel-setor" onchange="astMarcarAlterado()"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
           </div>
-          <div class="ast-form-field" style="flex:1;min-width:100px">
-            <label class="ast-form-lbl">Prioridade</label>
-            <select class="ast-form-select" id="drw-sel-prior" onchange="astMarcarAlterado()"><option value="">—</option>${astSelectOptions(_prioridadeList,det.prioridade_id)}</select>
-          </div>
+
         </div>
         <div class="ast-stat-row" style="margin-top:12px">
           <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
@@ -810,10 +857,10 @@ window.astAbrirDetalhe = async function(id) {
         </div>
       </div>
 
-      <!-- ③ PRODUTO + DEFEITO -->
+      <!-- ③ PRODUTO -->
       <div class="ast-drw-section">
-        <div class="ast-drw-section-title">Produto & Defeito</div>
-        <div class="ast-form-row full" style="margin-bottom:10px">
+        <div class="ast-drw-section-title">Produto</div>
+        <div class="ast-form-row full">
           <div class="ast-form-field">
             <label class="ast-form-lbl">Produto reclamado</label>
             <input class="ast-form-input" id="info-prod-busca" placeholder="Buscar no catálogo da assistência..."
@@ -825,22 +872,7 @@ window.astAbrirDetalhe = async function(id) {
             </div>
           </div>
         </div>
-        <div class="ast-form-row">
-          <div class="ast-form-field">
-            <label class="ast-form-lbl">Defeito relatado</label>
-            <select class="ast-form-select" id="info-defeito" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_defeitos,det.defeito_id)}</select>
-          </div>
-          <div class="ast-form-field">
-            <label class="ast-form-lbl">Causa</label>
-            <select class="ast-form-select" id="info-causa" onchange="astMarcarAlterado()"><option value="">Selecione...</option>${astSelectOptions(_causas,det.causa_id)}</select>
-          </div>
-        </div>
-        <div style="height:4px" id="info-pdc-status-wrap"><span id="info-pdc-status" style="font-size:12px;color:var(--text-muted)"></span></div>
-        ${det.descricao_inicial?`
-          <div style="padding-top:12px;border-top:1px solid var(--border)">
-            <div class="ast-detail-lbl">Descrição inicial do cliente</div>
-            <div style="font-size:13px;color:var(--text-primary);margin-top:5px;line-height:1.6;white-space:pre-wrap">${det.descricao_inicial}</div>
-          </div>`:''}
+        <div style="height:4px"><span id="info-pdc-status" style="font-size:12px;color:var(--text-muted)"></span></div>
       </div>
 
       <!-- ④ OS VINCULADA -->
@@ -903,18 +935,23 @@ window.astAbrirDetalhe = async function(id) {
             : '<div class="ast-empty" style="padding:12px 0"><div class="ast-empty-ico">📋</div>Nenhum acompanhamento registrado</div>'}
         </div>
         ${conv.length ? `
-        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">💬 Conversa WhatsApp (${conv.length})</div>
-          <div class="ast-fup-list">
-            ${[...conv].reverse().map(f=>`
-              <div class="ast-fup-item whats">
-                <div class="ast-fup-meta">
-                  <span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span>
-                  <span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span>
-                  <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
-                </div>
-                <div class="ast-fup-msg">${f.mensagem||'—'}</div>
-              </div>`).join('')}
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:2px">
+          <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.textContent.includes('▶')?'▼ Conversa WhatsApp (${conv.length})':'▶ Conversa WhatsApp (${conv.length})';"
+            style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);padding:10px 0;width:100%;text-align:left;text-transform:uppercase;letter-spacing:.06em">
+            ▶ Conversa WhatsApp (${conv.length})
+          </button>
+          <div style="display:none">
+            <div class="ast-fup-list">
+              ${[...conv].reverse().map(f=>`
+                <div class="ast-fup-item whats">
+                  <div class="ast-fup-meta">
+                    <span style="color:#25D366;font-weight:600">WhatsApp</span><span>·</span>
+                    <span>${f.usuario_nome||det.nome_contato||'—'}</span><span>·</span>
+                    <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
+                  </div>
+                  <div class="ast-fup-msg">${f.mensagem||'—'}</div>
+                </div>`).join('')}
+            </div>
           </div>
         </div>` : ''}
       </div>
@@ -954,20 +991,59 @@ window.astFecharDetalhe = function() {
   document.getElementById('ast-drawer')?.classList.remove('open');
 };
 
-// Salvar status/setor/prioridade
+// Modal de resolução ao concluir
+function astModalResolucao() {
+  return new Promise(resolve => {
+    const old = document.getElementById('ast-modal-resolucao');
+    if (old) old.remove();
+    const opts = _procedencias.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    document.body.insertAdjacentHTML('beforeend',`
+      <div id="ast-modal-resolucao" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+        <div style="background:var(--surface);border-radius:var(--radius);padding:28px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px">✅ Como foi resolvido?</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Selecione o tipo de resolução antes de concluir o chamado.</div>
+          <select id="ast-modal-res-sel" class="ast-form-select" style="margin-bottom:18px">
+            <option value="">Selecione...</option>${opts}
+          </select>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="ast-btn ast-btn-secondary" id="ast-modal-res-cancel">Cancelar</button>
+            <button class="ast-btn ast-btn-success" id="ast-modal-res-ok">Confirmar e Concluir</button>
+          </div>
+        </div>
+      </div>`);
+    document.getElementById('ast-modal-res-cancel').onclick = () => {
+      document.getElementById('ast-modal-resolucao').remove();
+      resolve(null);
+    };
+    document.getElementById('ast-modal-res-ok').onclick = () => {
+      const val = document.getElementById('ast-modal-res-sel').value;
+      if (!val) { alert('Selecione o tipo de resolução'); return; }
+      document.getElementById('ast-modal-resolucao').remove();
+      resolve(val);
+    };
+  });
+}
+
+// Salvar status/setor
 window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
-  const priorId  = document.getElementById('drw-sel-prior')?.value;
   const statusObj = _statusList.find(s=>s.id==statusId);
   const payload = {
     status_id:            statusId ? parseInt(statusId) : null,
     setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
-    prioridade_id:        priorId  ? parseInt(priorId)  : null,
     atualizado_em:        new Date().toISOString(),
     concluido:            statusObj?.finaliza_chamado||false,
   };
-  if (statusObj?.finaliza_chamado) payload.data_conclusao = new Date().toISOString();
+  if (statusObj?.finaliza_chamado) {
+    // Abrir modal de resolução antes de salvar
+    if (!silent) {
+      const tipo = await astModalResolucao();
+      if (tipo === null) { if(!silent) astResetDirty(); return; } // cancelou
+      payload.procedencia_id = tipo ? parseInt(tipo) : null;
+    }
+    payload.data_conclusao = new Date().toISOString();
+  }
   const { error } = await window.sb.from('assist_chamados').update(payload).eq('id',id);
   if (error) { if(!silent) alert('Erro: '+error.message); else throw new Error(error.message); }
   else {
@@ -981,7 +1057,7 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
 
 // Natureza
 window.astSetNatureza = async function(id, natureza, btn) {
-  if(natureza==='nao_garantia'&&!confirm('Classificar como NÃO-GARANTIA?\nO chamado será fechado e o número bloqueado.')) return;
+  if(natureza==='nao_garantia'&&!confirm('Descartar este contato?\nO chamado será encerrado e o número não receberá novos chamados.')) return;
   btn.disabled=true;
   const usuario = window.getUsuario?.();
   const { data: det } = await window.sb.from('assist_chamados').select('telefone,telefone_normalizado').eq('id',id).single();
@@ -1028,11 +1104,9 @@ window.astSelecionarProdDrawer = function(id,ref,nome,idErp) {
 window.astSalvarProdutoDefeitoCausa = async function(id, _silent) { var silent=!!_silent;
   const prodIdErp=document.getElementById('info-prod-id')?.value;
   const prodNome =document.getElementById('info-prod-busca')?.value.trim();
-  const defeitoId=document.getElementById('info-defeito')?.value;
-  const causaId  =document.getElementById('info-causa')?.value;
   const el=document.getElementById('info-pdc-status');
   if(el&&!silent)el.textContent='Salvando...';
-  let payload={defeito_id:defeitoId?parseInt(defeitoId):null,causa_id:causaId?parseInt(causaId):null,atualizado_em:new Date().toISOString()};
+  let payload={atualizado_em:new Date().toISOString()};
   if(prodNome){
     payload.produto_manual=prodNome;
     if(prodIdErp){
@@ -1387,12 +1461,9 @@ window.astAdicionarProduto=async function(){
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
 const CFG_TABLES=[
-  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',       extra:'finaliza_chamado'},
+  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado'},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
-  {id:'prioridades', tabela:'assist_prioridades',  titulo:'⚡ Prioridades'},
-  {id:'defeitos',    tabela:'assist_defeitos',     titulo:'🔴 Defeitos'},
-  {id:'causas',      tabela:'assist_causas',       titulo:'🔍 Causas'},
-  {id:'procedencias',tabela:'assist_procedencias', titulo:'📦 Procedências'},
+  {id:'procedencias',tabela:'assist_procedencias', titulo:'✅ Tipos de Resolução'},
 ];
 async function astLoadConfig(){
   const grid=document.getElementById('ast-cfg-grid');if(!grid)return;
@@ -1449,8 +1520,8 @@ window.astCfgSalvarEdit=async function(tabela,cfgId,rowId){
 // ROTEADOR
 // ══════════════════════════════════════════
 const AST_LOADERS={
-  'ast-gestao':   astLoadGestao,
   'ast-chamados': astLoadChamados,
+  'ast-gestao':   astLoadGestao,
   'ast-produtos': astLoadProdutos,
   'ast-config':   astLoadConfig,
 };
@@ -1466,9 +1537,7 @@ window.ModuloAssistencia = {
       });
       container.innerHTML=''; container.appendChild(w); _iniciado=true;
       // Default: sempre abre em Chamados/Kanban
-      if (!pageId || pageId === 'ast-gestao') {
-        pageId = 'ast-chamados'; _pagina = pageId;
-      }
+      if (!pageId) { pageId = 'ast-chamados'; _pagina = pageId; }
     }
     container.querySelectorAll('.ast-page').forEach(p=>p.style.display='none');
     const target=container.querySelector(`#page-${pageId}`);
