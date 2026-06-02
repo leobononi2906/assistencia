@@ -532,29 +532,34 @@ async function astLoadGraficoDia() {
     const fim    = new Date(ano, mes+1, 0).toISOString().slice(0,10);
     const diasNoMes = new Date(ano, mes+1, 0).getDate();
 
-    const { data } = await window.sb.from('assist_chamados')
-      .select('data_abertura,data_conclusao,concluido,natureza')
-      .eq('natureza','garantia')
-      .or(`data_abertura.gte.${inicio},data_conclusao.gte.${inicio}`)
-      .range(0,9999);
+    // Duas queries separadas — evita OR que traz chamados antigos ainda abertos
+    const [{ data: dataAbertos }, { data: dataConcluidos }] = await Promise.all([
+      window.sb.from('assist_chamados')
+        .select('data_abertura')
+        .eq('natureza','garantia')
+        .gte('data_abertura', inicio)
+        .lte('data_abertura', fim + 'T23:59:59')
+        .range(0,9999),
+      window.sb.from('assist_chamados')
+        .select('data_conclusao')
+        .eq('natureza','garantia')
+        .eq('concluido', true)
+        .gte('data_conclusao', inicio)
+        .lte('data_conclusao', fim + 'T23:59:59')
+        .range(0,9999),
+    ]);
 
     // Montar arrays por dia
     const abertos    = new Array(diasNoMes).fill(0);
     const concluidos = new Array(diasNoMes).fill(0);
 
-    (data||[]).forEach(r => {
-      if (r.data_abertura) {
-        const d = new Date(r.data_abertura);
-        if (d.getFullYear()===ano && d.getMonth()===mes) {
-          abertos[d.getDate()-1]++;
-        }
-      }
-      if (r.concluido && r.data_conclusao) {
-        const d = new Date(r.data_conclusao);
-        if (d.getFullYear()===ano && d.getMonth()===mes) {
-          concluidos[d.getDate()-1]++;
-        }
-      }
+    (dataAbertos||[]).forEach(r => {
+      const d = new Date(r.data_abertura);
+      if (d.getFullYear()===ano && d.getMonth()===mes) abertos[d.getDate()-1]++;
+    });
+    (dataConcluidos||[]).forEach(r => {
+      const d = new Date(r.data_conclusao);
+      if (d.getFullYear()===ano && d.getMonth()===mes) concluidos[d.getDate()-1]++;
     });
 
     const maxVal = Math.max(...abertos, ...concluidos, 1);
@@ -1260,34 +1265,109 @@ window.astRemoverNF = async function(nfId, chamadoId) {
 };
 
 // Modal de resolução ao concluir
-function astModalResolucao() {
+function astModalResolucao(chamadoId) {
   return new Promise(resolve => {
     const old = document.getElementById('ast-modal-resolucao');
     if (old) old.remove();
+
     const opts = _procedencias.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    const prodNome = document.getElementById('info-prod-busca')?.value?.trim() || '';
+    const semProduto = !prodNome;
+
     document.body.insertAdjacentHTML('beforeend',`
       <div id="ast-modal-resolucao" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
-        <div style="background:var(--surface);border-radius:var(--radius);padding:28px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px">✅ Como foi resolvido?</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Selecione o tipo de resolução antes de concluir o chamado.</div>
-          <select id="ast-modal-res-sel" class="ast-form-select" style="margin-bottom:18px">
-            <option value="">Selecione...</option>${opts}
-          </select>
+        <div style="background:var(--surface);border-radius:var(--radius);padding:28px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+
+          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">✅ Concluir chamado</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Preencha os campos abaixo para finalizar.</div>
+
+          ${semProduto ? `
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px">Produto reclamado <span style="color:var(--red)">*</span></label>
+            <div style="position:relative">
+              <input id="ast-modal-prod-busca" class="ast-form-input" placeholder="Buscar produto no catálogo..."
+                autocomplete="off" oninput="astModalBuscarProd(this.value)">
+              <div id="ast-modal-prod-results" class="ast-prod-result" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10"></div>
+              <input type="hidden" id="ast-modal-prod-id">
+            </div>
+            <div id="ast-modal-prod-sel" style="font-size:11px;color:var(--blue-mid);margin-top:3px"></div>
+          </div>` : `
+          <div style="margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Produto</div>
+            <div style="font-size:13px;font-weight:600">✅ ${prodNome}</div>
+          </div>`}
+
+          <div style="margin-bottom:20px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px">Como foi resolvido? <span style="color:var(--red)">*</span></label>
+            <select id="ast-modal-res-sel" class="ast-form-select">
+              <option value="">Selecione o tipo de resolução...</option>${opts}
+            </select>
+          </div>
+
+          <div id="ast-modal-res-erro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+
           <div style="display:flex;gap:10px;justify-content:flex-end">
             <button class="ast-btn ast-btn-secondary" id="ast-modal-res-cancel">Cancelar</button>
-            <button class="ast-btn ast-btn-success" id="ast-modal-res-ok">Confirmar e Concluir</button>
+            <button class="ast-btn ast-btn-success" id="ast-modal-res-ok">✅ Confirmar e Concluir</button>
           </div>
         </div>
       </div>`);
+
+    // Busca de produto no modal
+    window.astModalBuscarProd = async function(q) {
+      const res = document.getElementById('ast-modal-prod-results');
+      if (!res) return;
+      if (!q || q.length < 2) { res.style.display='none'; return; }
+      const { data } = await window.sb.from('assist_produtos').select('id,referencia,nome,id_produto_erp')
+        .eq('ativo',true).or(`nome.ilike.%${q}%,referencia.ilike.%${q}%`).order('nome').range(0,9);
+      if (!data?.length) { res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum produto encontrado</div>'; res.style.display=''; return; }
+      res.style.display='';
+      res.innerHTML = data.map(p=>`
+        <div class="ast-prod-result-item" onclick="astModalSelecionarProd(${p.id},'${(p.referencia||'').replace(/'/g,"\'")}','${p.nome.replace(/'/g,"\'")}',${p.id_produto_erp||'null'})">
+          <div>${p.nome}</div><div class="ast-prod-ref">${p.referencia||''}</div>
+        </div>`).join('');
+    };
+    window.astModalSelecionarProd = function(id, ref, nome, idErp) {
+      const inp = document.getElementById('ast-modal-prod-busca');
+      const hid = document.getElementById('ast-modal-prod-id');
+      const sel = document.getElementById('ast-modal-prod-sel');
+      const res = document.getElementById('ast-modal-prod-results');
+      if(inp) inp.value = nome;
+      if(hid) hid.value = idErp||id;
+      if(sel) sel.textContent = `✅ ${ref?ref+' — ':''}${nome}`;
+      if(res) res.style.display='none';
+      // Sincroniza com o campo do drawer
+      const drwBusca = document.getElementById('info-prod-busca');
+      const drwId    = document.getElementById('info-prod-id');
+      const drwSel   = document.getElementById('info-prod-sel');
+      if(drwBusca) drwBusca.value = nome;
+      if(drwId)    drwId.value    = idErp||id;
+      if(drwSel)   drwSel.textContent = `✅ ${ref?ref+' — ':''}${nome}`;
+    };
+
     document.getElementById('ast-modal-res-cancel').onclick = () => {
       document.getElementById('ast-modal-resolucao').remove();
       resolve(null);
     };
+
     document.getElementById('ast-modal-res-ok').onclick = () => {
-      const val = document.getElementById('ast-modal-res-sel').value;
-      if (!val) { alert('Selecione o tipo de resolução'); return; }
+      const erro = document.getElementById('ast-modal-res-erro');
+      const tipo = document.getElementById('ast-modal-res-sel')?.value;
+      const prodFinal = document.getElementById('ast-modal-prod-busca')?.value?.trim()
+                     || document.getElementById('info-prod-busca')?.value?.trim();
+
+      if (semProduto && !prodFinal) {
+        erro.textContent = 'Informe o produto reclamado.';
+        erro.style.display = '';
+        return;
+      }
+      if (!tipo) {
+        erro.textContent = 'Selecione o tipo de resolução.';
+        erro.style.display = '';
+        return;
+      }
       document.getElementById('ast-modal-resolucao').remove();
-      resolve(val);
+      resolve(tipo);
     };
   });
 }
@@ -1308,13 +1388,24 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
     ...(statusMudou ? { data_status_alterado: new Date().toISOString() } : {}),
   };
   if (statusObj?.finaliza_chamado) {
-    // Abrir modal de resolução antes de salvar
-    if (!silent) {
-      const tipo = await astModalResolucao();
-      if (tipo === null) { if(!silent) astResetDirty(); return; } // cancelou
-      payload.procedencia_id = tipo ? parseInt(tipo) : null;
-    }
+    // Modal SEMPRE aparece ao concluir — mesmo via astSalvarTudo
+    const tipo = await astModalResolucao(id);
+    if (tipo === null) { astResetDirty(); return; } // cancelou
+    payload.procedencia_id = tipo ? parseInt(tipo) : null;
     payload.data_conclusao = new Date().toISOString();
+    // Salvar produto se foi preenchido/alterado no modal
+    const prodNomeModal = document.getElementById('info-prod-busca')?.value?.trim();
+    const prodIdModal   = document.getElementById('info-prod-id')?.value;
+    if (prodNomeModal) {
+      payload.produto_manual = prodNomeModal;
+      if (prodIdModal) {
+        const{data:pd}=await window.sb.from('assist_produtos')
+          .select('nome,referencia,id_produto_erp')
+          .or(`id.eq.${prodIdModal},id_produto_erp.eq.${prodIdModal}`)
+          .limit(1).maybeSingle();
+        if(pd){payload.produto_nome=pd.nome;payload.produto_codigo=pd.referencia||null;payload.produto_id_erp=pd.id_produto_erp||null;payload.produto_manual=null;}
+      }
+    }
   }
   const { error } = await window.sb.from('assist_chamados').update(payload).eq('id',id);
   if (error) { if(!silent) alert('Erro: '+error.message); else throw new Error(error.message); }
