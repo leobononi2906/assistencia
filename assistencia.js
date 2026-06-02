@@ -378,7 +378,7 @@ const astSelectOptions = (lista, val) => lista.map(i =>
 async function astCarregarLookups() {
   if (_statusList.length) return;
   const [s, se, p, d, c, pr] = await Promise.allSettled([
-    window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem').eq('ativo',true).order('ordem'),
+    window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem,cor,sla_horas').eq('ativo',true).order('ordem'),
     window.sb.from('assist_setores').select('id,nome').eq('ativo',true).order('nome'),
     window.sb.from('assist_prioridades').select('id,nome,ordem').eq('ativo',true).order('ordem'),
     window.sb.from('assist_defeitos').select('id,nome').eq('ativo',true).order('nome'),
@@ -639,17 +639,23 @@ function astRenderKanban() {
       ondragover="astKanbanDragOver(event)"
       ondrop="astKanbanDrop(event)"
       ondragend="astKanbanDragEnd(event)">
-      <div class="ast-kanban-hdr" style="cursor:grab">
+      <div class="ast-kanban-hdr" style="cursor:grab;border-left:4px solid ${v.meta.cor||'#6B7280'}">
         <div class="ast-kanban-title">${status}</div>
         <div class="ast-kanban-count">${v.items.length}</div>
       </div>
       <div class="ast-kanban-cards">
         ${v.items.map(r=>{
           const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
-          return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})">
+          const slaHoras = v.meta.sla_horas;
+          const horasNoStatus = r.horas_no_status||0;
+          const slaVencido = slaHoras && horasNoStatus > slaHoras && !astEhFinalizado(r);
+          const cor = v.meta.cor||'#6B7280';
+          return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})" style="border-top:3px solid ${cor}">
             <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
             <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
-            <div class="ast-kanban-card-foot"><div style="display:flex;gap:3px">${astAlertasBadges(r)}</div></div>
+            <div class="ast-kanban-card-foot">
+              <div style="display:flex;gap:3px;flex-wrap:wrap">${astAlertasBadges(r)}${slaVencido?`<span class="ast-alerta-parado">⏰ SLA ${Math.round(horasNoStatus)}h</span>`:''}</div>
+            </div>
           </div>`;
         }).join('')}
       </div>
@@ -774,10 +780,11 @@ window.astAbrirDetalhe = async function(id) {
       astData[localIdx].visualizado = true;
     }
 
-    const [{ data: det }, { data: fups }, { data: pecas }] = await Promise.all([
+    const [{ data: det }, { data: fups }, { data: pecas }, { data: nfsVinculadas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
       window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_chamado_nfs').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
 
@@ -788,6 +795,40 @@ window.astAbrirDetalhe = async function(id) {
       det.id_os ? window.sb.from('assist_os_garantia').select('*').eq('id_os',det.id_os).maybeSingle() : Promise.resolve({ data: null }),
     ]);
     const osData = osResp.data;
+
+    // NFs do ERP (departamento GARANTIA) vinculadas ao cliente
+    let nfsErp = [];
+    if (det.cliente_id_erp) {
+      try {
+        const { data: nfsErpData } = await window.sb
+          .from('vw_comercial_docs_faturados')
+          .select('id,id_doc,num_nf,data_faturamento,nome_transportadora,valor_frete,faturamento_doc,id_vendedor')
+          .eq('id_cliente', det.cliente_id_erp)
+          .order('data_faturamento', {ascending:false})
+          .range(0,49);
+        // Dedup por id_doc e filtrar por vendedor garantia depois
+        const seen = new Set();
+        (nfsErpData||[]).forEach(r => { if (!seen.has(r.id_doc)) { seen.add(r.id_doc); nfsErp.push(r); } });
+      } catch(e) {}
+    }
+
+    // CTes do frete vinculados às NFs manuais do chamado
+    let ctesMap = {};
+    if (nfsVinculadas?.length) {
+      try {
+        const nums = nfsVinculadas.map(n=>n.num_nf).filter(Boolean);
+        if (nums.length) {
+          const { data: ctes } = await window.sb
+            .from('frt_conhecimentos')
+            .select('id,nome_transportadora,valor_frete_cte,status_auditoria,criado_em,notas_fiscais')
+            .range(0,99);
+          (ctes||[]).forEach(cte => {
+            const nfs = Array.isArray(cte.notas_fiscais) ? cte.notas_fiscais : [];
+            nfs.forEach(nf => { if (nums.includes(String(nf.num_nf||''))) ctesMap[nf.num_nf] = cte; });
+          });
+        }
+      } catch(e) {}
+    }
 
     const fupsList  = fups||[];
     const pecasList = pecas||[];
@@ -971,6 +1012,54 @@ window.astAbrirDetalhe = async function(id) {
           </div>`).join('')}
       </div>` : ''}
 
+      <!-- ⑦ ENTREGAS -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🚚 Entregas</span>
+          <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astAbrirModalNF(${id})">+ Vincular NF</button>
+        </div>
+
+        ${(nfsVinculadas||[]).length ? `
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">NFs vinculadas ao chamado</div>
+          ${(nfsVinculadas||[]).map(nf => {
+            const cte = ctesMap[nf.num_nf];
+            return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;background:${nf.tipo==='remessa'?'var(--blue-pale)':'var(--orange-bg)'};color:${nf.tipo==='remessa'?'var(--blue-mid)':'var(--orange)'};padding:1px 7px;border-radius:10px">${nf.tipo==='remessa'?'📤 Remessa':'📥 Retorno'}</span>
+                <span style="font-weight:600;font-size:13px">NF ${nf.num_nf}</span>
+                <span style="font-size:11px;color:var(--text-muted)">${new Date(nf.criado_em).toLocaleDateString('pt-BR')}</span>
+                <button class="ast-btn ast-btn-danger ast-btn-sm" style="margin-left:auto" onclick="astRemoverNF(${nf.id},${id})">✕</button>
+              </div>
+              ${cte ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted)">
+                🚛 ${cte.nome_transportadora||'—'} · CTe · 
+                ${cte.valor_frete_cte?'R$ '+parseFloat(cte.valor_frete_cte).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'} · 
+                <span style="color:${cte.status_auditoria==='ok'?'var(--green)':cte.status_auditoria==='divergencia'?'var(--red)':'var(--text-muted)'}">${cte.status_auditoria||'pendente'}</span>
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        ${nfsErp.length ? `
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">NFs do ERP — Departamento Garantia</div>
+          <div style="overflow-x:auto">
+            <table class="ast-table" style="font-size:12px">
+              <thead><tr><th>NF</th><th>Data</th><th>Transportadora</th><th class="right">Frete</th><th class="right">Valor NF</th></tr></thead>
+              <tbody>
+                ${nfsErp.map(nf=>`<tr>
+                  <td class="ast-mono">${nf.num_nf||nf.id_doc||'—'}</td>
+                  <td>${nf.data_faturamento?new Date(nf.data_faturamento).toLocaleDateString('pt-BR'):'—'}</td>
+                  <td style="color:var(--text-muted)">${nf.nome_transportadora||'—'}</td>
+                  <td class="right">${nf.valor_frete?'R$ '+parseFloat(nf.valor_frete).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+                  <td class="right">${nf.faturamento_doc?'R$ '+parseFloat(nf.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : `<div class="ast-empty" style="padding:16px 0"><div class="ast-empty-ico">🚚</div>${det.cliente_id_erp?'Nenhuma NF de garantia encontrada para este cliente':'Cliente ERP não vinculado — vincule para ver NFs'}</div>`}
+      </div>
+
     `;
   } catch(e) {
     console.error(e);
@@ -989,6 +1078,62 @@ window.astSecTab = function(tab,btn) {
 window.astFecharDetalhe = function() {
   document.getElementById('ast-overlay')?.classList.remove('open');
   document.getElementById('ast-drawer')?.classList.remove('open');
+};
+
+
+// ══════════════════════════════════════════
+// MODAL — Vincular NF ao chamado
+// ══════════════════════════════════════════
+window.astAbrirModalNF = function(chamadoId) {
+  const old = document.getElementById('ast-modal-nf');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="ast-modal-nf" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">🚚 Vincular NF ao chamado</div>
+        <div class="ast-form-field" style="margin-bottom:12px">
+          <label class="ast-form-lbl">Número da NF</label>
+          <input class="ast-form-input" id="modal-nf-num" placeholder="Ex: 12345" type="text">
+        </div>
+        <div class="ast-form-field" style="margin-bottom:12px">
+          <label class="ast-form-lbl">Tipo</label>
+          <select class="ast-form-select" id="modal-nf-tipo">
+            <option value="remessa">📤 Remessa (produto ao cliente)</option>
+            <option value="retorno">📥 Retorno (produto à assistência)</option>
+          </select>
+        </div>
+        <div class="ast-form-field" style="margin-bottom:18px">
+          <label class="ast-form-lbl">Chave NF-e (opcional)</label>
+          <input class="ast-form-input" id="modal-nf-chave" placeholder="44 dígitos" maxlength="44">
+        </div>
+        <div id="modal-nf-erro" style="color:var(--red);font-size:12px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-nf').remove()">Cancelar</button>
+          <button class="ast-btn ast-btn-primary" onclick="astSalvarNF(${chamadoId})">Vincular</button>
+        </div>
+      </div>
+    </div>`);
+};
+
+window.astSalvarNF = async function(chamadoId) {
+  const num = document.getElementById('modal-nf-num')?.value.trim();
+  const tipo = document.getElementById('modal-nf-tipo')?.value;
+  const chave = document.getElementById('modal-nf-chave')?.value.trim();
+  const erro = document.getElementById('modal-nf-erro');
+  if (!num) { if(erro) erro.textContent = 'Informe o número da NF'; return; }
+  const usuario = window.getUsuario?.();
+  const { error } = await window.sb.from('assist_chamado_nfs').insert({
+    id_chamado: chamadoId, num_nf: num, tipo, chave_nfe: chave||null, criado_por: usuario?.nome||null
+  });
+  if (error) { if(erro) erro.textContent = 'Erro: ' + error.message; return; }
+  document.getElementById('ast-modal-nf').remove();
+  astAbrirDetalhe(chamadoId);
+};
+
+window.astRemoverNF = async function(nfId, chamadoId) {
+  if (!confirm('Remover esta NF?')) return;
+  await window.sb.from('assist_chamado_nfs').delete().eq('id', nfId);
+  astAbrirDetalhe(chamadoId);
 };
 
 // Modal de resolução ao concluir
@@ -1461,7 +1606,7 @@ window.astAdicionarProduto=async function(){
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
 const CFG_TABLES=[
-  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado'},
+  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado', extraCor:true},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
   {id:'procedencias',tabela:'assist_procedencias', titulo:'✅ Tipos de Resolução'},
 ];
@@ -1510,6 +1655,38 @@ window.astCfgEditar=function(cfgId,rowId,tabela,nomeAtual){
     <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astLoadConfig()">✕</button>`;
   document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.focus();
 };
+
+// Config — editar cor do status
+window.astCfgEditarCor = function(tabela, id, corAtual, el) {
+  const input = document.createElement('input');
+  input.type = 'color';
+  input.value = corAtual;
+  input.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+  document.body.appendChild(input);
+  input.click();
+  input.addEventListener('change', async () => {
+    const novaCor = input.value;
+    await window.sb.from(tabela).update({cor: novaCor, atualizado_em: new Date().toISOString()}).eq('id', id);
+    el.style.background = novaCor;
+    document.body.removeChild(input);
+    astInvalidarLookups();
+    await astLoadConfig();
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 500);
+  });
+};
+
+// Config — editar SLA em horas
+window.astCfgEditarSLA = function(tabela, id, slaAtual) {
+  const novo = prompt('SLA em horas para este status (deixe vazio para sem SLA):', slaAtual||'');
+  if (novo === null) return;
+  const horas = novo.trim() === '' ? null : parseInt(novo);
+  if (novo.trim() !== '' && isNaN(horas)) { alert('Digite um número válido'); return; }
+  window.sb.from(tabela).update({sla_horas: horas, atualizado_em: new Date().toISOString()}).eq('id', id)
+    .then(() => { astInvalidarLookups(); astLoadConfig(); });
+};
+
 window.astCfgSalvarEdit=async function(tabela,cfgId,rowId){
   const novoNome=document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.value.trim();if(!novoNome)return;
   await window.sb.from(tabela).update({nome:novoNome,atualizado_em:new Date().toISOString()}).eq('id',rowId);
