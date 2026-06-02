@@ -428,7 +428,8 @@ const astSelectOptions = (lista, val) => lista.map(i =>
 async function astCarregarLookups() {
   if (_statusList.length) return;
   const [s, se, p, d, c, pr] = await Promise.allSettled([
-    window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem,cor,sla_horas').eq('ativo',true).order('ordem'),
+    window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem,cor,sla_horas').eq('ativo',true).order('ordem')
+      .then(r => r.error ? window.sb.from('assist_status').select('id,nome,finaliza_chamado,ordem').eq('ativo',true).order('ordem') : r),
     window.sb.from('assist_setores').select('id,nome').eq('ativo',true).order('nome'),
     window.sb.from('assist_prioridades').select('id,nome,ordem').eq('ativo',true).order('ordem'),
     window.sb.from('assist_defeitos').select('id,nome').eq('ativo',true).order('nome'),
@@ -906,7 +907,7 @@ window.astAbrirDetalhe = async function(id) {
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
       window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
-      window.sb.from('assist_chamado_nfs').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_chamado_nfs').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
 
