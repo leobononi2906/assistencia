@@ -331,6 +331,11 @@ const AST_PAGES = {
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input class="ast-search" id="ast-ent-busca" placeholder="Buscar cliente ou NF..." oninput="astEntregas.filtrar()" style="width:220px">
+      <select class="ast-select" id="ast-ent-status" onchange="astEntregas.filtrar()">
+        <option value="todas">Todas</option>
+        <option value="nao_entregues">Não entregues</option>
+        <option value="entregues">Entregues</option>
+      </select>
       <select class="ast-select" id="ast-ent-mes" onchange="astEntregas.carregar()">
         <option value="0">Mês atual</option>
         <option value="1">Mês anterior</option>
@@ -372,7 +377,7 @@ const AST_PAGES = {
 let _container = null, _iniciado = false, _pagina = null;
 let astData = [], astFiltrados = [], astView = 'kanban', astOrdem = 'recente';
 let astProdAll = [];
-let _statusList = [], _setoresList = [], _prioridadeList = [];
+let _statusList = [], _setoresList = [];
 let _defeitos = [], _causas = [], _procedencias = [];
 
 const astFmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
@@ -432,7 +437,6 @@ async function astCarregarLookups() {
   ]);
   _statusList    = s.status  ==='fulfilled'?(s.value.data ||[]):[];
   _setoresList   = se.status ==='fulfilled'?(se.value.data||[]):[];
-  _prioridadeList= p.status  ==='fulfilled'?(p.value.data ||[]):[];
   _defeitos      = d.status  ==='fulfilled'?(d.value.data ||[]):[];
   _causas        = c.status  ==='fulfilled'?(c.value.data ||[]):[];
   _procedencias  = pr.status ==='fulfilled'?(pr.value.data||[]):[];
@@ -765,7 +769,7 @@ function astRenderKanban() {
         ${v.items.map(r=>{
           const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
           const slaHoras = v.meta.sla_horas;
-          const horasNoStatus = r.horas_no_status||0;
+          const horasNoStatus = r.data_status_alterado ? astHorasUteis(r.data_status_alterado) : (r.horas_no_status||0);
           const slaVencido = slaHoras && horasNoStatus > slaHoras && !astEhFinalizado(r);
           const cor = v.meta.cor||'#6B7280';
           return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})" style="border-top:3px solid ${cor}">
@@ -1292,11 +1296,15 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
   const statusObj = _statusList.find(s=>s.id==statusId);
+  // Verificar se status mudou para atualizar data_status_alterado
+  const chamadoAtual = astData.find(r=>r.id===id)||astFiltrados.find(r=>r.id===id);
+  const statusMudou = !chamadoAtual || String(chamadoAtual.status_id) !== String(statusId);
   const payload = {
     status_id:            statusId ? parseInt(statusId) : null,
     setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
     atualizado_em:        new Date().toISOString(),
     concluido:            statusObj?.finaliza_chamado||false,
+    ...(statusMudou ? { data_status_alterado: new Date().toISOString() } : {}),
   };
   if (statusObj?.finaliza_chamado) {
     // Abrir modal de resolução antes de salvar
@@ -1385,16 +1393,6 @@ window.astSalvarProdutoDefeitoCausa = async function(id, _silent) { var silent=!
 };
 
 // Procedência + Obs
-window.astSalvarProcedenciaObs = async function(id) {
-  const v=k=>document.getElementById(k)?.value;
-  const payload={procedencia_id:v('sec-procedencia')?parseInt(v('sec-procedencia')):null,observacao_interna:v('sec-obs')||null,atualizado_em:new Date().toISOString()};
-  const el=document.getElementById('sec-obs-status');
-  if(el)el.textContent='Salvando...';
-  const{error}=await window.sb.from('assist_chamados').update(payload).eq('id',id);
-  if(error){if(el&&!silent)el.textContent='❌ '+error.message;if(silent)throw new Error(error.message);return;}
-  if(el&&!silent){el.textContent='✅ Salvo!';setTimeout(()=>el.textContent='',3000);}
-};
-
 // Follow-up
 window.astSalvarFup = async function(chamadoId) {
   const tipo=document.getElementById('fup-tipo')?.value;
@@ -1745,12 +1743,13 @@ const astEntregas = {
         .order('data_faturamento',{ascending:false})
         .range(0,999);
 
-      // Dedup por id_doc
+      // Dedup por id_doc + só NFs com transportadora
       const seen = new Set();
       const nfsBruto = (data||[]).filter(r => {
         if (seen.has(r.id_doc)) return false;
         seen.add(r.id_doc);
-        return true;
+        // Só exibe NFs com transportadora informada (precisam de rastreio)
+        return r.nome_transportadora && r.nome_transportadora.trim() !== '';
       });
 
       // Buscar vendedores para filtrar departamento GARANTIA
@@ -1787,11 +1786,29 @@ const astEntregas = {
     }
   },
   filtrar() {
-    const busca = (document.getElementById('ast-ent-busca')?.value||'').toLowerCase();
-    const dados = this._dados || [];
-    const filtrado = busca
-      ? dados.filter(r => `${r.nome_cliente||''} ${r.num_nf||''} ${r.id_doc||''} ${r.nome_transportadora||''}`.toLowerCase().includes(busca))
-      : dados;
+    const busca      = (document.getElementById('ast-ent-busca')?.value||'').toLowerCase();
+    const statusFil  = document.getElementById('ast-ent-status')?.value||'todas';
+    const dados      = this._dados || [];
+    const ctesMap    = this._ctesMap || {};
+    let filtrado = dados;
+    if (busca) {
+      filtrado = filtrado.filter(r =>
+        `${r.nome_cliente||''} ${r.num_nf||''} ${r.id_doc||''} ${r.nome_transportadora||''}`.toLowerCase().includes(busca)
+      );
+    }
+    if (statusFil === 'entregues') {
+      filtrado = filtrado.filter(r => {
+        const numStr = String(r.num_nf||r.id_doc||'');
+        const cte = ctesMap[numStr];
+        return cte && cte.status_auditoria === 'ok';
+      });
+    } else if (statusFil === 'nao_entregues') {
+      filtrado = filtrado.filter(r => {
+        const numStr = String(r.num_nf||r.id_doc||'');
+        const cte = ctesMap[numStr];
+        return !cte || cte.status_auditoria !== 'ok';
+      });
+    }
     this.renderizar(filtrado);
   },
   renderizar(dados) {
@@ -1840,6 +1857,53 @@ const astEntregas = {
   }
 };
 
+
+// ══════════════════════════════════════════
+// CÁLCULO DE HORAS ÚTEIS (08–18, seg–sex)
+// ══════════════════════════════════════════
+function astHorasUteis(dataInicio, dataFim) {
+  if (!dataInicio) return 0;
+  const inicio = new Date(dataInicio);
+  const fim    = dataFim ? new Date(dataFim) : new Date();
+  if (fim <= inicio) return 0;
+
+  const HORA_INI = 8, HORA_FIM = 18; // 08:00–18:00
+  let horas = 0;
+  const cur = new Date(inicio);
+
+  // Avança para o próximo momento útil se necessário
+  function proximoMomentoUtil(d) {
+    const diaSem = d.getDay(); // 0=dom, 6=sab
+    if (diaSem === 0) { d.setDate(d.getDate()+1); d.setHours(HORA_INI,0,0,0); }
+    else if (diaSem === 6) { d.setDate(d.getDate()+2); d.setHours(HORA_INI,0,0,0); }
+    else if (d.getHours() < HORA_INI) { d.setHours(HORA_INI,0,0,0); }
+    else if (d.getHours() >= HORA_FIM) {
+      d.setDate(d.getDate()+1); d.setHours(HORA_INI,0,0,0);
+      const ds2 = d.getDay();
+      if (ds2===0) d.setDate(d.getDate()+1);
+      else if (ds2===6) d.setDate(d.getDate()+2);
+    }
+    return d;
+  }
+
+  proximoMomentoUtil(cur);
+  if (cur >= fim) return 0;
+
+  while (cur < fim) {
+    const diaSem = cur.getDay();
+    if (diaSem === 0 || diaSem === 6) { cur.setDate(cur.getDate()+1); cur.setHours(HORA_INI,0,0,0); continue; }
+    // Fim do dia útil atual
+    const fimDia = new Date(cur); fimDia.setHours(HORA_FIM,0,0,0);
+    const limite = fim < fimDia ? fim : fimDia;
+    if (cur.getHours() < HORA_FIM) {
+      horas += (limite - cur) / 3600000;
+    }
+    // Próximo dia
+    cur.setDate(cur.getDate()+1); cur.setHours(HORA_INI,0,0,0);
+  }
+  return Math.round(horas * 10) / 10;
+}
+
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
@@ -1856,11 +1920,14 @@ async function astLoadConfig(){
     const rows=(results[i].status==='fulfilled'?results[i].value.data:null)||[];
     const items=rows.map(r=>`
       <div class="ast-cfg-item" id="cfg-item-${c.id}-${r.id}">
+        ${c.extraCor?`<div style="width:18px;height:18px;border-radius:4px;background:${r.cor||'#6B7280'};flex-shrink:0;border:1px solid var(--border);cursor:pointer" title="Clique para mudar a cor" onclick="astCfgEditarCor('${c.tabela}',${r.id},'${r.cor||'#6B7280'}',this)"></div>`:''}
         <span class="ast-cfg-name" id="cfg-nm-${c.id}-${r.id}">${r.nome}</span>
         ${c.extra==='finaliza_chamado'&&r.finaliza_chamado?`<span style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 5px;border-radius:8px;font-weight:600">Finaliza</span>`:''}
+        ${c.extraCor&&r.sla_horas?`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:8px;font-weight:600">⏱️ ${r.sla_horas}h úteis</span>`:''}
         <span class="ast-badge ${r.ativo!==false?'ast-badge-concluido':'ast-badge-cancelado'}" style="font-size:10px">${r.ativo!==false?'Ativo':'Inativo'}</span>
         <div style="display:flex;gap:3px">
-          <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}','${r.nome.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}','${r.nome.replace(/'/g,\"\\'\")}')">✏️</button>
+          ${c.extraCor?`<button class="ast-btn ast-btn-secondary ast-btn-sm" title="SLA em horas úteis" onclick="astCfgEditarSLA('${c.tabela}',${r.id},${r.sla_horas||0})">⏱️</button>`:''}
           <button class="ast-btn ${r.ativo!==false?'ast-btn-danger':'ast-btn-success'} ast-btn-sm" onclick="astCfgToggle('${c.tabela}',${r.id},${!(r.ativo!==false)})">${r.ativo!==false?'🚫':'✅'}</button>
         </div>
       </div>`).join('');
@@ -1917,7 +1984,7 @@ window.astCfgEditarCor = function(tabela, id, corAtual, el) {
 
 // Config — editar SLA em horas
 window.astCfgEditarSLA = function(tabela, id, slaAtual) {
-  const novo = prompt('SLA em horas para este status (deixe vazio para sem SLA):', slaAtual||'');
+  const novo = prompt('SLA em horas ÚTEIS para este status (08h-18h, seg-sex)\nDeixe vazio para sem SLA:', slaAtual||'');
   if (novo === null) return;
   const horas = novo.trim() === '' ? null : parseInt(novo);
   if (novo.trim() !== '' && isNaN(horas)) { alert('Digite um número válido'); return; }
@@ -1964,7 +2031,7 @@ window.ModuloAssistencia = {
   destroy() {
     _iniciado=false; _pagina=null;
     astData=[];astFiltrados=[];astProdAll=[];
-    _statusList=[];_setoresList=[];_prioridadeList=[];
+    _statusList=[];_setoresList=[];
   }
 };
 
