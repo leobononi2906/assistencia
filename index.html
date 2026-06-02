@@ -293,8 +293,10 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
           <span class="nav-module-chevron">▼</span>
         </div>
         <div class="nav-module-items">
-          <a class="nav-item" data-pagina="ast-gestao"   onclick="navegarPara('ast-gestao')">  <span class="nav-dot"></span>Gestão</a>
+          <!-- Chamados PRIMEIRO -->
           <a class="nav-item" data-pagina="ast-chamados" onclick="navegarPara('ast-chamados')"><span class="nav-dot"></span>Chamados</a>
+          <a class="nav-item" data-pagina="ast-gestao"   onclick="navegarPara('ast-gestao')">  <span class="nav-dot"></span>Gestão</a>
+          <a class="nav-item" data-pagina="ast-entregas" onclick="navegarPara('ast-entregas')"><span class="nav-dot"></span>Entregas</a>
           <a class="nav-item" data-pagina="ast-produtos" onclick="navegarPara('ast-produtos')"><span class="nav-dot"></span>Produtos</a>
           <a class="nav-item" data-pagina="ast-config"   onclick="navegarPara('ast-config')">  <span class="nav-dot"></span>Configurações</a>
         </div>
@@ -372,11 +374,15 @@ window.fmtFull = (v) => 'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimum
 window.fmtDate = (d) => { if(!d) return '—'; return new Date(d).toLocaleDateString('pt-BR'); };
 window.setLastUpdate = () => { document.getElementById('last-update').textContent = `Atualizado ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; };
 
+// ══════════════════════════════════════════
+// MAPA DE PÁGINAS — inclui ast-entregas
+// ══════════════════════════════════════════
 const PAGINAS = {
-  'ast-gestao':   { label: 'Gestão',          breadcrumb: 'Assistência · Gestão' },
-  'ast-chamados': { label: 'Chamados',         breadcrumb: 'Assistência · Chamados' },
-  'ast-produtos': { label: 'Produtos',         breadcrumb: 'Assistência · Produtos' },
-  'ast-config':   { label: 'Configurações',    breadcrumb: 'Assistência · Config' },
+  'ast-chamados': { label: 'Chamados',         breadcrumb: 'Assistência · Chamados'   },
+  'ast-gestao':   { label: 'Gestão',           breadcrumb: 'Assistência · Gestão'     },
+  'ast-entregas': { label: 'Entregas',          breadcrumb: 'Assistência · Entregas'   },
+  'ast-produtos': { label: 'Produtos',          breadcrumb: 'Assistência · Produtos'   },
+  'ast-config':   { label: 'Configurações',     breadcrumb: 'Assistência · Config'     },
 };
 
 async function navegarPara(paginaId) {
@@ -385,7 +391,7 @@ async function navegarPara(paginaId) {
   document.getElementById('page-breadcrumb').textContent = pg.breadcrumb;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`.nav-item[data-pagina="${paginaId}"]`)?.classList.add('active');
-  document.getElementById(`nav-module-ast`)?.classList.remove('collapsed');
+  document.getElementById('nav-module-ast')?.classList.remove('collapsed');
   paginaAtiva = paginaId;
 
   const slot = document.getElementById('slot-ast');
@@ -472,7 +478,9 @@ async function iniciarApp() {
   document.getElementById('user-name').textContent   = usuarioAtual.nome;
   document.getElementById('login-wrap').classList.remove('show');
   document.getElementById('app-shell').style.display = 'flex';
-  await navegarPara('ast-gestao');
+
+  // ← ABRE EM CHAMADOS, não em Gestão
+  await navegarPara('ast-chamados');
 }
 
 iniciarApp();

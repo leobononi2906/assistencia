@@ -235,6 +235,16 @@ const AST_PAGES = {
     <div class="ast-card"><div class="ast-card-label">Parados +7 dias</div><div class="ast-card-value red" id="ast-k-parados">—</div><div class="ast-card-sub">sem follow-up</div></div>
     <div class="ast-card"><div class="ast-card-label">Pior Índice Defeito</div><div class="ast-card-value red" id="ast-k-pior-idx" style="font-size:18px;line-height:1.3">—</div><div class="ast-card-sub" id="ast-k-pior-prod">últimos 12 meses</div></div>
   </div>
+  <div class="ast-table-card" style="margin-top:16px">
+    <div class="ast-table-header">
+      <div class="ast-table-title">📅 Atendimentos por Dia — <span id="ast-k-mes-nome"></span></div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--text-muted)">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-mid);border-radius:2px;margin-right:3px"></span>Abertos</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:3px"></span>Concluídos</span>
+      </div>
+    </div>
+    <div style="padding:14px 18px;overflow-x:auto" id="ast-grafico-dia"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+  </div>
   <div class="ast-gest-grid" style="margin-top:16px">
     <div class="ast-table-card">
       <div class="ast-table-header"><div class="ast-table-title">Distribuição por Setor</div></div>
@@ -310,6 +320,41 @@ const AST_PAGES = {
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
     <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔴 Mais Chamados</div></div><div style="padding:12px 16px" id="ast-criticos-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
     <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔧 Peças Mais Usadas</div></div><div style="padding:12px 16px" id="ast-pecas-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
+  </div>
+</div>`,
+
+'ast-entregas': `<div class="ast-page" id="page-ast-entregas">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary)">🚚 Entregas — Departamento Garantia</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">NFs emitidas pelo departamento de Garantia do ERP</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="ast-search" id="ast-ent-busca" placeholder="Buscar cliente ou NF..." oninput="astEntregas.filtrar()" style="width:220px">
+      <select class="ast-select" id="ast-ent-mes" onchange="astEntregas.carregar()">
+        <option value="0">Mês atual</option>
+        <option value="1">Mês anterior</option>
+        <option value="3">Últimos 3 meses</option>
+        <option value="6">Últimos 6 meses</option>
+      </select>
+    </div>
+  </div>
+  <div class="ast-cards" style="margin-bottom:16px">
+    <div class="ast-card"><div class="ast-card-label">Total de NFs</div><div class="ast-card-value blue" id="ast-ent-k-total">—</div><div class="ast-card-sub">no período</div></div>
+    <div class="ast-card"><div class="ast-card-label">Valor Total</div><div class="ast-card-value" id="ast-ent-k-valor">—</div><div class="ast-card-sub">faturamento NFs</div></div>
+    <div class="ast-card"><div class="ast-card-label">Frete Total</div><div class="ast-card-value orange" id="ast-ent-k-frete">—</div><div class="ast-card-sub">custo transporte</div></div>
+    <div class="ast-card"><div class="ast-card-label">Clientes Atendidos</div><div class="ast-card-value green" id="ast-ent-k-clientes">—</div><div class="ast-card-sub">únicos no período</div></div>
+  </div>
+  <div class="ast-table-card">
+    <div class="ast-table-header">
+      <div class="ast-table-title">NFs emitidas — <span id="ast-ent-count">—</span></div>
+    </div>
+    <div class="ast-table-wrap">
+      <table class="ast-table">
+        <thead><tr><th>NF</th><th>Data</th><th>Cliente</th><th>Transportadora</th><th class="right">Valor NF</th><th class="right">Frete</th><th>CTe / Rastreio</th></tr></thead>
+        <tbody id="ast-ent-body"><tr class="ast-loading"><td colspan="7">Carregando...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>`,
 
@@ -397,7 +442,7 @@ function astInvalidarLookups() { _statusList=[]; _setoresList=[]; }
 // GESTÃO
 // ══════════════════════════════════════════
 async function astLoadGestao() {
-  await Promise.all([astLoadKPIs(), astLoadSetorDistrib(), astLoadEvolucao(), astLoadIndiceDefeito(), astLoadParados(), astLoadBloqueados()]);
+  await Promise.all([astLoadKPIs(), astLoadSetorDistrib(), astLoadEvolucao(), astLoadGraficoDia(), astLoadIndiceDefeito(), astLoadParados(), astLoadBloqueados()]);
   window.setLastUpdate?.();
 }
 async function astLoadKPIs() {
@@ -466,6 +511,79 @@ async function astLoadEvolucao() {
     }).join('')+'<div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--text-muted)"><span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-mid);border-radius:2px;margin-right:3px"></span>Abertos</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:3px"></span>Concluídos</span></div>';
   } catch(e) { el.innerHTML='<div style="color:var(--text-muted);font-size:13px">Sem dados</div>'; }
 }
+
+async function astLoadGraficoDia() {
+  const el = document.getElementById('ast-grafico-dia');
+  const elMes = document.getElementById('ast-k-mes-nome');
+  if (!el) return;
+  try {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const nomeMes = hoje.toLocaleString('pt-BR', {month:'long', year:'numeric'});
+    if (elMes) elMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+    const inicio = new Date(ano, mes, 1).toISOString().slice(0,10);
+    const fim    = new Date(ano, mes+1, 0).toISOString().slice(0,10);
+    const diasNoMes = new Date(ano, mes+1, 0).getDate();
+
+    const { data } = await window.sb.from('assist_chamados')
+      .select('data_abertura,data_conclusao,concluido,natureza')
+      .eq('natureza','garantia')
+      .or(`data_abertura.gte.${inicio},data_conclusao.gte.${inicio}`)
+      .range(0,9999);
+
+    // Montar arrays por dia
+    const abertos    = new Array(diasNoMes).fill(0);
+    const concluidos = new Array(diasNoMes).fill(0);
+
+    (data||[]).forEach(r => {
+      if (r.data_abertura) {
+        const d = new Date(r.data_abertura);
+        if (d.getFullYear()===ano && d.getMonth()===mes) {
+          abertos[d.getDate()-1]++;
+        }
+      }
+      if (r.concluido && r.data_conclusao) {
+        const d = new Date(r.data_conclusao);
+        if (d.getFullYear()===ano && d.getMonth()===mes) {
+          concluidos[d.getDate()-1]++;
+        }
+      }
+    });
+
+    const maxVal = Math.max(...abertos, ...concluidos, 1);
+    const barH = 52; // altura máxima px das barras
+    const diaHoje = hoje.getDate();
+
+    const html = `
+      <div style="display:flex;align-items:flex-end;gap:3px;height:${barH+28}px;overflow-x:auto;padding-bottom:4px">
+        ${Array.from({length:diasNoMes},(_,i)=>{
+          const dia = i+1;
+          const ab  = abertos[i];
+          const co  = concluidos[i];
+          const hAb = ab  ? Math.max(Math.round(ab /maxVal*barH), 3) : 0;
+          const hCo = co  ? Math.max(Math.round(co /maxVal*barH), 3) : 0;
+          const isHoje = dia===diaHoje;
+          const isFut  = dia>diaHoje;
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:18px;flex:1;max-width:32px;opacity:${isFut?0.35:1}">
+            <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;height:${barH}px">
+              ${ab?`<div title="${ab} abertos" style="width:100%;height:${hAb}px;background:var(--blue-mid);border-radius:2px 2px 0 0"></div>`:''}
+              ${co?`<div title="${co} concluídos" style="width:100%;height:${hCo}px;background:var(--green);border-radius:2px 2px 0 0"></div>`:''}
+              ${!ab&&!co?`<div style="width:100%;height:2px;background:var(--border);border-radius:2px;margin-top:auto"></div>`:''}
+            </div>
+            <div style="font-size:9px;color:${isHoje?'var(--blue-mid)':'var(--text-muted)'};font-weight:${isHoje?'700':'400'};white-space:nowrap">${dia}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <span>Total abertos no mês: <strong style="color:var(--blue-mid)">${abertos.reduce((a,b)=>a+b,0)}</strong></span>
+        <span>Total concluídos: <strong style="color:var(--green)">${concluidos.reduce((a,b)=>a+b,0)}</strong></span>
+      </div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML='<div style="color:var(--text-muted);font-size:13px">Sem dados</div>'; }
+}
+
 async function astLoadIndiceDefeito() {
   const tbody = document.getElementById('ast-indice-body'); if (!tbody) return;
   try {
@@ -1602,6 +1720,126 @@ window.astAdicionarProduto=async function(){
   await astLoadProdutos();
 };
 
+
+// ══════════════════════════════════════════
+// ENTREGAS — Departamento Garantia (página)
+// ══════════════════════════════════════════
+const astEntregas = {
+  _dados: [],
+  async carregar() {
+    const tbody = document.getElementById('ast-ent-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr class="ast-loading"><td colspan="7">Carregando...</td></tr>';
+
+    const mesesAtras = parseInt(document.getElementById('ast-ent-mes')?.value||'0');
+    const hoje = new Date();
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - mesesAtras, 1);
+    const inicioStr = inicio.toISOString().slice(0,10);
+
+    try {
+      // Busca NFs do ERP do departamento GARANTIA
+      const { data } = await window.sb
+        .from('vw_comercial_docs_faturados')
+        .select('id,id_doc,num_nf,data_faturamento,id_cliente,nome_cliente,nome_transportadora,valor_frete,faturamento_doc,id_vendedor')
+        .gte('data_faturamento', inicioStr)
+        .order('data_faturamento',{ascending:false})
+        .range(0,999);
+
+      // Dedup por id_doc
+      const seen = new Set();
+      const nfsBruto = (data||[]).filter(r => {
+        if (seen.has(r.id_doc)) return false;
+        seen.add(r.id_doc);
+        return true;
+      });
+
+      // Buscar vendedores para filtrar departamento GARANTIA
+      // Como não temos join direto, filtramos por nome_vendedor se disponível
+      // ou usamos todas (a view pode já ter o filtro de departamento via JOIN)
+      // Por segurança: pegamos todas e filtramos na view se ela tiver departamento
+      // Se a vw_comercial_docs_faturados tiver campo departamento_vendedor, filtrar aqui
+      // Por ora usamos o resultado bruto já que a query virá filtrada do ERP via views
+
+      this._dados = nfsBruto;
+
+      // Buscar CTes para cruzamento
+      let ctesMap = {};
+      if (nfsBruto.length) {
+        const nums = [...new Set(nfsBruto.map(r=>String(r.num_nf||r.id_doc)).filter(Boolean))];
+        try {
+          const { data: ctes } = await window.sb.from('frt_conhecimentos')
+            .select('id,nome_transportadora,valor_frete_cte,status_auditoria,notas_fiscais')
+            .range(0,999);
+          (ctes||[]).forEach(cte => {
+            const nfs = Array.isArray(cte.notas_fiscais) ? cte.notas_fiscais : [];
+            nfs.forEach(nf => {
+              const k = String(nf.num_nf||'');
+              if (nums.includes(k)) ctesMap[k] = cte;
+            });
+          });
+        } catch(e) {}
+      }
+      this._ctesMap = ctesMap;
+      this.filtrar();
+      window.setLastUpdate?.();
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar: ${e.message}</td></tr>`;
+    }
+  },
+  filtrar() {
+    const busca = (document.getElementById('ast-ent-busca')?.value||'').toLowerCase();
+    const dados = this._dados || [];
+    const filtrado = busca
+      ? dados.filter(r => `${r.nome_cliente||''} ${r.num_nf||''} ${r.id_doc||''} ${r.nome_transportadora||''}`.toLowerCase().includes(busca))
+      : dados;
+    this.renderizar(filtrado);
+  },
+  renderizar(dados) {
+    const tbody = document.getElementById('ast-ent-body');
+    const count = document.getElementById('ast-ent-count');
+    if (!tbody) return;
+
+    // KPIs
+    const totalNFs    = dados.length;
+    const totalValor  = dados.reduce((s,r)=>s+(parseFloat(r.faturamento_doc)||0),0);
+    const totalFrete  = dados.reduce((s,r)=>s+(parseFloat(r.valor_frete)||0),0);
+    const clientes    = new Set(dados.map(r=>r.id_cliente).filter(Boolean)).size;
+    const fmt = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    const el = id => document.getElementById(id);
+    if(el('ast-ent-k-total'))    el('ast-ent-k-total').textContent    = totalNFs;
+    if(el('ast-ent-k-valor'))    el('ast-ent-k-valor').textContent    = fmt(totalValor);
+    if(el('ast-ent-k-frete'))    el('ast-ent-k-frete').textContent    = fmt(totalFrete);
+    if(el('ast-ent-k-clientes')) el('ast-ent-k-clientes').textContent = clientes;
+    if(count) count.textContent = `${totalNFs} registros`;
+
+    if (!dados.length) {
+      tbody.innerHTML = '<tr><td colspan="7"><div class="ast-empty"><div class="ast-empty-ico">🚚</div>Nenhuma NF encontrada no período</div></td></tr>';
+      return;
+    }
+
+    const ctesMap = this._ctesMap || {};
+    tbody.innerHTML = dados.map(r => {
+      const numStr = String(r.num_nf||r.id_doc||'');
+      const cte = ctesMap[numStr];
+      const cteHtml = cte
+        ? `<span style="font-size:11px;color:${cte.status_auditoria==='ok'?'var(--green)':cte.status_auditoria==='divergencia'?'var(--red)':'var(--text-muted)'}">
+             CTe · ${cte.nome_transportadora||'—'} · R$ ${parseFloat(cte.valor_frete_cte||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${cte.status_auditoria||'pendente'}
+           </span>`
+        : '<span style="font-size:11px;color:var(--text-muted)">Sem CTe vinculado</span>';
+      return `<tr>
+        <td class="ast-mono" style="font-weight:600">${r.num_nf||r.id_doc||'—'}</td>
+        <td style="white-space:nowrap">${r.data_faturamento?new Date(r.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR'):'—'}</td>
+        <td><div style="font-weight:500;font-size:13px">${r.nome_cliente||'—'}</div></td>
+        <td style="color:var(--text-muted);font-size:12px">${r.nome_transportadora||'—'}</td>
+        <td class="right" style="font-weight:600">${r.faturamento_doc?fmt(parseFloat(r.faturamento_doc)):'—'}</td>
+        <td class="right" style="color:var(--orange)">${r.valor_frete&&parseFloat(r.valor_frete)>0?fmt(parseFloat(r.valor_frete)):'—'}</td>
+        <td>${cteHtml}</td>
+      </tr>`;
+    }).join('');
+  }
+};
+
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
@@ -1700,6 +1938,7 @@ const AST_LOADERS={
   'ast-chamados': astLoadChamados,
   'ast-gestao':   astLoadGestao,
   'ast-produtos': astLoadProdutos,
+  'ast-entregas': ()=>astEntregas.carregar(),
   'ast-config':   astLoadConfig,
 };
 
@@ -1713,8 +1952,8 @@ window.ModuloAssistencia = {
         if(t.firstElementChild) w.appendChild(t.firstElementChild);
       });
       container.innerHTML=''; container.appendChild(w); _iniciado=true;
-      // Default: sempre abre em Chamados/Kanban
-      if (!pageId) { pageId = 'ast-chamados'; _pagina = pageId; }
+      // Default: sempre abre em Chamados/Kanban independente do que o app passar
+      pageId = 'ast-chamados'; _pagina = pageId;
     }
     container.querySelectorAll('.ast-page').forEach(p=>p.style.display='none');
     const target=container.querySelector(`#page-${pageId}`);
