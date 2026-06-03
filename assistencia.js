@@ -1478,6 +1478,7 @@ window.astSetNatureza = async function(id, natureza, btn) {
 
 // Produto + Defeito + Causa
 let _buscaProdDrwTimer=null;
+let _prodErpTimer=null;
 window.astBuscarProdDrawer = function(chamadoId) {
   clearTimeout(_buscaProdDrwTimer);
   _buscaProdDrwTimer=setTimeout(async()=>{
@@ -1919,8 +1920,8 @@ function astCriarModalProduto(){
 window.astAbrirModalProduto=function(){astCriarModalProduto();document.getElementById('ast-modal-prod').classList.add('open');};
 window.astFecharModalProduto=function(){document.getElementById('ast-modal-prod')?.classList.remove('open');};
 window.astBuscarERP=function(){
-  clearTimeout(_erpTimer);
-  _erpTimer=setTimeout(async()=>{
+  clearTimeout(_prodErpTimer);
+  _prodErpTimer=setTimeout(async()=>{
     const q=(document.getElementById('mp-busca')?.value||'').trim(), res=document.getElementById('mp-results');
     if(!res||q.length<2){if(res)res.style.display='none';return;}
     res.style.display='';res.innerHTML='<div style="padding:10px;color:var(--text-muted);font-size:13px">Buscando...</div>';
