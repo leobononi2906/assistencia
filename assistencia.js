@@ -778,9 +778,14 @@ function astRenderKanban() {
           const horasNoStatus = r.data_status_alterado ? astHorasUteis(r.data_status_alterado) : (r.horas_no_status||0);
           const slaVencido = slaHoras && horasNoStatus > slaHoras && !astEhFinalizado(r);
           const cor = v.meta.cor||'#6B7280';
+          const dataHora = r.data_abertura ? new Date(r.data_abertura).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
           return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})" style="border-top:3px solid ${cor}">
             <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
             <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;justify-content:space-between">
+              <span>🕐 ${dataHora}</span>
+              ${r.id_os?`<span style="font-size:10px;color:var(--blue-mid);font-weight:600">OS #${r.id_os}</span>`:''}
+            </div>
             <div class="ast-kanban-card-foot">
               <div style="display:flex;gap:3px;flex-wrap:wrap">${astAlertasBadges(r)}${slaVencido?`<span class="ast-alerta-parado">⏰ SLA ${Math.round(horasNoStatus)}h</span>`:''}</div>
             </div>
@@ -924,19 +929,18 @@ window.astAbrirDetalhe = async function(id) {
     ]);
     const osData = osResp.data;
 
-    // NFs do ERP (departamento GARANTIA) vinculadas ao cliente
-    let nfsErp = [];
+    // Todos os docs ERP do cliente (vendas, NFs, OS)
+    let docsErp = [];
     if (det.cliente_id_erp) {
       try {
-        const { data: nfsErpData } = await window.sb
+        const { data: docsErpData } = await window.sb
           .from('vw_comercial_docs_faturados')
-          .select('id,id_doc,num_nf,data_faturamento,nome_transportadora,valor_frete,faturamento_doc,id_vendedor')
+          .select('id,id_doc,tipo_doc,num_nf,data_faturamento,tipo_saida,nome_transportadora,valor_frete,faturamento_doc,nome_vendedor')
           .eq('id_cliente', det.cliente_id_erp)
           .order('data_faturamento', {ascending:false})
-          .range(0,49);
-        // Dedup por id_doc e filtrar por vendedor garantia depois
+          .range(0,199);
         const seen = new Set();
-        (nfsErpData||[]).forEach(r => { if (!seen.has(r.id_doc)) { seen.add(r.id_doc); nfsErp.push(r); } });
+        (docsErpData||[]).forEach(r => { if (!seen.has(r.id_doc+'-'+r.tipo_doc)) { seen.add(r.id_doc+'-'+r.tipo_doc); docsErp.push(r); } });
       } catch(e) {}
     }
 
@@ -961,8 +965,9 @@ window.astAbrirDetalhe = async function(id) {
     const fupsList  = fups||[];
     const pecasList = pecas||[];
     const histList  = historico||[];
-    const conv  = fupsList.filter(f=>f.tipo==='whatsapp');
-    const acomp = fupsList.filter(f=>f.tipo!=='whatsapp');
+    const conv   = fupsList.filter(f=>f.tipo==='whatsapp'||f.origem==='whatsapp');
+    const logs   = fupsList.filter(f=>f.tipo==='log_status');
+    const acomp  = fupsList.filter(f=>f.tipo!=='whatsapp'&&f.origem!=='whatsapp'&&f.tipo!=='log_status');
     const diasAb = astDias(det.data_abertura)||0;
 
     const alertasBits = [
@@ -1017,10 +1022,19 @@ window.astAbrirDetalhe = async function(id) {
 
       <!-- ② CLIENTE -->
       <div class="ast-drw-section">
-        <div class="ast-drw-section-title">Cliente</div>
+        <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Cliente</span>
+          <div style="display:flex;gap:6px">
+            ${det.cliente_id_erp
+              ? `<button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirModalVincularERP(${id})">✏️ Editar vínculo</button>
+                 <button class="ast-btn ast-btn-danger ast-btn-sm" onclick="astRemoverVinculoERP(${id})">✕ Remover</button>`
+              : `<button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astAbrirModalVincularERP(${id})">🔗 Vincular ERP</button>`}
+          </div>
+        </div>
         <div class="ast-detail-grid">
           <div class="ast-detail-field"><div class="ast-detail-lbl">Nome ERP</div><div class="ast-detail-val">${det.cliente_nome_erp||'—'}</div></div>
-          <div class="ast-detail-field"><div class="ast-detail-lbl">Contato</div><div class="ast-detail-val">${det.nome_contato||'—'}</div></div>
+          <div class="ast-detail-field"><div class="ast-detail-lbl">Código ERP</div><div class="ast-detail-val ast-mono">${det.cliente_id_erp||'—'}</div></div>
+          <div class="ast-detail-field"><div class="ast-detail-lbl">Contato (Umbler)</div><div class="ast-detail-val">${det.nome_contato||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Telefone</div><div class="ast-detail-val">${det.telefone||'—'}</div></div>
           <div class="ast-detail-field"><div class="ast-detail-lbl">Cidade / UF</div><div class="ast-detail-val">${det.cidade&&det.uf?`${det.cidade} / ${det.uf}`:'—'}</div></div>
         </div>
@@ -1123,6 +1137,26 @@ window.astAbrirDetalhe = async function(id) {
             </div>
           </div>
         </div>` : ''}
+        ${logs.length ? `
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:2px">
+          <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.textContent.includes('▶')?'▼ Log de alterações (${logs.length})':'▶ Log de alterações (${logs.length})';"
+            style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);padding:10px 0;width:100%;text-align:left;text-transform:uppercase;letter-spacing:.06em">
+            ▶ Log de alterações (${logs.length})
+          </button>
+          <div style="display:none">
+            <div class="ast-fup-list">
+              ${[...logs].map(f=>`
+                <div class="ast-fup-item" style="border-left:3px solid var(--text-muted);background:var(--surface2)">
+                  <div class="ast-fup-meta">
+                    <span style="font-weight:600;color:var(--text-secondary)">🔄 Sistema</span><span>·</span>
+                    <span>${f.usuario_nome||'Sistema'}</span><span>·</span>
+                    <span>${f.criado_em?new Date(f.criado_em).toLocaleString('pt-BR'):'—'}</span>
+                  </div>
+                  <div class="ast-fup-msg" style="color:var(--text-secondary);font-size:12px">${f.mensagem||'—'}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>` : ''}
       </div>
 
       <!-- ⑥ HISTÓRICO DO CLIENTE -->
@@ -1168,24 +1202,25 @@ window.astAbrirDetalhe = async function(id) {
           }).join('')}
         </div>` : ''}
 
-        ${nfsErp.length ? `
-        <div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">NFs do ERP — Departamento Garantia</div>
+        ${docsErp.length ? `
+        <div style="margin-top:8px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">Histórico ERP — ${docsErp.length} documento(s)</div>
           <div style="overflow-x:auto">
             <table class="ast-table" style="font-size:12px">
-              <thead><tr><th>NF</th><th>Data</th><th>Transportadora</th><th class="right">Frete</th><th class="right">Valor NF</th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Doc/NF</th><th>Data</th><th>Vendedor</th><th>Transp.</th><th class="right">Valor</th></tr></thead>
               <tbody>
-                ${nfsErp.map(nf=>`<tr>
-                  <td class="ast-mono">${nf.num_nf||nf.id_doc||'—'}</td>
-                  <td>${nf.data_faturamento?new Date(nf.data_faturamento).toLocaleDateString('pt-BR'):'—'}</td>
-                  <td style="color:var(--text-muted)">${nf.nome_transportadora||'—'}</td>
-                  <td class="right">${nf.valor_frete?'R$ '+parseFloat(nf.valor_frete).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
-                  <td class="right">${nf.faturamento_doc?'R$ '+parseFloat(nf.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+                ${docsErp.map(d=>`<tr>
+                  <td><span style="font-size:10px;font-weight:600;background:var(--surface2);padding:1px 5px;border-radius:4px">${(d.tipo_doc||'').trim()}</span></td>
+                  <td class="ast-mono">${d.num_nf||d.id_doc||'—'}</td>
+                  <td style="white-space:nowrap">${d.data_faturamento?new Date(d.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR'):'—'}</td>
+                  <td style="color:var(--text-muted);font-size:11px">${d.nome_vendedor||'—'}</td>
+                  <td style="color:var(--text-muted);font-size:11px">${d.nome_transportadora||'—'}</td>
+                  <td class="right">${d.faturamento_doc?'R$ '+parseFloat(d.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
           </div>
-        </div>` : `<div class="ast-empty" style="padding:16px 0"><div class="ast-empty-ico">🚚</div>${det.cliente_id_erp?'Nenhuma NF de garantia encontrada para este cliente':'Cliente ERP não vinculado — vincule para ver NFs'}</div>`}
+        </div>` : `<div class="ast-empty" style="padding:16px 0"><div class="ast-empty-ico">📋</div>${det.cliente_id_erp?'Nenhum documento encontrado para este cliente':'Cliente ERP não vinculado — use o botão Vincular ERP'}</div>`}
       </div>
 
     `;
@@ -1204,6 +1239,7 @@ window.astSecTab = function(tab,btn) {
   document.getElementById(`ast-sec-${tab}`)?.classList.add('active');
 };
 window.astFecharDetalhe = function() {
+  astResetDirty();
   document.getElementById('ast-overlay')?.classList.remove('open');
   document.getElementById('ast-drawer')?.classList.remove('open');
 };
@@ -1508,7 +1544,112 @@ window.astSalvarFup = async function(chamadoId) {
       <div class="ast-fup-meta"><span style="font-weight:600">${tipo}</span><span>·</span><span>${usuario?.nome||'—'}</span><span>·</span><span>${new Date().toLocaleString('pt-BR')}</span></div>
       <div class="ast-fup-msg">${msg}</div></div>`);
   }
+  // Atualizar dados locais
+  const idx=astData.findIndex(r=>r.id===chamadoId);
+  if(idx>=0){astData[idx].data_ultimo_followup=new Date().toISOString();astData[idx].dias_sem_followup=0;astAplicarFiltros();}
   setTimeout(()=>{if(el)el.textContent='';},3000);
+};
+
+
+// ══════════════════════════════════════════
+// VINCULAR / REMOVER ERP
+// ══════════════════════════════════════════
+window.astAbrirModalVincularERP = function(chamadoId) {
+  const old = document.getElementById('ast-modal-erp');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend',`
+    <div id="ast-modal-erp" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:460px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">🔗 Vincular cliente ERP</div>
+        <div style="position:relative;margin-bottom:14px">
+          <input class="ast-form-input" id="modal-erp-busca" placeholder="Buscar por nome, telefone ou código..."
+            autocomplete="off" oninput="astBuscarClienteERP(this.value)">
+          <div id="modal-erp-results" class="ast-prod-result" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10;max-height:240px"></div>
+        </div>
+        <div id="modal-erp-selecionado" style="font-size:12px;color:var(--blue-mid);margin-bottom:14px;min-height:18px"></div>
+        <input type="hidden" id="modal-erp-id">
+        <div id="modal-erp-erro" style="color:var(--red);font-size:12px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-erp').remove()">Cancelar</button>
+          <button class="ast-btn ast-btn-primary" onclick="astConfirmarVinculoERP(${chamadoId})">Vincular</button>
+        </div>
+      </div>
+    </div>`);
+};
+
+let _erpTimer = null;
+window.astBuscarClienteERP = function(q) {
+  clearTimeout(_erpTimer);
+  _erpTimer = setTimeout(async () => {
+    const res = document.getElementById('modal-erp-results');
+    if (!res) return;
+    if (!q || q.length < 2) { res.style.display='none'; return; }
+    try {
+      const isNum = /^\d+$/.test(q.trim());
+      let query = window.sb.from('assist_clientes_telefone_lookup')
+        .select('id_cliente,nome_cliente,telefone1,cidade,uf')
+        .order('nome_cliente').range(0,14);
+      if (isNum && q.length <= 6) {
+        query = query.eq('id_cliente', parseInt(q));
+      } else if (isNum) {
+        query = query.or(`tel1_norm.ilike.%${q.replace(/\D/g,'')}%,tel2_norm.ilike.%${q.replace(/\D/g,'')}%`);
+      } else {
+        query = query.ilike('nome_cliente', `%${q}%`);
+      }
+      const { data } = await query;
+      if (!data?.length) {
+        res.innerHTML='<div class="ast-prod-result-item" style="color:var(--text-muted)">Nenhum cliente encontrado</div>';
+        res.style.display=''; return;
+      }
+      res.style.display='';
+      res.innerHTML = data.map(c=>`
+        <div class="ast-prod-result-item" onclick="astSelecionarClienteERP(${c.id_cliente},'${c.nome_cliente.replace(/'/g,"\'")}','${c.cidade||''}','${c.uf||''}')">
+          <div style="font-weight:600">${c.nome_cliente}</div>
+          <div class="ast-prod-ref">Cód: ${c.id_cliente} · ${c.cidade||''}${c.uf?' / '+c.uf:''} · ${c.telefone1||'—'}</div>
+        </div>`).join('');
+    } catch(e) {}
+  }, 300);
+};
+
+window.astSelecionarClienteERP = function(id, nome, cidade, uf) {
+  document.getElementById('modal-erp-id').value = id;
+  document.getElementById('modal-erp-selecionado').innerHTML =
+    `✅ <strong>${nome}</strong> — Cód: ${id}${cidade?' · '+cidade:''}${uf?' / '+uf:''}`;
+  document.getElementById('modal-erp-results').style.display = 'none';
+  document.getElementById('modal-erp-busca').value = nome;
+};
+
+window.astConfirmarVinculoERP = async function(chamadoId) {
+  const idErp = document.getElementById('modal-erp-id')?.value;
+  const erro = document.getElementById('modal-erp-erro');
+  if (!idErp) { if(erro) erro.textContent = 'Selecione um cliente'; return; }
+
+  // Buscar dados completos do cliente
+  const { data: cli } = await window.sb.from('assist_clientes_telefone_lookup')
+    .select('id_cliente,nome_cliente,cidade,uf').eq('id_cliente', parseInt(idErp)).maybeSingle();
+
+  const payload = {
+    cliente_id_erp: parseInt(idErp),
+    cliente_nome_erp: cli?.nome_cliente || null,
+    atualizado_em: new Date().toISOString()
+  };
+  const { error } = await window.sb.from('assist_chamados').update(payload).eq('id', chamadoId);
+  if (error) { if(erro) erro.textContent = 'Erro: ' + error.message; return; }
+
+  document.getElementById('ast-modal-erp').remove();
+  astAbrirDetalhe(chamadoId);
+
+  // Atualizar local
+  const idx = astData.findIndex(r=>r.id===chamadoId);
+  if(idx>=0){ astData[idx].cliente_id_erp=parseInt(idErp); astData[idx].cliente_nome=cli?.nome_cliente||null; }
+};
+
+window.astRemoverVinculoERP = async function(chamadoId) {
+  if (!confirm('Remover vínculo com o cliente ERP?')) return;
+  await window.sb.from('assist_chamados').update({
+    cliente_id_erp: null, cliente_nome_erp: null, atualizado_em: new Date().toISOString()
+  }).eq('id', chamadoId);
+  astAbrirDetalhe(chamadoId);
 };
 
 // OS — busca e vinculação
