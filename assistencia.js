@@ -1918,7 +1918,6 @@ function astCriarModalProduto(){
 }
 window.astAbrirModalProduto=function(){astCriarModalProduto();document.getElementById('ast-modal-prod').classList.add('open');};
 window.astFecharModalProduto=function(){document.getElementById('ast-modal-prod')?.classList.remove('open');};
-let _erpTimer=null;
 window.astBuscarERP=function(){
   clearTimeout(_erpTimer);
   _erpTimer=setTimeout(async()=>{
