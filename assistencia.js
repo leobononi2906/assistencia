@@ -2159,7 +2159,7 @@ async function astLoadConfig(){
         ${c.extraCor&&r.sla_horas?`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:8px;font-weight:600">⏱️ ${r.sla_horas}h úteis</span>`:''}
         <span class="ast-badge ${r.ativo!==false?'ast-badge-concluido':'ast-badge-cancelado'}" style="font-size:10px">${r.ativo!==false?'Ativo':'Inativo'}</span>
         <div style="display:flex;gap:3px">
-          <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}',this.dataset.nome)" data-nome="${r.nome.replace(/"/g,'&quot;')}">✏️</button>
+          <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}','${r.nome.replace(/'/g,'\\\'')}')">✏️</button>
           ${c.extraCor?`<button class="ast-btn ast-btn-secondary ast-btn-sm" title="SLA em horas úteis" onclick="astCfgEditarSLA('${c.tabela}',${r.id},${r.sla_horas||0})">⏱️</button>`:''}
           <button class="ast-btn ${r.ativo!==false?'ast-btn-danger':'ast-btn-success'} ast-btn-sm" onclick="astCfgToggle('${c.tabela}',${r.id},${!(r.ativo!==false)})">${r.ativo!==false?'🚫':'✅'}</button>
         </div>
