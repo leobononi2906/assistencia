@@ -776,7 +776,11 @@ function astRenderKanban() {
         <div class="ast-kanban-title">${status}</div>
         <div class="ast-kanban-count">${v.items.length}</div>
       </div>
-      <div class="ast-kanban-cards">
+      <div class="ast-kanban-cards"
+        data-status-id="${v.meta.id||''}"
+        data-status-nome="${status}"
+        ondragover="astCardAreaDragOver(event)"
+        ondrop="astCardAreaDrop(event)">
         ${v.items.map(r=>{
           const parado=(r.dias_sem_followup||0)>=7&&!astEhFinalizado(r);
           const slaHoras = v.meta.sla_horas;
@@ -784,7 +788,14 @@ function astRenderKanban() {
           const slaVencido = slaHoras && horasNoStatus > slaHoras && !astEhFinalizado(r);
           const cor = v.meta.cor||'#6B7280';
           const dataHora = r.data_abertura ? new Date(r.data_abertura).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-          return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}" onclick="astAbrirDetalhe(${r.id})" style="border-top:3px solid ${cor}">
+          return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}"
+            draggable="true"
+            data-card-id="${r.id}"
+            data-status-id="${r.status_id||''}"
+            onclick="astAbrirDetalhe(${r.id})"
+            ondragstart="astCardDragStart(event)"
+            ondragend="astCardDragEnd(event)"
+            style="border-top:3px solid ${cor};cursor:grab">
             <div class="ast-kanban-card-name">${r.cliente_nome||r.nome_contato||'—'}</div>
             <div class="ast-kanban-card-sub">${r.produto_nome||'—'}<br>${r.setor_responsavel||''}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;justify-content:space-between">
@@ -799,14 +810,22 @@ function astRenderKanban() {
       </div>
     </div>`).join('');
 }
-// Drag-and-drop de colunas
-let _dragSrcCol = null;
+// ══════════════════════════════════════════
+// DRAG-AND-DROP — COLUNAS
+// ══════════════════════════════════════════
+let _dragSrcCol  = null;
+let _dragSrcCard = null; // card sendo arrastado
+
 window.astKanbanDragStart = function(e) {
+  // Só aciona para coluna se NÃO for um card
+  if (e.target.closest('[data-card-id]')) return;
   _dragSrcCol = e.currentTarget;
-  e.currentTarget.style.opacity='0.4';
+  e.currentTarget.style.opacity='0.5';
   e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('type','col');
 };
 window.astKanbanDragOver = function(e) {
+  if (_dragSrcCard) return; // card drag tem prioridade
   e.preventDefault();
   e.dataTransfer.dropEffect='move';
   const over = e.currentTarget;
@@ -821,13 +840,111 @@ window.astKanbanDragOver = function(e) {
 };
 window.astKanbanDrop = function(e) { e.preventDefault(); };
 window.astKanbanDragEnd = function(e) {
+  if (_dragSrcCard) return;
   e.currentTarget.style.opacity='';
-  // Salvar nova ordem
   const board = document.getElementById('ast-kanban-board');
   if (board) {
     const order = [...board.children].map(c=>c.dataset.col).filter(Boolean);
     astSetColOrder(order);
   }
+};
+
+// ══════════════════════════════════════════
+// DRAG-AND-DROP — CARDS entre colunas
+// ══════════════════════════════════════════
+window.astCardDragStart = function(e) {
+  e.stopPropagation(); // não ativar drag de coluna
+  _dragSrcCard = e.currentTarget;
+  _dragSrcCard.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('card-id', e.currentTarget.dataset.cardId);
+  e.dataTransfer.setData('type', 'card');
+};
+
+window.astCardDragEnd = function(e) {
+  if (_dragSrcCard) _dragSrcCard.style.opacity = '';
+  _dragSrcCard = null;
+  // Remover highlight de todas as colunas
+  document.querySelectorAll('.ast-kanban-cards').forEach(c => {
+    c.style.background = '';
+    c.style.outline = '';
+  });
+};
+
+window.astCardAreaDragOver = function(e) {
+  if (!_dragSrcCard) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  // Highlight visual da coluna de destino
+  const area = e.currentTarget;
+  document.querySelectorAll('.ast-kanban-cards').forEach(c => { c.style.outline = ''; });
+  area.style.outline = '2px dashed var(--blue-mid)';
+};
+
+window.astCardAreaDrop = async function(e) {
+  if (!_dragSrcCard) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const area = e.currentTarget;
+  area.style.outline = '';
+
+  const cardId      = parseInt(_dragSrcCard.dataset.cardId);
+  const novoStatus  = area.dataset.statusNome;
+  const novoStatusId = parseInt(area.dataset.statusId);
+  const statusAtual = _dragSrcCard.closest('.ast-kanban-cards')?.dataset.statusNome;
+
+  if (!cardId || !novoStatus || novoStatus === statusAtual) {
+    _dragSrcCard.style.opacity = '';
+    _dragSrcCard = null;
+    return;
+  }
+
+  // Verificar se status finaliza chamado — exigir modal de resolução
+  const statusObj = _statusList.find(s => s.id === novoStatusId);
+  if (statusObj?.finaliza_chamado) {
+    _dragSrcCard.style.opacity = '';
+    _dragSrcCard = null;
+    // Redirecionar para o drawer com o status já selecionado
+    await astAbrirDetalhe(cardId);
+    // Selecionar o status no drawer depois de abrir
+    setTimeout(() => {
+      const sel = document.getElementById('drw-sel-status');
+      if (sel) { sel.value = novoStatusId; astMarcarAlterado(); }
+    }, 800);
+    return;
+  }
+
+  // Atualizar status via drag
+  const usuario = window.getUsuario?.();
+  const { error } = await window.sb.from('assist_chamados').update({
+    status_id: novoStatusId,
+    data_status_alterado: new Date().toISOString(),
+    atualizado_em: new Date().toISOString()
+  }).eq('id', cardId);
+
+  if (error) {
+    alert('Erro ao mover: ' + error.message);
+    _dragSrcCard.style.opacity = '';
+    _dragSrcCard = null;
+    return;
+  }
+
+  // Atualizar local imediatamente (sem reload)
+  const idx = astData.findIndex(r => r.id === cardId);
+  if (idx >= 0) {
+    astData[idx].status_id   = novoStatusId;
+    astData[idx].status_nome = novoStatus;
+    astData[idx].data_status_alterado = new Date().toISOString();
+  }
+
+  _dragSrcCard.style.opacity = '';
+  _dragSrcCard = null;
+
+  // Re-renderizar kanban
+  astAplicarFiltros();
+  // O trigger fn_assist_log_status_change grava o log automaticamente
 };
 window.astSetView = function(v,btn) {
   astView=v;
