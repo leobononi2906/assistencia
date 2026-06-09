@@ -777,8 +777,8 @@ function astRenderKanban() {
         <div class="ast-kanban-count">${v.items.length}</div>
       </div>
       <div class="ast-kanban-cards"
-        data-status-id="${v.meta.id||''}"
-        data-status-nome="${status}"
+        data-col-status-id="${v.meta.id||''}"
+        data-col-status-nome="${status}"
         ondragover="astCardAreaDragOver(event)"
         ondrop="astCardAreaDrop(event)">
         ${v.items.map(r=>{
@@ -791,8 +791,7 @@ function astRenderKanban() {
           return `<div class="ast-kanban-card ${parado?'parado':!r.visualizado?'novo':''}"
             draggable="true"
             data-card-id="${r.id}"
-            data-status-id="${r.status_id||''}"
-            onclick="astAbrirDetalhe(${r.id})"
+            onclick="if(!window._wasDragging)astAbrirDetalhe(${r.id})"
             ondragstart="astCardDragStart(event)"
             ondragend="astCardDragEnd(event)"
             style="border-top:3px solid ${cor};cursor:grab">
@@ -853,22 +852,19 @@ window.astKanbanDragEnd = function(e) {
 // DRAG-AND-DROP — CARDS entre colunas
 // ══════════════════════════════════════════
 window.astCardDragStart = function(e) {
-  e.stopPropagation(); // não ativar drag de coluna
+  e.stopPropagation();
+  window._wasDragging = false;
   _dragSrcCard = e.currentTarget;
   _dragSrcCard.style.opacity = '0.4';
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('card-id', e.currentTarget.dataset.cardId);
-  e.dataTransfer.setData('type', 'card');
 };
 
 window.astCardDragEnd = function(e) {
+  window._wasDragging = true;
+  setTimeout(()=>{ window._wasDragging = false; }, 300);
   if (_dragSrcCard) _dragSrcCard.style.opacity = '';
+  document.querySelectorAll('.ast-kanban-cards').forEach(c => { c.style.outline = ''; });
   _dragSrcCard = null;
-  // Remover highlight de todas as colunas
-  document.querySelectorAll('.ast-kanban-cards').forEach(c => {
-    c.style.background = '';
-    c.style.outline = '';
-  });
 };
 
 window.astCardAreaDragOver = function(e) {
@@ -876,24 +872,23 @@ window.astCardAreaDragOver = function(e) {
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
-  // Highlight visual da coluna de destino
-  const area = e.currentTarget;
   document.querySelectorAll('.ast-kanban-cards').forEach(c => { c.style.outline = ''; });
-  area.style.outline = '2px dashed var(--blue-mid)';
+  e.currentTarget.style.outline = '2px dashed var(--blue-mid)';
 };
 
 window.astCardAreaDrop = async function(e) {
   if (!_dragSrcCard) return;
   e.preventDefault();
   e.stopPropagation();
+  window._wasDragging = true;
 
   const area = e.currentTarget;
   area.style.outline = '';
 
-  const cardId      = parseInt(_dragSrcCard.dataset.cardId);
-  const novoStatus  = area.dataset.statusNome;
-  const novoStatusId = parseInt(area.dataset.statusId);
-  const statusAtual = _dragSrcCard.closest('.ast-kanban-cards')?.dataset.statusNome;
+  const cardId       = parseInt(_dragSrcCard.dataset.cardId);
+  const novoStatus   = area.dataset.colStatusNome;
+  const novoStatusId = parseInt(area.dataset.colStatusId);
+  const statusAtual  = _dragSrcCard.closest('.ast-kanban-cards')?.dataset.colStatusNome;
 
   if (!cardId || !novoStatus || novoStatus === statusAtual) {
     _dragSrcCard.style.opacity = '';
@@ -931,15 +926,16 @@ window.astCardAreaDrop = async function(e) {
     return;
   }
 
-  // Atualizar local imediatamente (sem reload)
+  // Atualizar local imediatamente
   const idx = astData.findIndex(r => r.id === cardId);
   if (idx >= 0) {
     astData[idx].status_id            = novoStatusId;
     astData[idx].status_nome          = novoStatus;
     astData[idx].status_ordem         = statusObj?.ordem ?? astData[idx].status_ordem;
-    astData[idx].finaliza_chamado     = false;
+    astData[idx].finaliza_chamado     = statusObj?.finaliza_chamado ?? false;
     astData[idx].data_status_alterado = new Date().toISOString();
   }
+  console.log('[drag] card', cardId, '->', novoStatus, '(id:', novoStatusId, ')');
 
   _dragSrcCard.style.opacity = '';
   _dragSrcCard = null;
