@@ -853,22 +853,27 @@ window.astKanbanDragEnd = function(e) {
 // ══════════════════════════════════════════
 window.astCardDragStart = function(e) {
   e.stopPropagation();
+  const card = e.currentTarget;
   window._wasDragging = false;
-  _dragSrcCard = e.currentTarget;
-  _dragSrcCard.style.opacity = '0.4';
+  window._dragCardEl  = card;
+  card.style.opacity  = '0.4';
   e.dataTransfer.effectAllowed = 'move';
+  // Guardar ID e status atual no dataTransfer (sobrevive ao dragend)
+  e.dataTransfer.setData('text/card-id',     card.dataset.cardId);
+  e.dataTransfer.setData('text/status-nome', card.closest('.ast-kanban-cards')?.dataset.colStatusNome || '');
 };
 
 window.astCardDragEnd = function(e) {
   window._wasDragging = true;
-  setTimeout(()=>{ window._wasDragging = false; }, 300);
-  if (_dragSrcCard) _dragSrcCard.style.opacity = '';
+  setTimeout(()=>{ window._wasDragging = false; }, 200);
+  if (window._dragCardEl) window._dragCardEl.style.opacity = '';
+  window._dragCardEl = null;
   document.querySelectorAll('.ast-kanban-cards').forEach(c => { c.style.outline = ''; });
-  _dragSrcCard = null;
 };
 
 window.astCardAreaDragOver = function(e) {
-  if (!_dragSrcCard) return;
+  // Só aceitar se for drag de card
+  if (!window._dragCardEl) return;
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
@@ -877,18 +882,22 @@ window.astCardAreaDragOver = function(e) {
 };
 
 window.astCardAreaDrop = async function(e) {
-  if (!_dragSrcCard) return;
   e.preventDefault();
   e.stopPropagation();
   window._wasDragging = true;
 
-  const area = e.currentTarget;
+  // Ler dados do dataTransfer — não depende de _dragSrcCard
+  const cardId      = parseInt(e.dataTransfer.getData('text/card-id'));
+  const statusAtual = e.dataTransfer.getData('text/status-nome');
+  const area        = e.currentTarget;
   area.style.outline = '';
-
-  const cardId       = parseInt(_dragSrcCard.dataset.cardId);
   const novoStatus   = area.dataset.colStatusNome;
   const novoStatusId = parseInt(area.dataset.colStatusId);
-  const statusAtual  = _dragSrcCard.closest('.ast-kanban-cards')?.dataset.colStatusNome;
+
+  if (window._dragCardEl) window._dragCardEl.style.opacity = '';
+  window._dragCardEl = null;
+
+  if (!cardId || !novoStatus || novoStatus === statusAtual) return;
 
   if (!cardId || !novoStatus || novoStatus === statusAtual) {
     _dragSrcCard.style.opacity = '';
