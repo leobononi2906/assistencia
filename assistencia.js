@@ -824,7 +824,7 @@ window.astKanbanDragStart = function(e) {
   e.dataTransfer.setData('type','col');
 };
 window.astKanbanDragOver = function(e) {
-  if (_dragSrcCard) return; // card drag tem prioridade
+  if (window._dragCardEl) return; // card drag tem prioridade
   e.preventDefault();
   e.dataTransfer.dropEffect='move';
   const over = e.currentTarget;
@@ -837,9 +837,9 @@ window.astKanbanDragOver = function(e) {
     else board.insertBefore(_dragSrcCol, over);
   }
 };
-window.astKanbanDrop = function(e) { e.preventDefault(); };
+window.astKanbanDrop = function(e) { if (window._dragCardEl) return; e.preventDefault(); };
 window.astKanbanDragEnd = function(e) {
-  if (_dragSrcCard) return;
+  if (window._dragCardEl) return;
   e.currentTarget.style.opacity='';
   const board = document.getElementById('ast-kanban-board');
   if (board) {
