@@ -194,6 +194,10 @@ const AST_PAGES = {
         <button class="ast-toggle-btn" onclick="astSetView('lista',this)">☰ Lista</button>
         <button class="ast-toggle-btn active" onclick="astSetView('kanban',this)">⬜ Kanban</button>
       </div>
+      <div class="ast-toggle" id="ast-ordem-toggle">
+        <button class="ast-toggle-btn active" onclick="astSetOrdem('antigo',this)" title="Mais antigo primeiro">⬆ Mais antigo</button>
+        <button class="ast-toggle-btn" onclick="astSetOrdem('recente',this)" title="Mais recente primeiro">⬇ Mais recente</button>
+      </div>
       <select class="ast-select" id="ast-fil-status" onchange="astAplicarFiltros()"><option value="">Todos os status</option></select>
       <select class="ast-select" id="ast-fil-setor"  onchange="astAplicarFiltros()"><option value="">Todos os setores</option></select>
       <input class="ast-search" id="ast-busca" placeholder="Buscar cliente ou produto..." oninput="astAplicarFiltros()">
@@ -375,7 +379,7 @@ const AST_PAGES = {
 // ESTADO + HELPERS
 // ══════════════════════════════════════════
 let _container = null, _iniciado = false, _pagina = null;
-let astData = [], astFiltrados = [], astView = 'kanban', astOrdem = 'recente';
+let astData = [], astFiltrados = [], astView = 'kanban', astOrdem = 'antigo';
 let astProdAll = [];
 let _statusList = [], _setoresList = [];
 let _defeitos = [], _causas = [], _procedencias = [];
@@ -706,8 +710,9 @@ window.astAplicarFiltros = function() {
     return true;
   });
   if      (astOrdem==='antigo') astFiltrados.sort((a,b)=>new Date(a.data_abertura)-new Date(b.data_abertura));
+  else if (astOrdem==='recente') astFiltrados.sort((a,b)=>new Date(b.data_abertura)-new Date(a.data_abertura));
   else if (astOrdem==='parado') astFiltrados.sort((a,b)=>(b.dias_sem_followup||0)-(a.dias_sem_followup||0));
-  else                          astFiltrados.sort((a,b)=>new Date(b.data_abertura)-new Date(a.data_abertura));
+  else    astFiltrados.sort((a,b)=>new Date(a.data_abertura)-new Date(b.data_abertura)); // default antigo
   if (astView==='lista') astRenderLista(); else astRenderKanban();
 };
 window.astFiltrarNovos = function() {
