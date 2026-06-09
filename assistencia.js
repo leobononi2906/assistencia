@@ -934,16 +934,40 @@ window.astCardAreaDrop = async function(e) {
   // Atualizar local imediatamente (sem reload)
   const idx = astData.findIndex(r => r.id === cardId);
   if (idx >= 0) {
-    astData[idx].status_id   = novoStatusId;
-    astData[idx].status_nome = novoStatus;
+    astData[idx].status_id            = novoStatusId;
+    astData[idx].status_nome          = novoStatus;
+    astData[idx].status_ordem         = statusObj?.ordem ?? astData[idx].status_ordem;
+    astData[idx].finaliza_chamado     = false;
     astData[idx].data_status_alterado = new Date().toISOString();
   }
 
   _dragSrcCard.style.opacity = '';
   _dragSrcCard = null;
 
-  // Re-renderizar kanban
-  astAplicarFiltros();
+  // Re-renderizar kanban diretamente sem re-filtrar (mantém filtros atuais)
+  // Recalcular astFiltrados do astData atualizado
+  const filStatus  = document.getElementById('ast-fil-status')?.value || '';
+  const filSetor   = document.getElementById('ast-fil-setor')?.value  || '';
+  const busca      = (document.getElementById('ast-busca')?.value     || '').toLowerCase();
+  const verFin     = document.getElementById('ast-ver-finalizados')?.checked;
+
+  astFiltrados = astData.filter(r => {
+    if (r.natureza === 'nao_garantia') return false;
+    if (!verFin && r.concluido)        return false;
+    if (filStatus && String(r.status_id) !== filStatus) return false;
+    if (filSetor  && String(r.setor_responsavel_id) !== filSetor) return false;
+    if (busca) {
+      const h = `${r.cliente_nome||''} ${r.nome_contato||''} ${r.produto_nome||''} ${r.telefone||''}`.toLowerCase();
+      if (!h.includes(busca)) return false;
+    }
+    return true;
+  });
+
+  if (astOrdem==='antigo')  astFiltrados.sort((a,b)=>new Date(a.data_abertura)-new Date(b.data_abertura));
+  else if (astOrdem==='recente') astFiltrados.sort((a,b)=>new Date(b.data_abertura)-new Date(a.data_abertura));
+  else if (astOrdem==='parado')  astFiltrados.sort((a,b)=>(b.dias_sem_followup||0)-(a.dias_sem_followup||0));
+
+  astRenderKanban();
   // O trigger fn_assist_log_status_change grava o log automaticamente
 };
 window.astSetView = function(v,btn) {
