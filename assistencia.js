@@ -688,7 +688,10 @@ async function astLoadChamados() {
 }
 function astPopularSelectsFiltro() {
   const sSet=new Set(), seSet=new Set();
-  astData.forEach(r=>{ if(r.status_nome) sSet.add(r.status_nome); if(r.setor_responsavel) seSet.add(r.setor_responsavel); });
+  astData.forEach(r=>{ if(r.status_nome) sSet.add(r.status_nome); });
+  // Setores: usar lista completa de _setoresList (não só os dos chamados)
+  const seSetorIds = {};
+  _setoresList.forEach(s=>{ seSetorIds[s.id]=s.nome; });
   const ss=document.getElementById('ast-fil-status'), se=document.getElementById('ast-fil-setor');
   if(ss) ss.innerHTML='<option value="">Todos os status</option>'+[...sSet].sort().map(s=>`<option>${s}</option>`).join('');
   if(se) se.innerHTML='<option value="">Todos os setores</option>'+[...seSet].sort().map(s=>`<option>${s}</option>`).join('');
@@ -702,7 +705,7 @@ window.astAplicarFiltros = function() {
     if (r.natureza==='nao_garantia') return false;
     if (!verFin && astEhFinalizado(r)) return false;
     if (status && r.status_nome!==status) return false;
-    if (setor  && r.setor_responsavel!==setor) return false;
+    if (setor  && String(r.setor_responsavel_id)!==String(setor)) return false;
     if (busca) {
       const h=`${r.cliente_nome||''} ${r.nome_contato||''} ${r.produto_nome||''} ${r.telefone||''}`.toLowerCase();
       if (!h.includes(busca)) return false;
@@ -1599,7 +1602,21 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   else {
     const idx=astData.findIndex(r=>r.id===id);
     if(idx>=0){
-      if(statusObj){astData[idx].status_nome=statusObj.nome;astData[idx].finaliza_chamado=statusObj.finaliza_chamado;astData[idx].concluido=statusObj.finaliza_chamado;}
+      if(statusObj){
+        astData[idx].status_id=parseInt(statusId);
+        astData[idx].status_nome=statusObj.nome;
+        astData[idx].status_ordem=statusObj.ordem;
+        astData[idx].finaliza_chamado=statusObj.finaliza_chamado;
+        astData[idx].concluido=statusObj.finaliza_chamado;
+      }
+      if(setorId){
+        astData[idx].setor_responsavel_id=parseInt(setorId);
+        const setorObj=_setoresList.find(s=>s.id==setorId);
+        astData[idx].setor_responsavel=setorObj?.nome||astData[idx].setor_responsavel;
+      } else {
+        astData[idx].setor_responsavel_id=null;
+        astData[idx].setor_responsavel=null;
+      }
       astAplicarFiltros();
     }
   }
