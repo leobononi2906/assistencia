@@ -367,6 +367,46 @@ const AST_PAGES = {
   </div>
 </div>`,
 
+'ast-mov-garantia': `<div class="ast-page" id="page-ast-mov-garantia">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary)">🔧 Movimentação — Garantia</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Saídas e entradas de estoque nas OS do departamento Garantia</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select class="ast-select" id="ast-mg-mes" onchange="astMovGarantia.carregar()">
+        ${(()=>{const opts=[];const hoje=new Date();for(let i=0;i<12;i++){const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const lbl=d.toLocaleString('pt-BR',{month:'long',year:'numeric'});opts.push('<option value="'+val+'"'+(i===0?' selected':'')+'>'+lbl.charAt(0).toUpperCase()+lbl.slice(1)+'</option>');}return opts.join('');})()}
+      </select>
+      <div class="ast-toggle" id="ast-mg-tipo-toggle">
+        <button class="ast-toggle-btn active" onclick="astMovGarantia.setTipo('saidas',this)">⬆ Saídas</button>
+        <button class="ast-toggle-btn" onclick="astMovGarantia.setTipo('entradas',this)">⬇ Entradas</button>
+        <button class="ast-toggle-btn" onclick="astMovGarantia.setTipo('saldo',this)">⇅ Saldo</button>
+      </div>
+      <input class="ast-search" id="ast-mg-busca" placeholder="Buscar produto..." oninput="astMovGarantia.filtrar()" style="width:200px">
+    </div>
+  </div>
+
+  <div class="ast-cards" style="margin-bottom:16px" id="ast-mg-kpis">
+    <div class="ast-card"><div class="ast-card-label">Saídas (qtd)</div><div class="ast-card-value blue" id="ast-mg-k-qtd-s">—</div><div class="ast-card-sub" id="ast-mg-k-prod-s">— produtos</div></div>
+    <div class="ast-card"><div class="ast-card-label">Custo Saídas</div><div class="ast-card-value red" id="ast-mg-k-custo-s">—</div><div class="ast-card-sub">custo total saído</div></div>
+    <div class="ast-card"><div class="ast-card-label">Entradas (qtd)</div><div class="ast-card-value green" id="ast-mg-k-qtd-e">—</div><div class="ast-card-sub" id="ast-mg-k-prod-e">— itens</div></div>
+    <div class="ast-card"><div class="ast-card-label">Custo Entradas</div><div class="ast-card-value" id="ast-mg-k-custo-e">—</div><div class="ast-card-sub">custo total entrado</div></div>
+    <div class="ast-card"><div class="ast-card-label">Saldo Custo</div><div class="ast-card-value orange" id="ast-mg-k-saldo">—</div><div class="ast-card-sub">entradas − saídas</div></div>
+  </div>
+
+  <div class="ast-table-card">
+    <div class="ast-table-header">
+      <div class="ast-table-title" id="ast-mg-table-title">Saídas de estoque — <span id="ast-mg-count">—</span></div>
+    </div>
+    <div class="ast-table-wrap">
+      <table class="ast-table" id="ast-mg-table">
+        <thead id="ast-mg-thead"></thead>
+        <tbody id="ast-mg-tbody"><tr class="ast-loading"><td colspan="7">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>`,
+
 'ast-config': `<div class="ast-page" id="page-ast-config">
   <div style="margin-bottom:18px">
     <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações</div>
@@ -2120,6 +2160,230 @@ window.astAdicionarProduto=async function(){
 };
 
 
+
+// ══════════════════════════════════════════
+// MOVIMENTAÇÃO GARANTIA — página ast-mov-garantia
+// ══════════════════════════════════════════
+const astMovGarantia = {
+  _saidas: [],
+  _entradas: [],
+  _tipo: 'saidas',
+
+  setTipo(tipo, btn) {
+    this._tipo = tipo;
+    document.querySelectorAll('#ast-mg-tipo-toggle .ast-toggle-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    this.renderizar();
+  },
+
+  getMesRange() {
+    const mes = document.getElementById('ast-mg-mes')?.value || '2026-06';
+    const [ano, m] = mes.split('-').map(Number);
+    const inicio = `${ano}-${String(m).padStart(2,'0')}-01`;
+    const ultimo = new Date(ano, m, 0).getDate();
+    const fim    = `${ano}-${String(m).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
+    return { inicio, fim, label: new Date(ano, m-1, 1).toLocaleString('pt-BR',{month:'long',year:'numeric'}) };
+  },
+
+  async carregar() {
+    const tbody = document.getElementById('ast-mg-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr class="ast-loading"><td colspan="7">Carregando...</td></tr>';
+
+    const { inicio, fim } = this.getMesRange();
+
+    try {
+      // IDs das OS de garantia (cache)
+      const { data: osIds } = await window.sb
+        .from('vw_comercial_itens_faturados')
+        .select('id_doc')
+        .range(0, 9999);
+
+      // Buscar vendedores garantia
+      const { data: vends } = await window.sb
+        .from('vw_dim_vendedor')
+        .select('id_vendedor')
+        .ilike('departamento', '%GARANTIA%');
+
+      const vendIds = (vends||[]).map(v => v.id_vendedor);
+
+      // OS dos vendedores garantia
+      const { data: osGarantia } = await window.sb
+        .from('vw_comercial_itens_faturados')
+        .select('id_doc')
+        .in('id_vendedor', vendIds)
+        .range(0, 9999);
+
+      const osSet = [...new Set((osGarantia||[]).map(r => r.id_doc))];
+
+      // Buscar em chunks de 200 (limite do supabase IN)
+      const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
+      const chunks = chunk(osSet, 200);
+
+      // SAÍDAS: vw_fb_mov_estoque
+      let saidasRaw = [];
+      for (const c of chunks) {
+        const { data } = await window.sb
+          .from('vw_fb_mov_estoque')
+          .select('referencia,nome_produto,grupo,id_os,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
+          .gte('data_mov', inicio)
+          .lte('data_mov', fim)
+          .eq('cancelada', 'N')
+          .eq('tipo_es', 'S')
+          .in('tipo_mov', ['R','A'])
+          .in('id_os', c)
+          .range(0, 9999);
+        saidasRaw = saidasRaw.concat(data||[]);
+      }
+
+      // ENTRADAS: vw_fb_historico_compras (retornos/consertos)
+      const { data: entradasRaw } = await window.sb
+        .from('vw_fb_historico_compras')
+        .select('referencia,nome_produto,grupo,num_nf,data_compra,tipo_entrada,qtd,vl_unit,valor_total')
+        .gte('data_compra', inicio)
+        .lte('data_compra', fim)
+        .or('tipo_entrada.ilike.%garantia%,tipo_entrada.ilike.%conserto%,tipo_entrada.ilike.%retorno%,tipo_entrada.ilike.%reparo%')
+        .range(0, 9999);
+
+      // Agrupar saídas por produto
+      const sMap = {};
+      (saidasRaw||[]).forEach(r => {
+        const k = r.referencia || r.nome_produto;
+        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [] };
+        sMap[k].qtd   += Math.abs(parseFloat(r.qtd)||0);
+        sMap[k].custo += Math.abs(parseFloat(r.qtd)||0) * (parseFloat(r.custo_unit)||0);
+        if (r.id_os) sMap[k].os.add(r.id_os);
+        sMap[k].movs.push(r);
+      });
+
+      // Agrupar entradas por produto
+      const eMap = {};
+      (entradasRaw||[]).forEach(r => {
+        const k = r.referencia || r.nome_produto;
+        if (!eMap[k]) eMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, tipo_entrada: r.tipo_entrada };
+        eMap[k].qtd   += Math.abs(parseFloat(r.qtd)||0);
+        eMap[k].custo += Math.abs(parseFloat(r.valor_total)||0);
+      });
+
+      this._saidas   = Object.values(sMap).sort((a,b) => b.custo - a.custo);
+      this._entradas = Object.values(eMap).sort((a,b) => b.custo - a.custo);
+
+      // KPIs
+      const totQtdS  = this._saidas.reduce((s,r)=>s+r.qtd,0);
+      const totCustoS = this._saidas.reduce((s,r)=>s+r.custo,0);
+      const totQtdE  = this._entradas.reduce((s,r)=>s+r.qtd,0);
+      const totCustoE = this._entradas.reduce((s,r)=>s+r.custo,0);
+      const saldo    = totCustoE - totCustoS;
+      const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+      const el = id => document.getElementById(id);
+      if(el('ast-mg-k-qtd-s'))    el('ast-mg-k-qtd-s').textContent    = totQtdS.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
+      if(el('ast-mg-k-prod-s'))   el('ast-mg-k-prod-s').textContent   = this._saidas.length + ' produtos';
+      if(el('ast-mg-k-custo-s'))  el('ast-mg-k-custo-s').textContent  = fmt(totCustoS);
+      if(el('ast-mg-k-qtd-e'))    el('ast-mg-k-qtd-e').textContent    = totQtdE.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
+      if(el('ast-mg-k-prod-e'))   el('ast-mg-k-prod-e').textContent   = this._entradas.length + ' itens';
+      if(el('ast-mg-k-custo-e'))  el('ast-mg-k-custo-e').textContent  = fmt(totCustoE);
+      if(el('ast-mg-k-saldo'))    { el('ast-mg-k-saldo').textContent = (saldo >= 0 ? '+' : '-') + fmt(saldo); el('ast-mg-k-saldo').style.color = saldo >= 0 ? 'var(--green)' : 'var(--red)'; }
+
+      this.filtrar();
+      window.setLastUpdate?.();
+    } catch(e) {
+      if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Erro: ${e.message}</td></tr>`;
+    }
+  },
+
+  filtrar() {
+    const busca = (document.getElementById('ast-mg-busca')?.value||'').toLowerCase();
+    const dados = this._tipo === 'entradas' ? this._entradas : this._saidas;
+    const filtrado = busca ? dados.filter(r => `${r.produto} ${r.referencia} ${r.grupo}`.toLowerCase().includes(busca)) : dados;
+
+    if (this._tipo === 'saldo') {
+      this.renderizarSaldo(busca);
+    } else {
+      this.renderizar(filtrado);
+    }
+  },
+
+  renderizar(dados) {
+    const tbody = document.getElementById('ast-mg-tbody');
+    const thead = document.getElementById('ast-mg-thead');
+    const count = document.getElementById('ast-mg-count');
+    const title = document.getElementById('ast-mg-table-title');
+    if (!tbody) return;
+
+    const { label } = this.getMesRange();
+    const isSaida = this._tipo === 'saidas';
+
+    if (title) title.innerHTML = (isSaida ? '⬆ Saídas' : '⬇ Entradas') + ` de estoque — ${label} — <span id="ast-mg-count">${dados.length} produtos</span>`;
+
+    if (thead) thead.innerHTML = isSaida
+      ? `<tr><th>Referência</th><th>Produto</th><th>Grupo</th><th class="right">Qtd</th><th class="right">Custo</th><th class="right">OS</th></tr>`
+      : `<tr><th>Referência</th><th>Produto</th><th>Grupo</th><th>Tipo entrada</th><th class="right">Qtd</th><th class="right">Valor</th></tr>`;
+
+    if (!dados.length) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="ast-empty"><div class="ast-empty-ico">📦</div>Nenhum item encontrado no período</div></td></tr>';
+      return;
+    }
+
+    const fmt = v => v > 0 ? 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+
+    tbody.innerHTML = dados.map(r => isSaida ? `<tr>
+      <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
+      <td style="font-weight:500">${r.produto||'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.grupo||'—'}</td>
+      <td class="right">${r.qtd.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
+      <td class="right" style="color:var(--red)">${fmt(r.custo)}</td>
+      <td class="right" style="font-size:12px;color:var(--text-muted)">${r.os.size} OS</td>
+    </tr>` : `<tr>
+      <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
+      <td style="font-weight:500">${r.produto||'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.grupo||'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.tipo_entrada||'—'}</td>
+      <td class="right">${r.qtd.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
+      <td class="right" style="color:var(--green)">${fmt(r.custo)}</td>
+    </tr>`).join('');
+  },
+
+  renderizarSaldo(busca) {
+    const tbody = document.getElementById('ast-mg-tbody');
+    const thead = document.getElementById('ast-mg-thead');
+    const title = document.getElementById('ast-mg-table-title');
+    if (!tbody) return;
+
+    const { label } = this.getMesRange();
+    if (title) title.innerHTML = `⇅ Saldo — ${label}`;
+
+    // Montar mapa combinado
+    const keys = new Set([...this._saidas.map(r=>r.referencia), ...this._entradas.map(r=>r.referencia)]);
+    let itens = [];
+    keys.forEach(k => {
+      const s = this._saidas.find(r=>r.referencia===k);
+      const e = this._entradas.find(r=>r.referencia===k);
+      const produto = s?.produto || e?.produto || '—';
+      const grupo   = s?.grupo   || e?.grupo   || '—';
+      if (busca && !`${produto} ${k} ${grupo}`.toLowerCase().includes(busca)) return;
+      const qtdS = s?.qtd || 0, custoS = s?.custo || 0;
+      const qtdE = e?.qtd || 0, custoE = e?.custo || 0;
+      itens.push({ referencia: k, produto, grupo, qtdS, custoS, qtdE, custoE, saldo: custoE - custoS });
+    });
+    itens.sort((a,b) => a.saldo - b.saldo); // mais negativo (mais saída) primeiro
+
+    if (thead) thead.innerHTML = `<tr><th>Referência</th><th>Produto</th><th class="right">Qtd Saída</th><th class="right">Custo Saída</th><th class="right">Qtd Entrada</th><th class="right">Custo Entrada</th><th class="right">Saldo</th></tr>`;
+
+    const fmt = v => v !== 0 ? 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+
+    tbody.innerHTML = itens.map(r => `<tr>
+      <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
+      <td style="font-weight:500;font-size:12px">${r.produto}</td>
+      <td class="right" style="color:var(--red)">${r.qtdS > 0 ? r.qtdS : '—'}</td>
+      <td class="right" style="color:var(--red)">${fmt(r.custoS)}</td>
+      <td class="right" style="color:var(--green)">${r.qtdE > 0 ? r.qtdE : '—'}</td>
+      <td class="right" style="color:var(--green)">${fmt(r.custoE)}</td>
+      <td class="right" style="font-weight:700;color:${r.saldo >= 0 ? 'var(--green)' : 'var(--red)'}">${r.saldo !== 0 ? (r.saldo > 0 ? '+' : '-') + fmt(r.saldo) : '—'}</td>
+    </tr>`).join('');
+  }
+};
+
 // ══════════════════════════════════════════
 // ENTREGAS — Departamento Garantia (página)
 // ══════════════════════════════════════════
@@ -2407,6 +2671,7 @@ const AST_LOADERS={
   'ast-gestao':   astLoadGestao,
   'ast-produtos': astLoadProdutos,
   'ast-entregas': ()=>astEntregas.carregar(),
+  'ast-mov-garantia': ()=>astMovGarantia.carregar(),
   'ast-config':   astLoadConfig,
 };
 
