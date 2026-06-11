@@ -2249,9 +2249,9 @@ window.astMovGarantia = {
         .map(r => r.referencia)
         .filter(Boolean))];
 
+      const chunk2 = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
       let precosMap = {};
       if (refsComCustoZero.length) {
-        const chunk2 = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
         for (const c of chunk2(refsComCustoZero, 100)) {
           const { data: precs } = await window.sb
             .from('comp_produtos_consolidado')
