@@ -389,8 +389,8 @@ const AST_PAGES = {
   <div class="ast-cards" style="margin-bottom:16px" id="ast-mg-kpis">
     <div class="ast-card"><div class="ast-card-label">Saídas (qtd)</div><div class="ast-card-value blue" id="ast-mg-k-qtd-s">—</div><div class="ast-card-sub" id="ast-mg-k-prod-s">— produtos</div></div>
     <div class="ast-card"><div class="ast-card-label">Custo Saídas</div><div class="ast-card-value red" id="ast-mg-k-custo-s">—</div><div class="ast-card-sub">custo total saído</div></div>
-    <div class="ast-card"><div class="ast-card-label">Entradas (qtd)</div><div class="ast-card-value green" id="ast-mg-k-qtd-e">—</div><div class="ast-card-sub" id="ast-mg-k-prod-e">— itens</div></div>
-    <div class="ast-card"><div class="ast-card-label">Custo Entradas</div><div class="ast-card-value" id="ast-mg-k-custo-e">—</div><div class="ast-card-sub">custo total entrado</div></div>
+    <div class="ast-card"><div class="ast-card-label">Devoluções (qtd)</div><div class="ast-card-value green" id="ast-mg-k-qtd-e">—</div><div class="ast-card-sub" id="ast-mg-k-prod-e">— itens</div></div>
+    <div class="ast-card"><div class="ast-card-label">Custo Devoluções</div><div class="ast-card-value" id="ast-mg-k-custo-e">—</div><div class="ast-card-sub">custo total entrado</div></div>
     <div class="ast-card"><div class="ast-card-label">Saldo Custo</div><div class="ast-card-value orange" id="ast-mg-k-saldo">—</div><div class="ast-card-sub">entradas − saídas</div></div>
   </div>
 
@@ -2234,14 +2234,20 @@ window.astMovGarantia = {
         saidasRaw = saidasRaw.concat(data||[]);
       }
 
-      // ENTRADAS: vw_fb_historico_compras (retornos/consertos)
-      const { data: entradasRaw } = await window.sb
-        .from('vw_fb_historico_compras')
-        .select('referencia,nome_produto,grupo,num_nf,data_compra,tipo_entrada,qtd,vl_unit,valor_total')
-        .gte('data_compra', inicio)
-        .lte('data_compra', fim)
-        .or('tipo_entrada.ilike.%garantia%,tipo_entrada.ilike.%conserto%,tipo_entrada.ilike.%retorno%,tipo_entrada.ilike.%reparo%')
-        .range(0, 9999);
+      // ENTRADAS: vw_fb_mov_estoque tipo_es=E nas OS dos vendedores garantia
+      let entradasRaw = [];
+      for (const c of chunks) {
+        const { data } = await window.sb
+          .from('vw_fb_mov_estoque')
+          .select('referencia,nome_produto,grupo,id_os,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
+          .gte('data_mov', inicio)
+          .lte('data_mov', fim)
+          .eq('cancelada', 'N')
+          .eq('tipo_es', 'E')
+          .in('id_os', c)
+          .range(0, 9999);
+        entradasRaw = entradasRaw.concat(data||[]);
+      }
 
       // Buscar precos de compra para produtos com custo zerado
       const refsComCustoZero = [...new Set((saidasRaw||[])
@@ -2294,9 +2300,11 @@ window.astMovGarantia = {
       const eMap = {};
       (entradasRaw||[]).forEach(r => {
         const k = r.referencia || r.nome_produto;
-        if (!eMap[k]) eMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, tipo_entrada: r.tipo_entrada };
-        eMap[k].qtd   += Math.abs(parseFloat(r.qtd)||0);
-        eMap[k].custo += Math.abs(parseFloat(r.valor_total)||0);
+        if (!eMap[k]) eMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, tipo_entrada: r.motivo||r.tipo_mov };
+        const qtd = Math.abs(parseFloat(r.qtd)||0);
+        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia]?.preco || 0;
+        eMap[k].qtd   += qtd;
+        eMap[k].custo += qtd * custoUnit;
       });
 
       this._saidas   = Object.values(sMap).sort((a,b) => b.custo - a.custo);
