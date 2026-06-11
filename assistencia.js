@@ -2193,21 +2193,18 @@ const astMovGarantia = {
     const { inicio, fim } = this.getMesRange();
 
     try {
-      // IDs das OS de garantia (cache)
-      const { data: osIds } = await window.sb
-        .from('vw_comercial_itens_faturados')
-        .select('id_doc')
-        .range(0, 9999);
-
-      // Buscar vendedores garantia
+      // Vendedores garantia: hardcode dos IDs conhecidos + busca dinâmica
+      // Jessica=49766, Victor=69722, Dayllon=84986 + qualquer futuro com dept GARANTIA%
       const { data: vends } = await window.sb
         .from('vw_dim_vendedor')
         .select('id_vendedor')
         .ilike('departamento', '%GARANTIA%');
+      const vendIdsBase = (vends||[]).map(v => v.id_vendedor);
+      // Garantir que os 3 conhecidos estejam incluídos mesmo se departamento diferir
+      const vendIds = [...new Set([...vendIdsBase, 49766, 69722, 84986])];
 
-      const vendIds = (vends||[]).map(v => v.id_vendedor);
-
-      // OS dos vendedores garantia
+      // Buscar TODAS as OS desses vendedores (faturadas ou não)
+      // Usar vw_comercial_itens_faturados (tem id_vendedor direto)
       const { data: osGarantia } = await window.sb
         .from('vw_comercial_itens_faturados')
         .select('id_doc')
@@ -2216,11 +2213,12 @@ const astMovGarantia = {
 
       const osSet = [...new Set((osGarantia||[]).map(r => r.id_doc))];
 
-      // Buscar em chunks de 200 (limite do supabase IN)
+      // Buscar em chunks de 200
       const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
       const chunks = chunk(osSet, 200);
 
-      // SAÍDAS: vw_fb_mov_estoque
+      // SAÍDAS: vw_fb_mov_estoque — TODAS as movimentações do período
+      // independente do status da OS (abertas, fechadas, em andamento)
       let saidasRaw = [];
       for (const c of chunks) {
         const { data } = await window.sb
