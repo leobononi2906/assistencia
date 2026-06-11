@@ -378,9 +378,9 @@ const AST_PAGES = {
         ${(()=>{const opts=[];const hoje=new Date();for(let i=0;i<12;i++){const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');const lbl=d.toLocaleString('pt-BR',{month:'long',year:'numeric'});opts.push('<option value="'+val+'"'+(i===0?' selected':'')+'>'+lbl.charAt(0).toUpperCase()+lbl.slice(1)+'</option>');}return opts.join('');})()}
       </select>
       <div class="ast-toggle" id="ast-mg-tipo-toggle">
-        <button class="ast-toggle-btn active" onclick="astMovGarantia.setTipo('saidas',this)">⬆ Saídas</button>
+        <button class="ast-toggle-btn" onclick="astMovGarantia.setTipo('saidas',this)">⬆ Saídas</button>
         <button class="ast-toggle-btn" onclick="astMovGarantia.setTipo('entradas',this)">⬇ Entradas</button>
-        <button class="ast-toggle-btn" onclick="astMovGarantia.setTipo('saldo',this)">⇅ Saldo</button>
+        <button class="ast-toggle-btn active" onclick="astMovGarantia.setTipo('saldo',this)">⇅ Saldo</button>
       </div>
       <input class="ast-search" id="ast-mg-busca" placeholder="Buscar produto..." oninput="astMovGarantia.filtrar()" style="width:200px">
     </div>
@@ -2164,10 +2164,10 @@ window.astAdicionarProduto=async function(){
 // ══════════════════════════════════════════
 // MOVIMENTAÇÃO GARANTIA — página ast-mov-garantia
 // ══════════════════════════════════════════
-const astMovGarantia = {
+window.astMovGarantia = {
   _saidas: [],
   _entradas: [],
-  _tipo: 'saidas',
+  _tipo: 'saldo',
 
   setTipo(tipo, btn) {
     this._tipo = tipo;
@@ -2243,13 +2243,34 @@ const astMovGarantia = {
         .or('tipo_entrada.ilike.%garantia%,tipo_entrada.ilike.%conserto%,tipo_entrada.ilike.%retorno%,tipo_entrada.ilike.%reparo%')
         .range(0, 9999);
 
-      // Agrupar saídas por produto
+      // Buscar precos de compra para produtos com custo zerado
+      const refsComCustoZero = [...new Set((saidasRaw||[])
+        .filter(r => !parseFloat(r.custo_unit))
+        .map(r => r.referencia)
+        .filter(Boolean))];
+
+      let precosMap = {};
+      if (refsComCustoZero.length) {
+        const chunk2 = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
+        for (const c of chunk2(refsComCustoZero, 100)) {
+          const { data: precs } = await window.sb
+            .from('comp_produtos_consolidado')
+            .select('referencia,preco_compra')
+            .in('referencia', c);
+          (precs||[]).forEach(p => { if (p.preco_compra) precosMap[p.referencia] = parseFloat(p.preco_compra); });
+        }
+      }
+
+      // Agrupar saídas por produto — usar preco_compra quando custo_unit = 0
       const sMap = {};
       (saidasRaw||[]).forEach(r => {
         const k = r.referencia || r.nome_produto;
-        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [] };
-        sMap[k].qtd   += Math.abs(parseFloat(r.qtd)||0);
-        sMap[k].custo += Math.abs(parseFloat(r.qtd)||0) * (parseFloat(r.custo_unit)||0);
+        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [], custoFonte: 'mov' };
+        const qtd = Math.abs(parseFloat(r.qtd)||0);
+        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia] || 0;
+        if (!parseFloat(r.custo_unit) && precosMap[r.referencia]) sMap[k].custoFonte = 'cadastro';
+        sMap[k].qtd   += qtd;
+        sMap[k].custo += qtd * custoUnit;
         if (r.id_os) sMap[k].os.add(r.id_os);
         sMap[k].movs.push(r);
       });
