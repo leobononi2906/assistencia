@@ -2203,51 +2203,57 @@ window.astMovGarantia = {
       // Garantir que os 3 conhecidos estejam incluídos mesmo se departamento diferir
       const vendIds = [...new Set([...vendIdsBase, 49766, 69722, 84986])];
 
-      // Buscar TODAS as OS desses vendedores (faturadas ou não)
-      // Usar vw_comercial_itens_faturados (tem id_vendedor direto)
-      const { data: osGarantia } = await window.sb
+      // Buscar TODOS os docs (OS + Pedidos de venda) dos vendedores garantia
+      const { data: docsGarantia } = await window.sb
         .from('vw_comercial_itens_faturados')
-        .select('id_doc')
+        .select('id_doc,tipo_doc')
         .in('id_vendedor', vendIds)
         .range(0, 9999);
 
-      const osSet = [...new Set((osGarantia||[]).map(r => r.id_doc))];
+      // Separar OS e Pedidos de Venda (id_os vs id_venda na mov_estoque)
+      const osSet    = [...new Set((docsGarantia||[]).filter(r => r.tipo_doc?.trim() === 'O.S.').map(r => r.id_doc))];
+      const vendaSet = [...new Set((docsGarantia||[]).filter(r => r.tipo_doc?.trim() !== 'O.S.').map(r => r.id_doc))];
 
-      // Buscar em chunks de 200
       const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
-      const chunks = chunk(osSet, 200);
+      const chunksOs    = chunk(osSet,    200);
+      const chunksVenda = chunk(vendaSet.length ? vendaSet : [0], 200);
 
-      // SAÍDAS: vw_fb_mov_estoque — TODAS as movimentações do período
-      // independente do status da OS (abertas, fechadas, em andamento)
-      let saidasRaw = [];
-      for (const c of chunks) {
-        const { data } = await window.sb
-          .from('vw_fb_mov_estoque')
-          .select('referencia,nome_produto,grupo,id_os,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
-          .gte('data_mov', inicio)
-          .lte('data_mov', fim)
-          .eq('cancelada', 'N')
-          .eq('tipo_es', 'S')
-          .in('tipo_mov', ['R','A'])
-          .in('id_os', c)
-          .range(0, 9999);
-        saidasRaw = saidasRaw.concat(data||[]);
-      }
+      // Função auxiliar para buscar movs por OS ou por Venda
+      const fetchMov = async (tipoEs, chunksArr, campo) => {
+        let raw = [];
+        for (const c of chunksArr) {
+          const q = window.sb
+            .from('vw_fb_mov_estoque')
+            .select('referencia,nome_produto,grupo,id_os,id_venda,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
+            .gte('data_mov', inicio)
+            .lte('data_mov', fim)
+            .eq('cancelada', 'N')
+            .eq('tipo_es', tipoEs)
+            .in(campo, c)
+            .range(0, 9999);
+          if (tipoEs === 'S') q.in('tipo_mov', ['R','A']);
+          const { data } = await q;
+          raw = raw.concat(data||[]);
+        }
+        return raw;
+      };
 
-      // ENTRADAS: vw_fb_mov_estoque tipo_es=E nas OS dos vendedores garantia
-      let entradasRaw = [];
-      for (const c of chunks) {
-        const { data } = await window.sb
-          .from('vw_fb_mov_estoque')
-          .select('referencia,nome_produto,grupo,id_os,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
-          .gte('data_mov', inicio)
-          .lte('data_mov', fim)
-          .eq('cancelada', 'N')
-          .eq('tipo_es', 'E')
-          .in('id_os', c)
-          .range(0, 9999);
-        entradasRaw = entradasRaw.concat(data||[]);
-      }
+      // SAÍDAS: por OS e por Pedido de Venda
+      const [saidasOs, saidasVenda] = await Promise.all([
+        fetchMov('S', chunksOs,    'id_os'),
+        fetchMov('S', chunksVenda, 'id_venda'),
+      ]);
+      const saidasRaw = [...saidasOs, ...saidasVenda];
+
+      // ENTRADAS: por OS e por Pedido de Venda
+      const [entradasOs, entradasVenda] = await Promise.all([
+        fetchMov('E', chunksOs,    'id_os'),
+        fetchMov('E', chunksVenda, 'id_venda'),
+      ]);
+      const entradasRaw = [...entradasOs, ...entradasVenda];
+
+      // chunks para busca de preços
+      const chunks = chunksOs;
 
       // Buscar precos de compra para produtos com custo zerado
       const refsComCustoZero = [...new Set((saidasRaw||[])
