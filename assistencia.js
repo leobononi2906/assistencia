@@ -2255,24 +2255,39 @@ window.astMovGarantia = {
         for (const c of chunk2(refsComCustoZero, 100)) {
           const { data: precs } = await window.sb
             .from('comp_produtos_consolidado')
-            .select('referencia,preco_compra')
+            .select('referencia,preco_compra,estoque_total')
             .in('referencia', c);
-          (precs||[]).forEach(p => { if (p.preco_compra) precosMap[p.referencia] = parseFloat(p.preco_compra); });
+          (precs||[]).forEach(p => {
+            if (p.preco_compra) precosMap[p.referencia] = { preco: parseFloat(p.preco_compra), estoque: parseFloat(p.estoque_total)||0 };
+          });
         }
       }
+
+      // Buscar estoque de TODOS os produtos do relatório (com ou sem custo)
+      const todasRefs = [...new Set((saidasRaw||[]).map(r=>r.referencia).filter(Boolean))];
+      let estoqueMap = {};
+      for (const c of chunk2(todasRefs, 100)) {
+        const { data: estoques } = await window.sb
+          .from('comp_produtos_consolidado')
+          .select('referencia,preco_compra,estoque_total')
+          .in('referencia', c);
+        (estoques||[]).forEach(p => {
+          estoqueMap[p.referencia] = { preco: parseFloat(p.preco_compra)||0, estoque: parseFloat(p.estoque_total)||0 };
+        });
+      }
+      // Merge com precosMap
+      Object.assign(precosMap, estoqueMap);
 
       // Agrupar saídas por produto — usar preco_compra quando custo_unit = 0
       const sMap = {};
       (saidasRaw||[]).forEach(r => {
         const k = r.referencia || r.nome_produto;
-        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [], custoFonte: 'mov' };
+        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [], estoque: precosMap[r.referencia]?.estoque ?? null };
         const qtd = Math.abs(parseFloat(r.qtd)||0);
-        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia] || 0;
-        if (!parseFloat(r.custo_unit) && precosMap[r.referencia]) sMap[k].custoFonte = 'cadastro';
+        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia]?.preco || 0;
         sMap[k].qtd   += qtd;
         sMap[k].custo += qtd * custoUnit;
         if (r.id_os) sMap[k].os.add(r.id_os);
-        sMap[k].movs.push(r);
       });
 
       // Agrupar entradas por produto
@@ -2311,13 +2326,13 @@ window.astMovGarantia = {
     }
   },
 
-  filtrar() {
+  async filtrar() {
     const busca = (document.getElementById('ast-mg-busca')?.value||'').toLowerCase();
     const dados = this._tipo === 'entradas' ? this._entradas : this._saidas;
     const filtrado = busca ? dados.filter(r => `${r.produto} ${r.referencia} ${r.grupo}`.toLowerCase().includes(busca)) : dados;
 
     if (this._tipo === 'saldo') {
-      this.renderizarSaldo(busca);
+      await this.renderizarSaldo(busca);
     } else {
       this.renderizar(filtrado);
     }
@@ -2336,7 +2351,7 @@ window.astMovGarantia = {
     if (title) title.innerHTML = (isSaida ? '⬆ Saídas' : '⬇ Entradas') + ` de estoque — ${label} — <span id="ast-mg-count">${dados.length} produtos</span>`;
 
     if (thead) thead.innerHTML = isSaida
-      ? `<tr><th>Referência</th><th>Produto</th><th>Grupo</th><th class="right">Qtd</th><th class="right">Custo</th><th class="right">OS</th></tr>`
+      ? `<tr><th>Referência</th><th>Produto</th><th>Grupo</th><th class="right">Qtd saída</th><th class="right">Custo</th><th class="right">Estoque atual</th><th class="right">OS</th></tr>`
       : `<tr><th>Referência</th><th>Produto</th><th>Grupo</th><th>Tipo entrada</th><th class="right">Qtd</th><th class="right">Valor</th></tr>`;
 
     if (!dados.length) {
@@ -2352,6 +2367,7 @@ window.astMovGarantia = {
       <td style="font-size:12px;color:var(--text-muted)">${r.grupo||'—'}</td>
       <td class="right">${r.qtd.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
       <td class="right" style="color:var(--red)">${fmt(r.custo)}</td>
+      <td class="right" style="font-weight:600;color:${r.estoque===null?'var(--text-muted)':r.estoque<=0?'var(--red)':r.estoque<=5?'var(--orange)':'var(--green)'}">${r.estoque===null?'—':r.estoque.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
       <td class="right" style="font-size:12px;color:var(--text-muted)">${r.os.size} OS</td>
     </tr>` : `<tr>
       <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
@@ -2363,7 +2379,7 @@ window.astMovGarantia = {
     </tr>`).join('');
   },
 
-  renderizarSaldo(busca) {
+  async renderizarSaldo(busca) {
     const tbody = document.getElementById('ast-mg-tbody');
     const thead = document.getElementById('ast-mg-thead');
     const title = document.getElementById('ast-mg-table-title');
@@ -2387,19 +2403,32 @@ window.astMovGarantia = {
     });
     itens.sort((a,b) => a.saldo - b.saldo); // mais negativo (mais saída) primeiro
 
-    if (thead) thead.innerHTML = `<tr><th>Referência</th><th>Produto</th><th class="right">Qtd Saída</th><th class="right">Custo Saída</th><th class="right">Qtd Entrada</th><th class="right">Custo Entrada</th><th class="right">Saldo</th></tr>`;
+    if (thead) thead.innerHTML = `<tr><th>Referência</th><th>Produto</th><th class="right">Qtd Saída</th><th class="right">Custo Saída</th><th class="right">Qtd Entrada</th><th class="right">Custo Entrada</th><th class="right">Saldo Período</th><th class="right">Estoque Atual</th></tr>`;
 
     const fmt = v => v !== 0 ? 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
 
-    tbody.innerHTML = itens.map(r => `<tr>
-      <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
-      <td style="font-weight:500;font-size:12px">${r.produto}</td>
-      <td class="right" style="color:var(--red)">${r.qtdS > 0 ? r.qtdS : '—'}</td>
-      <td class="right" style="color:var(--red)">${fmt(r.custoS)}</td>
-      <td class="right" style="color:var(--green)">${r.qtdE > 0 ? r.qtdE : '—'}</td>
-      <td class="right" style="color:var(--green)">${fmt(r.custoE)}</td>
-      <td class="right" style="font-weight:700;color:${r.saldo >= 0 ? 'var(--green)' : 'var(--red)'}">${r.saldo !== 0 ? (r.saldo > 0 ? '+' : '-') + fmt(r.saldo) : '—'}</td>
-    </tr>`).join('');
+    // Buscar estoque para itens do saldo
+    const refsaldo = itens.map(r=>r.referencia).filter(Boolean);
+    const estoqueMapSaldo = {};
+    const chunk3 = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
+    await Promise.all(chunk3(refsaldo, 100).map(async c => {
+      const { data } = await window.sb.from('comp_produtos_consolidado').select('referencia,estoque_total').in('referencia', c);
+      (data||[]).forEach(p => { estoqueMapSaldo[p.referencia] = parseFloat(p.estoque_total)||0; });
+    }));
+
+    tbody.innerHTML = itens.map(r => {
+      const est = estoqueMapSaldo[r.referencia] ?? null;
+      return `<tr>
+        <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
+        <td style="font-weight:500;font-size:12px">${r.produto}</td>
+        <td class="right" style="color:var(--red)">${r.qtdS > 0 ? r.qtdS : '—'}</td>
+        <td class="right" style="color:var(--red)">${fmt(r.custoS)}</td>
+        <td class="right" style="color:var(--green)">${r.qtdE > 0 ? r.qtdE : '—'}</td>
+        <td class="right" style="color:var(--green)">${fmt(r.custoE)}</td>
+        <td class="right" style="font-weight:700;color:${r.saldo >= 0 ? 'var(--green)' : 'var(--red)'}">${r.saldo !== 0 ? (r.saldo > 0 ? '+' : '-') + fmt(r.saldo) : '—'}</td>
+        <td class="right" style="font-weight:600;color:${est===null?'var(--text-muted)':est<=0?'var(--red)':est<=5?'var(--orange)':'var(--green)'}">${est===null?'—':est.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})}</td>
+      </tr>`;
+    }).join('');
   }
 };
 
@@ -2469,7 +2498,7 @@ const astEntregas = {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar: ${e.message}</td></tr>`;
     }
   },
-  filtrar() {
+  async filtrar() {
     const busca      = (document.getElementById('ast-ent-busca')?.value||'').toLowerCase();
     const statusFil  = document.getElementById('ast-ent-status')?.value||'todas';
     const dados      = this._dados || [];
