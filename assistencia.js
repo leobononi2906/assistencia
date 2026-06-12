@@ -2188,156 +2188,86 @@ window.astMovGarantia = {
   async carregar() {
     const tbody = document.getElementById('ast-mg-tbody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr class="ast-loading"><td colspan="7">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr class="ast-loading"><td colspan="8">Carregando...</td></tr>';
 
     const { inicio, fim } = this.getMesRange();
 
     try {
-      // Vendedores garantia: hardcode dos IDs conhecidos + busca dinâmica
-      // Jessica=49766, Victor=69722, Dayllon=84986 + qualquer futuro com dept GARANTIA%
-      const { data: vends } = await window.sb
-        .from('vw_dim_vendedor')
-        .select('id_vendedor')
-        .ilike('departamento', '%GARANTIA%');
-      const vendIdsBase = (vends||[]).map(v => v.id_vendedor);
-      // Garantir que os 3 conhecidos estejam incluídos mesmo se departamento diferir
-      const vendIds = [...new Set([...vendIdsBase, 49766, 69722, 84986])];
-
-      // Buscar TODOS os docs (OS + Pedidos de venda) dos vendedores garantia
-      const { data: docsGarantia } = await window.sb
-        .from('vw_comercial_itens_faturados')
-        .select('id_doc,tipo_doc')
-        .in('id_vendedor', vendIds)
-        .range(0, 9999);
-
-      // Separar OS e Pedidos de Venda (id_os vs id_venda na mov_estoque)
-      const osSet    = [...new Set((docsGarantia||[]).filter(r => r.tipo_doc?.trim() === 'O.S.').map(r => r.id_doc))];
-      const vendaSet = [...new Set((docsGarantia||[]).filter(r => r.tipo_doc?.trim() !== 'O.S.').map(r => r.id_doc))];
-
-      const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
-      const chunksOs    = chunk(osSet,    200);
-      const chunksVenda = chunk(vendaSet.length ? vendaSet : [0], 200);
-
-      // Função auxiliar para buscar movs
-      const fetchMov = async (tipoEs, chunksArr, campo) => {
-        let raw = [];
-        for (const c of chunksArr) {
-          const q = window.sb
-            .from('vw_fb_mov_estoque')
-            .select('referencia,nome_produto,grupo,id_os,id_venda,data_mov,tipo_mov,tipo_es,qtd,custo_unit,motivo')
-            .gte('data_mov', inicio)
-            .lte('data_mov', fim)
-            .eq('cancelada', 'N')
-            .eq('tipo_es', tipoEs)
-            .in(campo, c)
-            .range(0, 9999);
-          if (tipoEs === 'S') q.in('tipo_mov', ['R','A']);
-          const { data } = await q;
-          raw = raw.concat(data||[]);
-        }
-        return raw;
-      };
-
-      // SAÍDAS: por OS e por Pedido de Venda
-      const [saidasOs, saidasVenda] = await Promise.all([
-        fetchMov('S', chunksOs,    'id_os'),
-        fetchMov('S', chunksVenda, 'id_venda'),
+      // Buscar saídas e entradas diretamente da view
+      const [{ data: saidasRaw }, { data: entradasRaw }] = await Promise.all([
+        window.sb.from('vw_assist_mov_garantia')
+          .select('tipo_es,origem,id_empresa,referencia,produto,grupo,qtd,custo_unit,custo_total,nome_vendedor')
+          .eq('tipo_es', 'S')
+          .gte('data_mov', inicio)
+          .lte('data_mov', fim)
+          .range(0, 9999),
+        window.sb.from('vw_assist_mov_garantia')
+          .select('tipo_es,origem,id_empresa,referencia,produto,grupo,qtd,custo_unit,custo_total,motivo')
+          .eq('tipo_es', 'E')
+          .gte('data_mov', inicio)
+          .lte('data_mov', fim)
+          .range(0, 9999),
       ]);
-      const saidasRaw = [...saidasOs, ...saidasVenda];
 
-      // ENTRADAS: somente por id_os de garantia (não por id_venda)
-      // Evita overlap: mesmo número pode ser id_venda de garantia E id_os de outro depto
-      // Entradas válidas = devoluções/trocas DENTRO das OS de garantia
-      const entradasOs = chunksOs.length ? await fetchMov('E', chunksOs, 'id_os') : [];
-      // Para pedidos de venda: entradas só se o id_venda NÃO existe como id_os de outro depto
-      // Por segurança, não incluímos entradas por id_venda (muito raro e distorce)
-      const entradasRaw = entradasOs;
-
-      // chunks para busca de preços
-      const chunks = chunksOs;
-
-      // Buscar precos de compra para produtos com custo zerado
-      const refsComCustoZero = [...new Set((saidasRaw||[])
-        .filter(r => !parseFloat(r.custo_unit))
-        .map(r => r.referencia)
-        .filter(Boolean))];
-
+      // Buscar preço de compra para custo zerado
       const chunk2 = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
+      const refsZero = [...new Set((saidasRaw||[]).filter(r=>!parseFloat(r.custo_unit)&&!parseFloat(r.custo_total)).map(r=>r.referencia).filter(Boolean))];
       let precosMap = {};
-      if (refsComCustoZero.length) {
-        for (const c of chunk2(refsComCustoZero, 100)) {
-          const { data: precs } = await window.sb
-            .from('comp_produtos_consolidado')
-            .select('referencia,preco_compra,estoque_total')
-            .in('referencia', c);
-          (precs||[]).forEach(p => {
-            if (p.preco_compra) precosMap[p.referencia] = { preco: parseFloat(p.preco_compra), estoque: parseFloat(p.estoque_total)||0 };
-          });
-        }
+      for (const c of chunk2(refsZero, 100)) {
+        const { data } = await window.sb.from('comp_produtos_consolidado').select('referencia,preco_compra,estoque_total').in('referencia', c);
+        (data||[]).forEach(p => { precosMap[p.referencia] = { preco: parseFloat(p.preco_compra)||0, estoque: parseFloat(p.estoque_total)||0 }; });
       }
 
-      // Buscar estoque de TODOS os produtos do relatório (com ou sem custo)
+      // Buscar estoque de todos os produtos das saídas
       const todasRefs = [...new Set((saidasRaw||[]).map(r=>r.referencia).filter(Boolean))];
-      let estoqueMap = {};
       for (const c of chunk2(todasRefs, 100)) {
-        const { data: estoques } = await window.sb
-          .from('comp_produtos_consolidado')
-          .select('referencia,preco_compra,estoque_total')
-          .in('referencia', c);
-        (estoques||[]).forEach(p => {
-          estoqueMap[p.referencia] = { preco: parseFloat(p.preco_compra)||0, estoque: parseFloat(p.estoque_total)||0 };
-        });
+        const { data } = await window.sb.from('comp_produtos_consolidado').select('referencia,preco_compra,estoque_total').in('referencia', c);
+        (data||[]).forEach(p => { precosMap[p.referencia] = { preco: parseFloat(p.preco_compra)||0, estoque: parseFloat(p.estoque_total)||0 }; });
       }
-      // Merge com precosMap
-      Object.assign(precosMap, estoqueMap);
 
-      // Agrupar saídas por produto — usar preco_compra quando custo_unit = 0
+      // Agrupar saídas por produto
       const sMap = {};
       (saidasRaw||[]).forEach(r => {
-        const k = r.referencia || r.nome_produto;
-        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, os: new Set(), movs: [], estoque: precosMap[r.referencia]?.estoque ?? null };
+        const k = r.referencia || r.produto;
+        if (!sMap[k]) sMap[k] = { referencia: r.referencia, produto: (r.produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, estoque: precosMap[r.referencia]?.estoque ?? null };
         const qtd = Math.abs(parseFloat(r.qtd)||0);
-        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia]?.preco || 0;
+        const custo = parseFloat(r.custo_total) || (qtd * (parseFloat(r.custo_unit) || precosMap[r.referencia]?.preco || 0));
         sMap[k].qtd   += qtd;
-        sMap[k].custo += qtd * custoUnit;
-        if (r.id_os) sMap[k].os.add(r.id_os);
+        sMap[k].custo += custo;
       });
 
       // Agrupar entradas por produto
       const eMap = {};
       (entradasRaw||[]).forEach(r => {
-        const k = r.referencia || r.nome_produto;
-        if (!eMap[k]) eMap[k] = { referencia: r.referencia, produto: (r.nome_produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, tipo_entrada: r.motivo||r.tipo_mov };
-        const qtd = Math.abs(parseFloat(r.qtd)||0);
-        const custoUnit = parseFloat(r.custo_unit) || precosMap[r.referencia]?.preco || 0;
-        eMap[k].qtd   += qtd;
-        eMap[k].custo += qtd * custoUnit;
+        const k = r.referencia || r.produto;
+        if (!eMap[k]) eMap[k] = { referencia: r.referencia, produto: (r.produto||'').trim(), grupo: (r.grupo||'').trim(), qtd: 0, custo: 0, motivo: r.motivo };
+        eMap[k].qtd   += Math.abs(parseFloat(r.qtd)||0);
+        eMap[k].custo += Math.abs(parseFloat(r.custo_total)||0);
       });
 
       this._saidas   = Object.values(sMap).sort((a,b) => b.custo - a.custo);
       this._entradas = Object.values(eMap).sort((a,b) => b.custo - a.custo);
 
       // KPIs
-      const totQtdS  = this._saidas.reduce((s,r)=>s+r.qtd,0);
+      const totQtdS   = this._saidas.reduce((s,r)=>s+r.qtd,0);
       const totCustoS = this._saidas.reduce((s,r)=>s+r.custo,0);
-      const totQtdE  = this._entradas.reduce((s,r)=>s+r.qtd,0);
+      const totQtdE   = this._entradas.reduce((s,r)=>s+r.qtd,0);
       const totCustoE = this._entradas.reduce((s,r)=>s+r.custo,0);
-      const saldo    = totCustoS - totCustoE; // consumo líquido: saiu - entrou
+      const saldo     = totCustoS - totCustoE;
       const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-
       const el = id => document.getElementById(id);
-      if(el('ast-mg-k-qtd-s'))    el('ast-mg-k-qtd-s').textContent    = totQtdS.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
-      if(el('ast-mg-k-prod-s'))   el('ast-mg-k-prod-s').textContent   = this._saidas.length + ' produtos';
-      if(el('ast-mg-k-custo-s'))  el('ast-mg-k-custo-s').textContent  = fmt(totCustoS);
-      if(el('ast-mg-k-qtd-e'))    el('ast-mg-k-qtd-e').textContent    = totQtdE.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
-      if(el('ast-mg-k-prod-e'))   el('ast-mg-k-prod-e').textContent   = this._entradas.length + ' itens';
-      if(el('ast-mg-k-custo-e'))  el('ast-mg-k-custo-e').textContent  = fmt(totCustoE);
-      if(el('ast-mg-k-saldo'))    { el('ast-mg-k-saldo').textContent = fmt(saldo); el('ast-mg-k-saldo').style.color = saldo >= 0 ? 'var(--orange)' : 'var(--green)'; }
+      if(el('ast-mg-k-qtd-s'))   el('ast-mg-k-qtd-s').textContent   = totQtdS.toLocaleString('pt-BR',{maximumFractionDigits:1});
+      if(el('ast-mg-k-prod-s'))  el('ast-mg-k-prod-s').textContent  = this._saidas.length + ' produtos';
+      if(el('ast-mg-k-custo-s')) el('ast-mg-k-custo-s').textContent = fmt(totCustoS);
+      if(el('ast-mg-k-qtd-e'))   el('ast-mg-k-qtd-e').textContent   = totQtdE.toLocaleString('pt-BR',{maximumFractionDigits:1});
+      if(el('ast-mg-k-prod-e'))  el('ast-mg-k-prod-e').textContent  = this._entradas.length + ' itens';
+      if(el('ast-mg-k-custo-e')) el('ast-mg-k-custo-e').textContent = fmt(totCustoE);
+      if(el('ast-mg-k-saldo'))   { el('ast-mg-k-saldo').textContent = fmt(saldo); el('ast-mg-k-saldo').style.color = saldo >= 0 ? 'var(--orange)' : 'var(--green)'; }
 
       this.filtrar();
       window.setLastUpdate?.();
     } catch(e) {
-      if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Erro: ${e.message}</td></tr>`;
+      if(tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--red)">Erro: ${e.message}</td></tr>`;
     }
   },
 
