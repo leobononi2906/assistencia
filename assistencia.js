@@ -391,7 +391,7 @@ const AST_PAGES = {
     <div class="ast-card"><div class="ast-card-label">Custo Saídas</div><div class="ast-card-value red" id="ast-mg-k-custo-s">—</div><div class="ast-card-sub">custo total saído</div></div>
     <div class="ast-card"><div class="ast-card-label">Devoluções (qtd)</div><div class="ast-card-value green" id="ast-mg-k-qtd-e">—</div><div class="ast-card-sub" id="ast-mg-k-prod-e">— itens</div></div>
     <div class="ast-card"><div class="ast-card-label">Custo Devoluções</div><div class="ast-card-value" id="ast-mg-k-custo-e">—</div><div class="ast-card-sub">custo total entrado</div></div>
-    <div class="ast-card"><div class="ast-card-label">Saldo Custo</div><div class="ast-card-value orange" id="ast-mg-k-saldo">—</div><div class="ast-card-sub">entradas − saídas</div></div>
+    <div class="ast-card"><div class="ast-card-label">Consumo Líquido</div><div class="ast-card-value orange" id="ast-mg-k-saldo">—</div><div class="ast-card-sub">saídas − devoluções</div></div>
   </div>
 
   <div class="ast-table-card">
@@ -2321,7 +2321,7 @@ window.astMovGarantia = {
       const totCustoS = this._saidas.reduce((s,r)=>s+r.custo,0);
       const totQtdE  = this._entradas.reduce((s,r)=>s+r.qtd,0);
       const totCustoE = this._entradas.reduce((s,r)=>s+r.custo,0);
-      const saldo    = totCustoE - totCustoS;
+      const saldo    = totCustoS - totCustoE; // consumo líquido: saiu - entrou
       const fmt = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
       const el = id => document.getElementById(id);
@@ -2331,7 +2331,7 @@ window.astMovGarantia = {
       if(el('ast-mg-k-qtd-e'))    el('ast-mg-k-qtd-e').textContent    = totQtdE.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1});
       if(el('ast-mg-k-prod-e'))   el('ast-mg-k-prod-e').textContent   = this._entradas.length + ' itens';
       if(el('ast-mg-k-custo-e'))  el('ast-mg-k-custo-e').textContent  = fmt(totCustoE);
-      if(el('ast-mg-k-saldo'))    { el('ast-mg-k-saldo').textContent = (saldo >= 0 ? '+' : '-') + fmt(saldo); el('ast-mg-k-saldo').style.color = saldo >= 0 ? 'var(--green)' : 'var(--red)'; }
+      if(el('ast-mg-k-saldo'))    { el('ast-mg-k-saldo').textContent = fmt(saldo); el('ast-mg-k-saldo').style.color = saldo >= 0 ? 'var(--orange)' : 'var(--green)'; }
 
       this.filtrar();
       window.setLastUpdate?.();
@@ -2413,11 +2413,11 @@ window.astMovGarantia = {
       if (busca && !`${produto} ${k} ${grupo}`.toLowerCase().includes(busca)) return;
       const qtdS = s?.qtd || 0, custoS = s?.custo || 0;
       const qtdE = e?.qtd || 0, custoE = e?.custo || 0;
-      itens.push({ referencia: k, produto, grupo, qtdS, custoS, qtdE, custoE, saldo: custoE - custoS });
+      itens.push({ referencia: k, produto, grupo, qtdS, custoS, qtdE, custoE, saldo: custoS - custoE });
     });
-    itens.sort((a,b) => a.saldo - b.saldo); // mais negativo (mais saída) primeiro
+    itens.sort((a,b) => b.saldo - a.saldo); // maior consumo líquido primeiro
 
-    if (thead) thead.innerHTML = `<tr><th>Referência</th><th>Produto</th><th class="right">Qtd Saída</th><th class="right">Custo Saída</th><th class="right">Qtd Entrada</th><th class="right">Custo Entrada</th><th class="right">Saldo Período</th><th class="right">Estoque Atual</th></tr>`;
+    if (thead) thead.innerHTML = `<tr><th>Referência</th><th>Produto</th><th class="right">Qtd Saída</th><th class="right">Custo Saída</th><th class="right">Qtd Entrada</th><th class="right">Custo Entrada</th><th class="right">Consumo Líquido</th><th class="right">Estoque Atual</th></tr>`;
 
     const fmt = v => v !== 0 ? 'R$ ' + Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
 
@@ -2439,7 +2439,7 @@ window.astMovGarantia = {
         <td class="right" style="color:var(--red)">${fmt(r.custoS)}</td>
         <td class="right" style="color:var(--green)">${r.qtdE > 0 ? r.qtdE : '—'}</td>
         <td class="right" style="color:var(--green)">${fmt(r.custoE)}</td>
-        <td class="right" style="font-weight:700;color:${r.saldo >= 0 ? 'var(--green)' : 'var(--red)'}">${r.saldo !== 0 ? (r.saldo > 0 ? '+' : '-') + fmt(r.saldo) : '—'}</td>
+        <td class="right" style="font-weight:700;color:${r.saldo > 0 ? 'var(--red)' : r.saldo < 0 ? 'var(--green)' : 'var(--text-muted)'}">${r.saldo !== 0 ? (r.saldo > 0 ? '-' : '+') + fmt(r.saldo) : '—'}</td>
         <td class="right" style="font-weight:600;color:${est===null?'var(--text-muted)':est<=0?'var(--red)':est<=5?'var(--orange)':'var(--green)'}">${est===null?'—':est.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})}</td>
       </tr>`;
     }).join('');
