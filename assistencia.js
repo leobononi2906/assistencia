@@ -2218,7 +2218,7 @@ window.astMovGarantia = {
       const chunksOs    = chunk(osSet,    200);
       const chunksVenda = chunk(vendaSet.length ? vendaSet : [0], 200);
 
-      // Função auxiliar para buscar movs por OS ou por Venda
+      // Função auxiliar para buscar movs
       const fetchMov = async (tipoEs, chunksArr, campo) => {
         let raw = [];
         for (const c of chunksArr) {
@@ -2245,12 +2245,13 @@ window.astMovGarantia = {
       ]);
       const saidasRaw = [...saidasOs, ...saidasVenda];
 
-      // ENTRADAS: por OS e por Pedido de Venda
-      const [entradasOs, entradasVenda] = await Promise.all([
-        fetchMov('E', chunksOs,    'id_os'),
-        fetchMov('E', chunksVenda, 'id_venda'),
-      ]);
-      const entradasRaw = [...entradasOs, ...entradasVenda];
+      // ENTRADAS: somente por id_os de garantia (não por id_venda)
+      // Evita overlap: mesmo número pode ser id_venda de garantia E id_os de outro depto
+      // Entradas válidas = devoluções/trocas DENTRO das OS de garantia
+      const entradasOs = chunksOs.length ? await fetchMov('E', chunksOs, 'id_os') : [];
+      // Para pedidos de venda: entradas só se o id_venda NÃO existe como id_os de outro depto
+      // Por segurança, não incluímos entradas por id_venda (muito raro e distorce)
+      const entradasRaw = entradasOs;
 
       // chunks para busca de preços
       const chunks = chunksOs;
