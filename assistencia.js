@@ -407,6 +407,38 @@ const AST_PAGES = {
   </div>
 </div>`,
 
+'ast-parceiros': `<div class="ast-page" id="page-ast-parceiros">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary)">🗺️ Rede de Assistência Técnica</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Parceiros autorizados — <span id="ast-par-count">—</span></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="ast-toggle" id="ast-par-tag-filter">
+        <button class="ast-toggle-btn active" onclick="astParceiros.filtrarTag('',this)">Todos</button>
+        <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Ar Condicionado',this)">❄️ Ar</button>
+        <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Geladeira',this)">🧊 Geladeira</button>
+        <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Gerador',this)">⚡ Gerador</button>
+      </div>
+      <select class="ast-select" id="ast-par-status" onchange="astParceiros.aplicarFiltros()">
+        <option value="">Todos os status</option>
+        <option value="ativo">Ativo</option>
+        <option value="teste">Em teste</option>
+        <option value="suspenso">Suspenso</option>
+        <option value="inativo">Inativo</option>
+      </select>
+      <input class="ast-search" id="ast-par-busca" placeholder="Buscar parceiro..." oninput="astParceiros.aplicarFiltros()" style="width:200px">
+      <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.abrirNovo()">+ Novo</button>
+    </div>
+  </div>
+  <div id="ast-par-mapa" style="height:520px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;background:var(--surface2)">
+    <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+      <div class="ast-loading-spinner"></div> Carregando mapa...
+    </div>
+  </div>
+  <div id="ast-par-lista" style="margin-top:12px;display:none"></div>
+</div>`,
+
 'ast-config': `<div class="ast-page" id="page-ast-config">
   <div style="margin-bottom:18px">
     <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações</div>
@@ -2562,6 +2594,304 @@ function astHorasUteis(dataInicio, dataFim) {
   return Math.round(horas * 10) / 10;
 }
 
+
+// ══════════════════════════════════════════
+// REDE DE PARCEIROS — ast-parceiros
+// ══════════════════════════════════════════
+window.astParceiros = {
+  _dados: [],
+  _filtrados: [],
+  _tagAtiva: '',
+  _map: null,
+  _markers: [],
+  _drawerAberto: null,
+
+  async carregar() {
+    const mapEl = document.getElementById('ast-par-mapa');
+    if (!mapEl) return;
+
+    // Carregar Leaflet se necessário
+    if (!window.L) {
+      await new Promise(res => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        s.onload = res;
+        document.head.appendChild(s);
+      });
+    }
+
+    // Buscar dados
+    const [{ data: parceiros }, { data: tags }, { data: prods }] = await Promise.all([
+      window.sb.from('assist_parceiros').select('*').order('nome').range(0, 9999),
+      window.sb.from('assist_parceiro_tags').select('*').eq('ativo', true).order('nome'),
+      window.sb.from('assist_parceiro_produtos').select('*').range(0, 9999),
+    ]);
+
+    this._dados = (parceiros || []).map(p => ({
+      ...p,
+      tags: (prods || []).filter(pr => pr.parceiro_id === p.id).map(pr => pr.produto_tag)
+    }));
+    this._tagsList = tags || [];
+    this._filtrados = [...this._dados];
+
+    const count = document.getElementById('ast-par-count');
+    if (count) count.textContent = `${this._dados.length} parceiros`;
+
+    this._initMap();
+    this.aplicarFiltros();
+  },
+
+  _initMap() {
+    const el = document.getElementById('ast-par-mapa');
+    if (!el || !window.L) return;
+    if (this._map) { this._map.remove(); this._map = null; }
+
+    this._map = L.map(el, { zoomControl: true }).setView([-15.5, -48.0], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18
+    }).addTo(this._map);
+  },
+
+  _corStatus(status) {
+    return { ativo: '#0F9D6E', teste: '#E07B00', suspenso: '#D93025', inativo: '#9AA5B8' }[status] || '#9AA5B8';
+  },
+
+  _renderMarkers() {
+    if (!this._map || !window.L) return;
+    this._markers.forEach(m => m.remove());
+    this._markers = [];
+
+    this._filtrados.forEach(p => {
+      if (!p.lat || !p.lng) return;
+      const cor = this._corStatus(p.status);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+      const m = L.marker([p.lat, p.lng], { icon })
+        .addTo(this._map)
+        .on('click', () => this.abrirDrawer(p.id));
+      this._markers.push(m);
+    });
+  },
+
+  filtrarTag(tag, btn) {
+    this._tagAtiva = tag;
+    document.querySelectorAll('#ast-par-tag-filter .ast-toggle-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    this.aplicarFiltros();
+  },
+
+  aplicarFiltros() {
+    const busca  = (document.getElementById('ast-par-busca')?.value || '').toLowerCase();
+    const status = document.getElementById('ast-par-status')?.value || '';
+    this._filtrados = this._dados.filter(p => {
+      if (status && p.status !== status) return false;
+      if (this._tagAtiva && !p.tags.includes(this._tagAtiva)) return false;
+      if (busca && !`${p.nome} ${p.responsavel||''} ${p.cidade||''}`.toLowerCase().includes(busca)) return false;
+      return true;
+    });
+    const count = document.getElementById('ast-par-count');
+    if (count) count.textContent = `${this._filtrados.length} parceiros`;
+    this._renderMarkers();
+  },
+
+  async abrirDrawer(id) {
+    const p = this._dados.find(r => r.id === id);
+    if (!p) return;
+    this._drawerAberto = id;
+
+    // Buscar followups e docs
+    const [{ data: fups }, { data: docs }] = await Promise.all([
+      window.sb.from('assist_parceiro_followups').select('*').eq('parceiro_id', id).order('criado_em', {ascending: false}).range(0, 50),
+      window.sb.from('assist_parceiro_docs').select('*').eq('parceiro_id', id).order('criado_em', {ascending: false}).range(0, 50),
+    ]);
+
+    const statusCor = { ativo: 'var(--green)', teste: 'var(--orange)', suspenso: 'var(--red)', inativo: 'var(--text-muted)' };
+    const statusNome = { ativo: 'Ativo', teste: 'Em teste', suspenso: 'Suspenso', inativo: 'Inativo' };
+    const tagHtml = p.tags.length
+      ? p.tags.map(t => `<span class="ast-par-tag">${t}</span>`).join('')
+      : '<span style="color:var(--text-muted);font-size:12px">Nenhuma tag</span>';
+
+    const fmtDate = d => d ? new Date(d).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const fmt = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+
+    const fupsHtml = (fups||[]).length
+      ? (fups||[]).map(f => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:11px;font-weight:600;color:var(--blue-mid)">${f.tipo||'Contato'}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${fmtDate(f.criado_em)} · ${f.usuario_nome||'—'}</span>
+          </div>
+          <div style="font-size:13px">${f.mensagem}</div>
+        </div>`).join('')
+      : '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum acompanhamento</div>';
+
+    const docsHtml = (docs||[]).length
+      ? (docs||[]).map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:500">${d.nome_doc}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${d.tipo||'documento'} · ${fmt(d.criado_em)}</div>
+          </div>
+          ${d.url ? `<a href="${d.url}" target="_blank" class="ast-btn ast-btn-secondary ast-btn-sm">↗ Abrir</a>` : ''}
+        </div>`).join('')
+      : '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum documento</div>';
+
+    // Tags disponíveis para marcar
+    const tagsDispHtml = this._tagsList.map(t => `
+      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin:3px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);font-size:12px;background:${p.tags.includes(t.nome)?'var(--blue-pale)':'var(--surface2)'}">
+        <input type="checkbox" ${p.tags.includes(t.nome)?'checked':''} onchange="astParceiros.toggleTag(${id},'${t.nome}',this.checked)" style="display:none">
+        ${p.tags.includes(t.nome)?'✅ ':''}${t.nome}
+      </label>`).join('');
+
+    const html = `
+      <div class="ast-drw-header">
+        <div>
+          <div style="font-size:16px;font-weight:700">${p.nome}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <span style="font-size:12px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span>
+            <span style="font-size:11px;color:var(--text-muted)">${p.cidade||''}${p.uf?' / '+p.uf:''}</span>
+          </div>
+        </div>
+        <button onclick="astParceiros.fecharDrawer()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);padding:4px">✕</button>
+      </div>
+      <div class="ast-drw-body" style="overflow-y:auto">
+
+        <!-- DADOS -->
+        <div class="ast-drw-section">
+          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between">
+            <span>Dados</span>
+            <select class="ast-select" style="height:26px;font-size:11px" onchange="astParceiros.alterarStatus(${id},this.value)">
+              <option value="ativo" ${p.status==='ativo'?'selected':''}>✅ Ativo</option>
+              <option value="teste" ${p.status==='teste'?'selected':''}>🧪 Em teste</option>
+              <option value="suspenso" ${p.status==='suspenso'?'selected':''}>⏸ Suspenso</option>
+              <option value="inativo" ${p.status==='inativo'?'selected':''}>❌ Inativo</option>
+            </select>
+          </div>
+          <div class="ast-detail-grid">
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Responsável</div><div class="ast-detail-val">${p.responsavel||'—'}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Telefone</div><div class="ast-detail-val">${p.telefone||'—'}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">WhatsApp</div>
+              <div class="ast-detail-val">${p.whatsapp ? `<a href="https://wa.me/${p.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--green)">📱 ${p.whatsapp}</a>` : '—'}</div>
+            </div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Email</div><div class="ast-detail-val">${p.email||'—'}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">CNPJ</div><div class="ast-detail-val ast-mono">${p.cnpj||'—'}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Cidade / UF</div><div class="ast-detail-val">${p.cidade||'—'}${p.uf?' / '+p.uf:''}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Endereço</div><div class="ast-detail-val">${p.endereco||'—'}</div></div>
+            <div class="ast-detail-field"><div class="ast-detail-lbl">Raio (km)</div><div class="ast-detail-val">${p.raio_km||'—'} km</div></div>
+          </div>
+          ${p.observacao ? `<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text-secondary)">${p.observacao}</div>` : ''}
+        </div>
+
+        <!-- PRODUTOS -->
+        <div class="ast-drw-section">
+          <div class="ast-drw-section-title">Produtos atendidos</div>
+          <div style="margin-bottom:8px">${tagHtml}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${tagsDispHtml}</div>
+        </div>
+
+        <!-- FOLLOWUPS -->
+        <div class="ast-drw-section">
+          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Acompanhamento</span>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="display:flex;gap:6px;margin-bottom:6px">
+              <select id="ast-par-fup-tipo-${id}" class="ast-select" style="height:32px;font-size:12px;flex:1">
+                <option>Contato</option>
+                <option>Visita</option>
+                <option>Negociação</option>
+                <option>Problema</option>
+                <option>Elogio</option>
+                <option>Outros</option>
+              </select>
+            </div>
+            <textarea id="ast-par-fup-msg-${id}" class="ast-form-input" placeholder="O que foi feito ou combinado..." rows="2" style="width:100%;resize:vertical;font-size:13px"></textarea>
+            <button class="ast-btn ast-btn-primary ast-btn-sm" style="margin-top:6px" onclick="astParceiros.salvarFup(${id})">Registrar</button>
+          </div>
+          <div id="ast-par-fups-${id}">${fupsHtml}</div>
+        </div>
+
+        <!-- DOCUMENTOS -->
+        <div class="ast-drw-section">
+          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Documentos</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            <input id="ast-par-doc-nome-${id}" class="ast-form-input" placeholder="Nome do documento" style="flex:1;min-width:120px">
+            <input id="ast-par-doc-url-${id}" class="ast-form-input" placeholder="URL (opcional)" style="flex:1;min-width:120px">
+            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.salvarDoc(${id})">+ Adicionar</button>
+          </div>
+          <div id="ast-par-docs-${id}">${docsHtml}</div>
+        </div>
+
+      </div>`;
+
+    const drw = document.getElementById('ast-drawer');
+    const ovl = document.getElementById('ast-overlay');
+    if (drw) { drw.innerHTML = html; drw.classList.add('open'); }
+    if (ovl) ovl.classList.add('open');
+  },
+
+  fecharDrawer() {
+    this._drawerAberto = null;
+    document.getElementById('ast-drawer')?.classList.remove('open');
+    document.getElementById('ast-overlay')?.classList.remove('open');
+  },
+
+  async toggleTag(parceiroId, tag, checked) {
+    const p = this._dados.find(r => r.id === parceiroId);
+    if (!p) return;
+    if (checked) {
+      await window.sb.from('assist_parceiro_produtos').insert({ parceiro_id: parceiroId, produto_tag: tag });
+      if (!p.tags.includes(tag)) p.tags.push(tag);
+    } else {
+      await window.sb.from('assist_parceiro_produtos').delete().eq('parceiro_id', parceiroId).eq('produto_tag', tag);
+      p.tags = p.tags.filter(t => t !== tag);
+    }
+  },
+
+  async alterarStatus(id, novoStatus) {
+    await window.sb.from('assist_parceiros').update({ status: novoStatus, atualizado_em: new Date().toISOString() }).eq('id', id);
+    const p = this._dados.find(r => r.id === id);
+    if (p) { p.status = novoStatus; this._renderMarkers(); }
+  },
+
+  async salvarFup(id) {
+    const tipo = document.getElementById(`ast-par-fup-tipo-${id}`)?.value;
+    const msg  = document.getElementById(`ast-par-fup-msg-${id}`)?.value?.trim();
+    if (!msg) return;
+    const usuario = window.getUsuario?.()?.nome || 'Sistema';
+    await window.sb.from('assist_parceiro_followups').insert({ parceiro_id: id, tipo, mensagem: msg, usuario_nome: usuario });
+    document.getElementById(`ast-par-fup-msg-${id}`).value = '';
+    // Reabrir para atualizar
+    this.abrirDrawer(id);
+  },
+
+  async salvarDoc(id) {
+    const nome = document.getElementById(`ast-par-doc-nome-${id}`)?.value?.trim();
+    const url  = document.getElementById(`ast-par-doc-url-${id}`)?.value?.trim();
+    if (!nome) return;
+    const usuario = window.getUsuario?.()?.nome || 'Sistema';
+    await window.sb.from('assist_parceiro_docs').insert({ parceiro_id: id, nome_doc: nome, url: url||null, criado_por: usuario });
+    document.getElementById(`ast-par-doc-nome-${id}`).value = '';
+    document.getElementById(`ast-par-doc-url-${id}`).value = '';
+    this.abrirDrawer(id);
+  },
+
+  abrirNovo() {
+    alert('Em breve: formulário para adicionar novo parceiro');
+  }
+};
+
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
@@ -2665,6 +2995,7 @@ const AST_LOADERS={
   'ast-produtos': astLoadProdutos,
   'ast-entregas': ()=>astEntregas.carregar(),
   'ast-mov-garantia': ()=>astMovGarantia.carregar(),
+  'ast-parceiros': ()=>astParceiros.carregar(),
   'ast-config':   astLoadConfig,
 };
 
