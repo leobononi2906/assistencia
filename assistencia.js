@@ -2791,11 +2791,14 @@ window.astParceiros = {
     const docsHtml = (docs||[]).length
       ? (docs||[]).map(d => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-size:13px;font-weight:500">${d.nome_doc}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${d.tipo||'documento'} · ${fmt(d.criado_em)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nome_doc}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${d.tipo||'documento'} · ${fmt(d.criado_em)}${d.tamanho_bytes?` · ${(d.tamanho_bytes/1024).toFixed(0)}KB`:''}</div>
           </div>
-          ${d.url ? `<a href="${d.url}" target="_blank" class="ast-btn ast-btn-secondary ast-btn-sm">↗ Abrir</a>` : ''}
+          <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
+            ${d.storage_path ? `<button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.downloadDoc('${d.storage_path}','${d.nome_doc}')">⬇ Baixar</button>` : d.url ? `<a href="${d.url}" target="_blank" class="ast-btn ast-btn-secondary ast-btn-sm">↗ Abrir</a>` : ''}
+            <button class="ast-btn ast-btn-sm" style="background:var(--red-bg);color:var(--red)" onclick="astParceiros.excluirDoc(${d.id},'${d.storage_path||''}',${id})">🗑</button>
+          </div>
         </div>`).join('')
       : '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum documento</div>';
 
@@ -2876,13 +2879,31 @@ window.astParceiros = {
 
         <!-- DOCUMENTOS -->
         <div class="ast-drw-section">
-          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span>Documentos</span>
-          </div>
-          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-            <input id="ast-par-doc-nome-${id}" class="ast-form-input" placeholder="Nome do documento" style="flex:1;min-width:120px">
-            <input id="ast-par-doc-url-${id}" class="ast-form-input" placeholder="URL (opcional)" style="flex:1;min-width:120px">
-            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.salvarDoc(${id})">+ Adicionar</button>
+          <div class="ast-drw-section-title">Documentos</div>
+          <div style="margin-bottom:10px">
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;gap:6px;align-items:center">
+                <input id="ast-par-doc-nome-${id}" class="ast-form-input" placeholder="Nome do documento" style="flex:1">
+                <select id="ast-par-doc-tipo-${id}" class="ast-select" style="height:32px;font-size:12px;width:120px">
+                  <option value="documento">📄 Documento</option>
+                  <option value="contrato">📝 Contrato</option>
+                  <option value="laudo">🔍 Laudo</option>
+                  <option value="foto">📷 Foto</option>
+                  <option value="outros">📎 Outros</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px dashed var(--border);border-radius:var(--radius-sm);cursor:pointer;background:var(--surface2);font-size:12px;color:var(--text-muted)" 
+                  onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
+                  <span style="font-size:18px">📎</span>
+                  <span id="ast-par-doc-file-label-${id}">Clique para selecionar arquivo (PDF, imagem, Word)</span>
+                  <input type="file" id="ast-par-doc-file-${id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style="display:none"
+                    onchange="document.getElementById('ast-par-doc-file-label-${id}').textContent=this.files[0]?.name||'Nenhum arquivo'">
+                </label>
+                <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.uploadDoc(${id})">📤 Upload</button>
+              </div>
+              <div id="ast-par-doc-progress-${id}" style="display:none;font-size:12px;color:var(--blue-mid)">Enviando...</div>
+            </label>
           </div>
           <div id="ast-par-docs-${id}">${docsHtml}</div>
         </div>
@@ -2944,15 +2965,78 @@ window.astParceiros = {
     this.abrirDrawer(id);
   },
 
-  async salvarDoc(id) {
-    const nome = document.getElementById(`ast-par-doc-nome-${id}`)?.value?.trim();
-    const url  = document.getElementById(`ast-par-doc-url-${id}`)?.value?.trim();
-    if (!nome) return;
+  async avaliar(id, nota) {
+    await window.sb.from('assist_parceiros').update({ avaliacao: nota, atualizado_em: new Date().toISOString() }).eq('id', id);
+    const p = this._dados.find(r => r.id === id);
+    if (p) { p.avaliacao = nota; }
+    // Atualizar visual das estrelas
+    const stars = document.querySelectorAll(`#ast-par-stars-${id} span`);
+    stars.forEach((s, i) => { s.style.color = i < nota ? '#E07B00' : '#E2E8F2'; });
+  },
+
+  hoverStar(id, nota) {
+    const stars = document.querySelectorAll(`#ast-par-stars-${id} span`);
+    const p = this._dados.find(r => r.id === id);
+    const atual = nota || p?.avaliacao || 0;
+    stars.forEach((s, i) => { s.style.color = i < atual ? '#E07B00' : '#E2E8F2'; });
+  },
+
+  async uploadDoc(id) {
+    const nome     = document.getElementById(`ast-par-doc-nome-${id}`)?.value?.trim();
+    const tipo     = document.getElementById(`ast-par-doc-tipo-${id}`)?.value || 'documento';
+    const fileInput = document.getElementById(`ast-par-doc-file-${id}`);
+    const file     = fileInput?.files?.[0];
+    const progEl   = document.getElementById(`ast-par-doc-progress-${id}`);
+
+    if (!file) { alert('Selecione um arquivo'); return; }
+    const nomeDoc = nome || file.name;
+
+    if (progEl) { progEl.style.display = 'block'; progEl.textContent = 'Enviando...'; }
+
+    const path = `parceiro-${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+
+    const { error: upErr } = await window.sb.storage.from('assist-parceiros-docs').upload(path, file, {
+      contentType: file.type,
+      upsert: false
+    });
+
+    if (upErr) {
+      if (progEl) progEl.style.display = 'none';
+      alert('Erro no upload: ' + upErr.message);
+      return;
+    }
+
     const usuario = window.getUsuario?.()?.nome || 'Sistema';
-    await window.sb.from('assist_parceiro_docs').insert({ parceiro_id: id, nome_doc: nome, url: url||null, criado_por: usuario });
-    document.getElementById(`ast-par-doc-nome-${id}`).value = '';
-    document.getElementById(`ast-par-doc-url-${id}`).value = '';
+    await window.sb.from('assist_parceiro_docs').insert({
+      parceiro_id: id,
+      nome_doc: nomeDoc,
+      tipo,
+      storage_path: path,
+      tamanho_bytes: file.size,
+      mime_type: file.type,
+      criado_por: usuario
+    });
+
+    if (progEl) progEl.style.display = 'none';
+    if (fileInput) { fileInput.value = ''; document.getElementById(`ast-par-doc-file-label-${id}`).textContent = 'Clique para selecionar arquivo'; }
+    if (document.getElementById(`ast-par-doc-nome-${id}`)) document.getElementById(`ast-par-doc-nome-${id}`).value = '';
     this.abrirDrawer(id);
+  },
+
+  async downloadDoc(path, nome) {
+    const { data, error } = await window.sb.storage.from('assist-parceiros-docs').download(path);
+    if (error) { alert('Erro ao baixar: ' + error.message); return; }
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url; a.download = nome; a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  async excluirDoc(docId, storagePath, parceiroId) {
+    if (!confirm('Excluir este documento?')) return;
+    if (storagePath) await window.sb.storage.from('assist-parceiros-docs').remove([storagePath]);
+    await window.sb.from('assist_parceiro_docs').delete().eq('id', docId);
+    this.abrirDrawer(parceiroId);
   },
 
   abrirNovo() {
