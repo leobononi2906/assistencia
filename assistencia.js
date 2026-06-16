@@ -455,7 +455,7 @@ const AST_PAGES = {
         <table class="ast-table">
           <thead><tr>
             <th>Nome</th><th>Responsável</th><th>Telefone</th>
-            <th>UF</th><th>Status</th><th>Produtos</th>
+            <th>Cidade</th><th>UF</th><th>Status</th><th>Produtos</th>
           </tr></thead>
           <tbody id="ast-par-lista-tbody">
             <tr class="ast-loading"><td colspan="6">Carregando...</td></tr>
@@ -2698,12 +2698,14 @@ window.astParceiros = {
       const cor = this._corStatus(p.status);
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s" onmouseover="this.style.transform='scale(1.8)'" onmouseout="this.style.transform=''"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7]
       });
+      const tooltip = `<b>${p.nome}</b><br>${p.responsavel||''}<br>${p.telefone||''}<br>${p.cidade||''}${p.cidade&&p.uf?' / ':''}${p.uf||''}`;
       const m = L.marker([p.lat, p.lng], { icon })
         .addTo(this._map)
+        .bindTooltip(tooltip, { permanent: false, direction: 'top', offset: [0, -8], className: 'ast-map-tooltip' })
         .on('click', () => this.abrirDrawer(p.id));
       this._markers.push(m);
     });
@@ -2741,13 +2743,14 @@ window.astParceiros = {
     const statusNome = { ativo:'✅ Ativo', teste:'🧪 Teste', suspenso:'⏸ Suspenso', inativo:'❌ Inativo' };
     const statusCor  = { ativo:'var(--green)', teste:'var(--orange)', suspenso:'var(--red)', inativo:'var(--text-muted)' };
     if (!this._filtrados.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro encontrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro encontrado</td></tr>';
       return;
     }
     tbody.innerHTML = this._filtrados.map(p => `<tr style="cursor:pointer" onclick="astParceiros.abrirDrawer(${p.id})">
-      <td style="font-weight:600">${p.nome}</td>
-      <td style="color:var(--text-secondary)">${p.responsavel||'—'}</td>
-      <td style="font-family:monospace;font-size:12px">${p.telefone||'—'}</td>
+      <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome}">${p.nome}</td>
+      <td style="color:var(--text-secondary);font-size:12px">${p.responsavel||'—'}</td>
+      <td style="font-family:monospace;font-size:11px">${p.telefone||'—'}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${p.cidade||'—'}</td>
       <td style="font-size:12px;font-weight:700;color:var(--blue-mid)">${p.uf||'—'}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span></td>
       <td style="font-size:11px">${p.tags.map(t=>`<span class="ast-par-tag">${t}</span>`).join('')||'—'}</td>
@@ -2804,17 +2807,17 @@ window.astParceiros = {
       </label>`).join('');
 
     const html = `
-      <div class="ast-drw-header">
+      <div class="ast-drawer-header">
         <div>
-          <div style="font-size:16px;font-weight:700">${p.nome}</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-            <span style="font-size:12px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span>
-            <span style="font-size:11px;color:var(--text-muted)">${p.cidade||''}${p.uf?' / '+p.uf:''}</span>
+          <div class="ast-drawer-title">${p.nome}</div>
+          <div class="ast-drawer-sub" style="display:flex;align-items:center;gap:8px">
+            <span style="font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span>
+            ${p.cidade||p.uf ? `<span>·</span><span>${p.cidade||''}${p.cidade&&p.uf?' / ':''}${p.uf||''}</span>` : ''}
           </div>
         </div>
-        <button onclick="astParceiros.fecharDrawer()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);padding:4px">✕</button>
+        <button class="ast-drawer-close" onclick="astParceiros.fecharDrawer()">✕</button>
       </div>
-      <div class="ast-drw-body" style="overflow-y:auto">
+      <div class="ast-drawer-body">
 
         <!-- DADOS -->
         <div class="ast-drw-section">
@@ -2886,6 +2889,16 @@ window.astParceiros = {
 
       </div>`;
 
+    // Garantir que overlay/drawer existem
+    if (!document.getElementById('ast-overlay')) {
+      const ovlEl = document.createElement('div');
+      ovlEl.id = 'ast-overlay'; ovlEl.className = 'ast-overlay';
+      ovlEl.onclick = () => astParceiros.fecharDrawer();
+      document.body.appendChild(ovlEl);
+      const drwEl = document.createElement('div');
+      drwEl.id = 'ast-drawer'; drwEl.className = 'ast-drawer';
+      document.body.appendChild(drwEl);
+    }
     const drw = document.getElementById('ast-drawer');
     const ovl = document.getElementById('ast-overlay');
     if (drw) { drw.innerHTML = html; drw.classList.add('open'); }
@@ -2896,6 +2909,7 @@ window.astParceiros = {
     this._drawerAberto = null;
     document.getElementById('ast-drawer')?.classList.remove('open');
     document.getElementById('ast-overlay')?.classList.remove('open');
+    // Remover overlay/drawer temporários do parceiro se overlay principal não estiver em uso
   },
 
   async toggleTag(parceiroId, tag, checked) {
