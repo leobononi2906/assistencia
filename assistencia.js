@@ -2556,11 +2556,24 @@ const astEntregas = {
     tbody.innerHTML = dados.map(r => {
       const numStr = String(r.num_nf||r.id_doc||'');
       const cte = ctesMap[numStr];
-      const cteHtml = cte
-        ? `<span style="font-size:11px;color:${cte.status_auditoria==='ok'?'var(--green)':cte.status_auditoria==='divergencia'?'var(--red)':'var(--text-muted)'}">
-             CTe · ${cte.nome_transportadora||'—'} · R$ ${parseFloat(cte.valor_frete_cte||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${cte.status_auditoria||'pendente'}
-           </span>`
-        : '<span style="font-size:11px;color:var(--text-muted)">Sem CTe vinculado</span>';
+      // Rastreamento: semáforo + status legível
+      let rastreioHtml;
+      if (cte) {
+        const st = cte.status_auditoria || 'pendente';
+        const cor = st==='ok' ? 'var(--green)' : st==='divergencia' ? 'var(--red)' : 'var(--orange)';
+        const ico = st==='ok' ? '✅' : st==='divergencia' ? '⚠️' : '🔄';
+        const label = st==='ok' ? 'Entregue' : st==='divergencia' ? 'Divergência' : 'Em trânsito';
+        const numCte = cte.num_cte || cte.chave_cte || '';
+        const linkRastreio = cte.url_rastreio || (numCte ? `https://www.cte.inf.br/consulta/?chCTe=${numCte}` : '');
+        rastreioHtml = `<div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:12px;font-weight:600;color:${cor}">${ico} ${label}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${cte.nome_transportadora||'—'} ${cte.num_cte?'· CTe '+cte.num_cte:''}</span>
+          ${cte.valor_frete_cte ? `<span style="font-size:11px;color:var(--orange)">Frete: R$ ${parseFloat(cte.valor_frete_cte).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>` : ''}
+          ${linkRastreio ? `<a href="${linkRastreio}" target="_blank" style="font-size:11px;color:var(--blue-mid);text-decoration:none">🔗 Rastrear</a>` : ''}
+        </div>`;
+      } else {
+        rastreioHtml = '<span style="font-size:11px;color:var(--text-muted)">Sem CTe vinculado</span>';
+      }
       return `<tr>
         <td class="ast-mono" style="font-weight:600">${r.num_nf||r.id_doc||'—'}</td>
         <td style="white-space:nowrap">${r.data_faturamento?new Date(r.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR'):'—'}</td>
@@ -2568,7 +2581,7 @@ const astEntregas = {
         <td style="color:var(--text-muted);font-size:12px">${r.nome_transportadora||'—'}</td>
         <td class="right" style="font-weight:600">${r.faturamento_doc?fmt(parseFloat(r.faturamento_doc)):'—'}</td>
         <td class="right" style="color:var(--orange)">${r.valor_frete&&parseFloat(r.valor_frete)>0?fmt(parseFloat(r.valor_frete)):'—'}</td>
-        <td>${cteHtml}</td>
+        <td>${rastreioHtml}</td>
       </tr>`;
     }).join('');
   }
@@ -3324,6 +3337,7 @@ const CFG_TABLES=[
   {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado', extraCor:true},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
   {id:'procedencias',tabela:'assist_procedencias', titulo:'✅ Tipos de Resolução'},
+  {id:'par-tags',    tabela:'assist_parceiro_tags', titulo:'🔧 Produtos (Parceiros)'},
 ];
 async function astLoadConfig(){
   const grid=document.getElementById('ast-cfg-grid');if(!grid)return;
