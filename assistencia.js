@@ -66,9 +66,9 @@
 .ast-btn-warning   { background:#FEF3C7;color:#D97706;border:1px solid #FDE68A; }
 .ast-btn-sm        { height:26px;padding:0 10px;font-size:11px; }
 .ast-btn:disabled  { opacity:.5;cursor:not-allowed; }
-.ast-overlay { display:none;position:fixed;inset:0;background:rgba(15,29,53,.4);z-index:200; }
+.ast-overlay { display:none;position:fixed;inset:0;background:rgba(15,29,53,.4);z-index:1001; }
 .ast-overlay.open { display:block; }
-.ast-drawer { position:fixed;top:0;right:-800px;width:800px;height:100vh;background:var(--surface);box-shadow:var(--shadow-lg);z-index:201;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden; }
+.ast-drawer { position:fixed;top:0;right:-800px;width:800px;height:100vh;background:var(--surface);box-shadow:var(--shadow-lg);z-index:1002;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden; }
 .ast-drawer.open { right:0; }
 .ast-drawer-header { padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0; }
 .ast-drawer-title  { font-size:15px;font-weight:700;color:var(--text-primary); }
@@ -441,7 +441,7 @@ const AST_PAGES = {
       <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.abrirNovo()">+ Novo</button>
     </div>
   </div>
-  <div id="ast-par-mapa" style="height:520px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;background:var(--surface2)">
+  <div id="ast-par-mapa" style="height:420px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;background:var(--surface2)">
     <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
       <div class="ast-loading-spinner"></div> Carregando mapa...
     </div>
@@ -2889,20 +2889,23 @@ window.astParceiros = {
 
       </div>`;
 
-    // Garantir que overlay/drawer existem
+    // Garantir que overlay/drawer existem e têm z-index acima do Leaflet
     if (!document.getElementById('ast-overlay')) {
       const ovlEl = document.createElement('div');
       ovlEl.id = 'ast-overlay'; ovlEl.className = 'ast-overlay';
+      ovlEl.style.zIndex = '1001';
       ovlEl.onclick = () => astParceiros.fecharDrawer();
       document.body.appendChild(ovlEl);
       const drwEl = document.createElement('div');
       drwEl.id = 'ast-drawer'; drwEl.className = 'ast-drawer';
+      drwEl.style.zIndex = '1002';
       document.body.appendChild(drwEl);
     }
     const drw = document.getElementById('ast-drawer');
     const ovl = document.getElementById('ast-overlay');
-    if (drw) { drw.innerHTML = html; drw.classList.add('open'); }
-    if (ovl) ovl.classList.add('open');
+    // Forçar z-index acima do Leaflet (que usa ~1000)
+    if (drw) { drw.style.zIndex = '1002'; drw.innerHTML = html; drw.classList.add('open'); }
+    if (ovl) { ovl.style.zIndex = '1001'; ovl.classList.add('open'); }
   },
 
   fecharDrawer() {
