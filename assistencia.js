@@ -420,6 +420,16 @@ const AST_PAGES = {
         <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Geladeira',this)">🧊 Geladeira</button>
         <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Gerador',this)">⚡ Gerador</button>
       </div>
+      <select class="ast-select" id="ast-par-uf" onchange="astParceiros.aplicarFiltros()">
+        <option value="">Todos os estados</option>
+        <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
+        <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+        <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
+        <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
+        <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+        <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
+        <option>SE</option><option>SP</option><option>TO</option>
+      </select>
       <select class="ast-select" id="ast-par-status" onchange="astParceiros.aplicarFiltros()">
         <option value="">Todos os status</option>
         <option value="ativo">Ativo</option>
@@ -436,7 +446,24 @@ const AST_PAGES = {
       <div class="ast-loading-spinner"></div> Carregando mapa...
     </div>
   </div>
-  <div id="ast-par-lista" style="margin-top:12px;display:none"></div>
+  <div id="ast-par-lista" style="margin-top:12px">
+    <div class="ast-table-card">
+      <div class="ast-table-header">
+        <div class="ast-table-title">📋 Lista — <span id="ast-par-lista-count">—</span></div>
+      </div>
+      <div class="ast-table-wrap">
+        <table class="ast-table">
+          <thead><tr>
+            <th>Nome</th><th>Responsável</th><th>Telefone</th>
+            <th>UF</th><th>Status</th><th>Produtos</th>
+          </tr></thead>
+          <tbody id="ast-par-lista-tbody">
+            <tr class="ast-loading"><td colspan="6">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>`,
 
 'ast-config': `<div class="ast-page" id="page-ast-config">
@@ -2692,15 +2719,39 @@ window.astParceiros = {
   aplicarFiltros() {
     const busca  = (document.getElementById('ast-par-busca')?.value || '').toLowerCase();
     const status = document.getElementById('ast-par-status')?.value || '';
+    const uf     = document.getElementById('ast-par-uf')?.value || '';
     this._filtrados = this._dados.filter(p => {
       if (status && p.status !== status) return false;
+      if (uf && p.uf !== uf) return false;
       if (this._tagAtiva && !p.tags.includes(this._tagAtiva)) return false;
-      if (busca && !`${p.nome} ${p.responsavel||''} ${p.cidade||''}`.toLowerCase().includes(busca)) return false;
+      if (busca && !`${p.nome} ${p.responsavel||''} ${p.cidade||''} ${p.uf||''}`.toLowerCase().includes(busca)) return false;
       return true;
     });
     const count = document.getElementById('ast-par-count');
     if (count) count.textContent = `${this._filtrados.length} parceiros`;
     this._renderMarkers();
+    this._renderLista();
+  },
+
+  _renderLista() {
+    const tbody = document.getElementById('ast-par-lista-tbody');
+    const countEl = document.getElementById('ast-par-lista-count');
+    if (!tbody) return;
+    if (countEl) countEl.textContent = `${this._filtrados.length} parceiros`;
+    const statusNome = { ativo:'✅ Ativo', teste:'🧪 Teste', suspenso:'⏸ Suspenso', inativo:'❌ Inativo' };
+    const statusCor  = { ativo:'var(--green)', teste:'var(--orange)', suspenso:'var(--red)', inativo:'var(--text-muted)' };
+    if (!this._filtrados.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro encontrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = this._filtrados.map(p => `<tr style="cursor:pointer" onclick="astParceiros.abrirDrawer(${p.id})">
+      <td style="font-weight:600">${p.nome}</td>
+      <td style="color:var(--text-secondary)">${p.responsavel||'—'}</td>
+      <td style="font-family:monospace;font-size:12px">${p.telefone||'—'}</td>
+      <td style="font-size:12px;font-weight:700;color:var(--blue-mid)">${p.uf||'—'}</td>
+      <td><span style="font-size:11px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span></td>
+      <td style="font-size:11px">${p.tags.map(t=>`<span class="ast-par-tag">${t}</span>`).join('')||'—'}</td>
+    </tr>`).join('');
   },
 
   async abrirDrawer(id) {
@@ -3009,8 +3060,7 @@ window.ModuloAssistencia = {
         if(t.firstElementChild) w.appendChild(t.firstElementChild);
       });
       container.innerHTML=''; container.appendChild(w); _iniciado=true;
-      // Default: sempre abre em Chamados/Kanban independente do que o app passar
-      pageId = 'ast-chamados'; _pagina = pageId;
+
     }
     container.querySelectorAll('.ast-page').forEach(p=>p.style.display='none');
     const target=container.querySelector(`#page-${pageId}`);
