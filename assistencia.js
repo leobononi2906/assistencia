@@ -2833,19 +2833,44 @@ window.astParceiros = {
               <option value="inativo" ${p.status==='inativo'?'selected':''}>❌ Inativo</option>
             </select>
           </div>
-          <div class="ast-detail-grid">
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Responsável</div><div class="ast-detail-val">${p.responsavel||'—'}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Telefone</div><div class="ast-detail-val">${p.telefone||'—'}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">WhatsApp</div>
-              <div class="ast-detail-val">${p.whatsapp ? `<a href="https://wa.me/${p.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--green)">📱 ${p.whatsapp}</a>` : '—'}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RESPONSÁVEL</label>
+              <input class="ast-form-input" id="par-f-resp-${id}" value="${p.responsavel||''}" placeholder="Nome" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CNPJ</label>
+              <input class="ast-form-input" id="par-f-cnpj-${id}" value="${p.cnpj||''}" placeholder="00.000.000/0001-00" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">TELEFONE</label>
+              <input class="ast-form-input" id="par-f-tel-${id}" value="${p.telefone||''}" placeholder="(00) 00000-0000" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">WHATSAPP</label>
+              <div style="display:flex;gap:4px">
+                <input class="ast-form-input" id="par-f-whats-${id}" value="${p.whatsapp||''}" placeholder="(00) 00000-0000" style="flex:1">
+                ${p.whatsapp?`<a href="https://wa.me/${(p.whatsapp||'').replace(/\D/g,'')}" target="_blank" class="ast-btn ast-btn-sm" style="background:#25D366;color:#fff;flex-shrink:0">📱</a>`:''}
+              </div></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">EMAIL</label>
+              <input class="ast-form-input" id="par-f-email-${id}" value="${p.email||''}" placeholder="email@empresa.com" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CEP <span style="font-weight:400;color:var(--text-muted)">(preenche cidade/UF/coords)</span></label>
+              <div style="display:flex;gap:4px">
+                <input class="ast-form-input" id="par-f-cep-${id}" value="${p.cep||''}" placeholder="00000-000" style="flex:1"
+                  onblur="astParceiros.buscarCep(${id})">
+                <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.buscarCep(${id})">🔍</button>
+              </div></div>
+            <div style="display:flex;gap:6px">
+              <div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CIDADE</label>
+                <input class="ast-form-input" id="par-f-cidade-${id}" value="${p.cidade||''}" placeholder="Cidade" style="width:100%"
+                  onblur="astParceiros.geocodificarCidadeUF(${id})"></div>
+              <div style="width:64px"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">UF</label>
+                <input class="ast-form-input" id="par-f-uf-${id}" value="${p.uf||''}" placeholder="SP" maxlength="2" style="width:100%;text-transform:uppercase"
+                  onblur="astParceiros.geocodificarCidadeUF(${id})"></div>
             </div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Email</div><div class="ast-detail-val">${p.email||'—'}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">CNPJ</div><div class="ast-detail-val ast-mono">${p.cnpj||'—'}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Cidade / UF</div><div class="ast-detail-val">${p.cidade||'—'}${p.uf?' / '+p.uf:''}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Endereço</div><div class="ast-detail-val">${p.endereco||'—'}</div></div>
-            <div class="ast-detail-field"><div class="ast-detail-lbl">Raio (km)</div><div class="ast-detail-val">${p.raio_km||'—'} km</div></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">ENDEREÇO</label>
+              <input class="ast-form-input" id="par-f-end-${id}" value="${p.endereco||''}" placeholder="Rua, nº, bairro" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RAIO ATENDIMENTO (km)</label>
+              <input class="ast-form-input" id="par-f-raio-${id}" value="${p.raio_km||''}" placeholder="100" type="number" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">COORDS <span id="par-f-coords-label-${id}" style="font-weight:400">${p.lat?`${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`:'não definida'}</span></label>
+              <div id="par-f-geo-status-${id}" style="font-size:11px;color:var(--text-muted)"></div></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">OBSERVAÇÃO</label>
+              <textarea class="ast-form-input" id="par-f-obs-${id}" placeholder="Observações..." rows="2" style="width:100%;resize:vertical">${p.observacao||''}</textarea></div>
           </div>
-          ${p.observacao ? `<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:12px;color:var(--text-secondary)">${p.observacao}</div>` : ''}
+          <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.salvarDados(${id})" style="width:100%">💾 Salvar dados</button>
         </div>
 
         <!-- PRODUTOS -->
@@ -3039,8 +3064,244 @@ window.astParceiros = {
     this.abrirDrawer(parceiroId);
   },
 
+  async salvarDados(id) {
+    const g = f => document.getElementById(`par-f-${f}-${id}`)?.value?.trim();
+    const payload = {
+      responsavel: g('resp') || null,
+      cnpj:        g('cnpj') || null,
+      telefone:    g('tel')  || null,
+      whatsapp:    g('whats')|| null,
+      email:       g('email')|| null,
+      cep:         g('cep')  || null,
+      cidade:      g('cidade')|| null,
+      uf:          (g('uf')||'').toUpperCase() || null,
+      endereco:    g('end')  || null,
+      raio_km:     parseInt(g('raio')) || null,
+      observacao:  g('obs')  || null,
+      atualizado_em: new Date().toISOString()
+    };
+    const { error } = await window.sb.from('assist_parceiros').update(payload).eq('id', id);
+    if (error) { alert('Erro: ' + error.message); return; }
+    // Atualizar local
+    const p = this._dados.find(r => r.id === id);
+    if (p) Object.assign(p, payload);
+    this._renderMarkers();
+    this._renderLista();
+    // Feedback visual
+    const btn = document.querySelector(`button[onclick="astParceiros.salvarDados(${id})"]`);
+    if (btn) { btn.textContent = '✅ Salvo!'; btn.style.background = 'var(--green)'; setTimeout(()=>{ btn.textContent = '💾 Salvar dados'; btn.style.background = ''; }, 2000); }
+  },
+
+  async buscarCep(id) {
+    const cep = document.getElementById(`par-f-cep-${id}`)?.value?.replace(/\D/g,'');
+    if (!cep || cep.length < 8) return;
+    const statusEl = document.getElementById(`par-f-geo-status-${id}`);
+    if (statusEl) statusEl.textContent = 'Buscando CEP...';
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (d.erro) { if (statusEl) statusEl.textContent = 'CEP não encontrado'; return; }
+      const cidadeEl = document.getElementById(`par-f-cidade-${id}`);
+      const ufEl     = document.getElementById(`par-f-uf-${id}`);
+      const endEl    = document.getElementById(`par-f-end-${id}`);
+      if (cidadeEl && !cidadeEl.value) cidadeEl.value = d.localidade || '';
+      if (ufEl     && !ufEl.value)     ufEl.value     = d.uf || '';
+      if (endEl    && !endEl.value && d.logradouro) endEl.value = d.logradouro + (d.bairro ? ', ' + d.bairro : '');
+      // Geocodificar
+      await this.geocodificarCidadeUF(id);
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Erro ao buscar CEP';
+    }
+  },
+
+  async geocodificarCidadeUF(id) {
+    const cidade = document.getElementById(`par-f-cidade-${id}`)?.value?.trim();
+    const uf     = document.getElementById(`par-f-uf-${id}`)?.value?.trim();
+    if (!cidade || !uf) return;
+    const statusEl = document.getElementById(`par-f-geo-status-${id}`);
+    const labelEl  = document.getElementById(`par-f-coords-label-${id}`);
+    if (statusEl) statusEl.textContent = '🔍 Buscando localização...';
+    try {
+      const query = encodeURIComponent(`${cidade}, ${uf}, Brasil`);
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=br`, {
+        headers: { 'Accept-Language': 'pt-BR' }
+      });
+      const data = await r.json();
+      if (!data.length) { if (statusEl) statusEl.textContent = 'Localização não encontrada'; return; }
+      const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+      // Atualizar no banco imediatamente
+      await window.sb.from('assist_parceiros').update({ lat, lng, atualizado_em: new Date().toISOString() }).eq('id', id);
+      const p = this._dados.find(r => r.id === id);
+      if (p) { p.lat = lat; p.lng = lng; }
+      if (labelEl) labelEl.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (statusEl) statusEl.textContent = '✅ Localização definida';
+      this._renderMarkers();
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Erro ao geocodificar';
+    }
+  },
+
   abrirNovo() {
-    alert('Em breve: formulário para adicionar novo parceiro');
+    const drw = document.getElementById('ast-drawer');
+    const ovl = document.getElementById('ast-overlay');
+    if (!drw || !ovl) return;
+
+    const html = `
+      <div class="ast-drawer-header">
+        <div>
+          <div class="ast-drawer-title">Novo Parceiro</div>
+          <div class="ast-drawer-sub">Preencha os dados do parceiro</div>
+        </div>
+        <button class="ast-drawer-close" onclick="astParceiros.fecharDrawer()">✕</button>
+      </div>
+      <div class="ast-drawer-body">
+        <div class="ast-drw-section">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">NOME *</label>
+              <input class="ast-form-input" id="novo-par-nome" placeholder="Nome da empresa ou responsável" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RESPONSÁVEL</label>
+              <input class="ast-form-input" id="novo-par-resp" placeholder="Nome do contato" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CNPJ / CPF</label>
+              <input class="ast-form-input" id="novo-par-cnpj" placeholder="00.000.000/0001-00" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">TELEFONE</label>
+              <input class="ast-form-input" id="novo-par-tel" placeholder="(00) 00000-0000" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">WHATSAPP</label>
+              <input class="ast-form-input" id="novo-par-whats" placeholder="(00) 00000-0000" style="width:100%"></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">EMAIL</label>
+              <input class="ast-form-input" id="novo-par-email" placeholder="email@empresa.com" style="width:100%"></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CEP <span style="font-weight:400">(recomendado)</span></label>
+              <div style="display:flex;gap:4px">
+                <input class="ast-form-input" id="novo-par-cep" placeholder="00000-000" style="flex:1" onblur="astParceiros.buscarCepNovo()">
+                <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.buscarCepNovo()">🔍</button>
+              </div></div>
+            <div style="display:flex;gap:6px">
+              <div style="flex:1"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CIDADE *</label>
+                <input class="ast-form-input" id="novo-par-cidade" placeholder="Cidade" style="width:100%" onblur="astParceiros.geocodificarNovo()"></div>
+              <div style="width:64px"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">UF *</label>
+                <input class="ast-form-input" id="novo-par-uf" placeholder="SP" maxlength="2" style="width:100%;text-transform:uppercase" onblur="astParceiros.geocodificarNovo()"></div>
+            </div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">ENDEREÇO</label>
+              <input class="ast-form-input" id="novo-par-end" placeholder="Rua, nº, bairro" style="width:100%"></div>
+            <div style="grid-column:span 2;background:var(--surface2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px">
+              📍 <span id="novo-par-coords-label" style="color:var(--text-muted)">Localização será detectada automaticamente pelo CEP ou Cidade/UF</span>
+              <div id="novo-par-geo-status" style="font-size:11px;color:var(--blue-mid);margin-top:2px"></div>
+            </div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">STATUS</label>
+              <select class="ast-select" id="novo-par-status" style="width:100%">
+                <option value="ativo">✅ Ativo</option>
+                <option value="teste" selected>🧪 Em teste</option>
+                <option value="suspenso">⏸ Suspenso</option>
+                <option value="inativo">❌ Inativo</option>
+              </select></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RAIO ATENDIMENTO (km)</label>
+              <input class="ast-form-input" id="novo-par-raio" placeholder="100" type="number" style="width:100%"></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">PRODUTOS</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px" id="novo-par-tags">
+                ${(this._tagsList||[]).map(t=>`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid var(--border);font-size:12px">
+                  <input type="checkbox" value="${t.nome}" style="accent-color:var(--blue-mid)"> ${t.nome}
+                </label>`).join('')}
+              </div></div>
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">OBSERVAÇÃO</label>
+              <textarea class="ast-form-input" id="novo-par-obs" placeholder="Observações..." rows="2" style="width:100%;resize:vertical"></textarea></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="ast-btn ast-btn-primary" style="flex:1" onclick="astParceiros.confirmarNovo()">✅ Cadastrar parceiro</button>
+            <button class="ast-btn ast-btn-secondary" onclick="astParceiros.fecharDrawer()">Cancelar</button>
+          </div>
+          <div id="novo-par-erro" style="display:none;margin-top:8px;padding:8px;background:var(--red-bg);color:var(--red);border-radius:6px;font-size:12px"></div>
+        </div>
+      </div>`;
+
+    if (drw) { drw.style.zIndex='1002'; drw.innerHTML = html; drw.classList.add('open'); }
+    if (ovl) { ovl.style.zIndex='1001'; ovl.classList.add('open'); }
+
+    // Guardar lat/lng encontradas
+    window._novoParLat = null;
+    window._novoParLng = null;
+  },
+
+  async buscarCepNovo() {
+    const cep = document.getElementById('novo-par-cep')?.value?.replace(/\D/g,'');
+    if (!cep || cep.length < 8) return;
+    const statusEl = document.getElementById('novo-par-geo-status');
+    if (statusEl) statusEl.textContent = 'Buscando CEP...';
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (d.erro) { if (statusEl) statusEl.textContent = 'CEP não encontrado'; return; }
+      const cidadeEl = document.getElementById('novo-par-cidade');
+      const ufEl     = document.getElementById('novo-par-uf');
+      const endEl    = document.getElementById('novo-par-end');
+      if (cidadeEl) cidadeEl.value = d.localidade || '';
+      if (ufEl)     ufEl.value     = d.uf || '';
+      if (endEl && d.logradouro) endEl.value = d.logradouro + (d.bairro ? ', ' + d.bairro : '');
+      await this.geocodificarNovo();
+    } catch(e) {
+      if (statusEl) statusEl.textContent = 'Erro ao buscar CEP';
+    }
+  },
+
+  async geocodificarNovo() {
+    const cidade = document.getElementById('novo-par-cidade')?.value?.trim();
+    const uf     = document.getElementById('novo-par-uf')?.value?.trim();
+    if (!cidade || !uf) return;
+    const statusEl = document.getElementById('novo-par-geo-status');
+    const labelEl  = document.getElementById('novo-par-coords-label');
+    if (statusEl) statusEl.textContent = '🔍 Buscando localização...';
+    try {
+      const query = encodeURIComponent(`${cidade}, ${uf}, Brasil`);
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=br`, {
+        headers: { 'Accept-Language': 'pt-BR' }
+      });
+      const data = await r.json();
+      if (!data.length) { if (statusEl) statusEl.textContent = '⚠️ Localização não encontrada — preencha manualmente'; return; }
+      window._novoParLat = parseFloat(data[0].lat);
+      window._novoParLng = parseFloat(data[0].lon);
+      if (labelEl) labelEl.textContent = `📍 ${cidade}/${uf} — ${window._novoParLat.toFixed(4)}, ${window._novoParLng.toFixed(4)}`;
+      if (statusEl) statusEl.textContent = '';
+    } catch(e) {
+      if (statusEl) statusEl.textContent = '⚠️ Erro ao geocodificar';
+    }
+  },
+
+  async confirmarNovo() {
+    const g = id => document.getElementById(id)?.value?.trim();
+    const nome = g('novo-par-nome');
+    if (!nome) { document.getElementById('novo-par-erro').textContent = 'Nome é obrigatório'; document.getElementById('novo-par-erro').style.display='block'; return; }
+    const cidade = g('novo-par-cidade'), uf = g('novo-par-uf');
+    if (!cidade || !uf) { document.getElementById('novo-par-erro').textContent = 'Cidade e UF são obrigatórios'; document.getElementById('novo-par-erro').style.display='block'; return; }
+    if (!window._novoParLat) await this.geocodificarNovo();
+
+    const payload = {
+      nome,
+      responsavel: g('novo-par-resp') || null,
+      cnpj:        g('novo-par-cnpj') || null,
+      telefone:    g('novo-par-tel')  || null,
+      whatsapp:    g('novo-par-whats')|| null,
+      email:       g('novo-par-email')|| null,
+      cep:         g('novo-par-cep')  || null,
+      cidade, uf: uf.toUpperCase(),
+      endereco:    g('novo-par-end')  || null,
+      raio_km:     parseInt(g('novo-par-raio')) || 100,
+      status:      g('novo-par-status') || 'teste',
+      observacao:  g('novo-par-obs')  || null,
+      lat: window._novoParLat || null,
+      lng: window._novoParLng || null,
+      origem: 'manual'
+    };
+
+    const { data, error } = await window.sb.from('assist_parceiros').insert(payload).select('id').single();
+    if (error) { document.getElementById('novo-par-erro').textContent = 'Erro: ' + error.message; document.getElementById('novo-par-erro').style.display='block'; return; }
+
+    // Tags selecionadas
+    const tagsChecked = [...document.querySelectorAll('#novo-par-tags input:checked')].map(i => i.value);
+    if (tagsChecked.length) {
+      await window.sb.from('assist_parceiro_produtos').insert(tagsChecked.map(t => ({ parceiro_id: data.id, produto_tag: t })));
+    }
+
+    // Recarregar dados e abrir drawer do novo parceiro
+    await this.carregar();
+    this.abrirDrawer(data.id);
   }
 };
 
