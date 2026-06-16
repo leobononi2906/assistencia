@@ -455,7 +455,7 @@ const AST_PAGES = {
         <table class="ast-table">
           <thead><tr>
             <th>Nome</th><th>Responsável</th><th>Telefone</th>
-            <th>Cidade</th><th>UF</th><th>Status</th><th>Produtos</th>
+            <th>Cidade</th><th>UF</th><th>Avaliação</th><th>Status</th><th>Produtos</th>
           </tr></thead>
           <tbody id="ast-par-lista-tbody">
             <tr class="ast-loading"><td colspan="6">Carregando...</td></tr>
@@ -2743,15 +2743,16 @@ window.astParceiros = {
     const statusNome = { ativo:'✅ Ativo', teste:'🧪 Teste', suspenso:'⏸ Suspenso', inativo:'❌ Inativo' };
     const statusCor  = { ativo:'var(--green)', teste:'var(--orange)', suspenso:'var(--red)', inativo:'var(--text-muted)' };
     if (!this._filtrados.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro encontrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro encontrado</td></tr>';
       return;
     }
     tbody.innerHTML = this._filtrados.map(p => `<tr style="cursor:pointer" onclick="astParceiros.abrirDrawer(${p.id})">
-      <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome}">${p.nome}</td>
+      <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome}">${p.nome}</td>
       <td style="color:var(--text-secondary);font-size:12px">${p.responsavel||'—'}</td>
       <td style="font-family:monospace;font-size:11px">${p.telefone||'—'}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${p.cidade||'—'}</td>
       <td style="font-size:12px;font-weight:700;color:var(--blue-mid)">${p.uf||'—'}</td>
+      <td style="white-space:nowrap">${[1,2,3,4,5].map(n=>`<span style="font-size:14px;color:${(p.avaliacao||0)>=n?'#E07B00':'#D1D9E8'}">★</span>`).join('')}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span></td>
       <td style="font-size:11px">${p.tags.map(t=>`<span class="ast-par-tag">${t}</span>`).join('')||'—'}</td>
     </tr>`).join('');
@@ -2990,6 +2991,17 @@ window.astParceiros = {
     this.abrirDrawer(id);
   },
 
+
+  _starsHtml(id, avaliacao, size='18px') {
+    return [1,2,3,4,5].map(n =>
+      `<span data-star="${n}"
+        onclick="astParceiros.avaliar(${id},${n})"
+        onmouseover="astParceiros.hoverStar(${id},${n})"
+        onmouseout="astParceiros.hoverStar(${id},0)"
+        style="font-size:${size};color:${(avaliacao||0)>=n?'#E07B00':'#D1D9E8'};cursor:pointer;line-height:1;transition:color .1s">★</span>`
+    ).join('')
+  },
+
   async avaliar(id, nota) {
     await window.sb.from('assist_parceiros').update({ avaliacao: nota, atualizado_em: new Date().toISOString() }).eq('id', id);
     const p = this._dados.find(r => r.id === id);
@@ -3002,8 +3014,8 @@ window.astParceiros = {
   hoverStar(id, nota) {
     const stars = document.querySelectorAll(`#ast-par-stars-${id} span`);
     const p = this._dados.find(r => r.id === id);
-    const atual = nota || p?.avaliacao || 0;
-    stars.forEach((s, i) => { s.style.color = i < atual ? '#E07B00' : '#E2E8F2'; });
+    const atual = nota > 0 ? nota : (p?.avaliacao || 0);
+    stars.forEach((s, i) => { s.style.color = i < atual ? '#E07B00' : '#D1D9E8'; });
   },
 
   async uploadDoc(id) {
