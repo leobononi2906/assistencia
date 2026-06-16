@@ -2812,11 +2812,12 @@ window.astParceiros = {
       : '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum documento</div>';
 
     // Tags disponíveis para marcar
-    const tagsDispHtml = this._tagsList.map(t => `
-      <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin:3px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);font-size:12px;background:${p.tags.includes(t.nome)?'var(--blue-pale)':'var(--surface2)'}">
-        <input type="checkbox" ${p.tags.includes(t.nome)?'checked':''} onchange="astParceiros.toggleTag(${id},'${t.nome}',this.checked)" style="display:none">
-        ${p.tags.includes(t.nome)?'✅ ':''}${t.nome}
-      </label>`).join('');
+    const tagsDispHtml = this._tagsList.map(t => {
+      const marcada = p.tags.includes(t.nome);
+      return `<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin:3px;padding:4px 12px;border-radius:20px;border:1px solid ${marcada?'var(--blue-mid)':'var(--border)'};font-size:12px;font-weight:${marcada?'600':'400'};background:${marcada?'var(--blue-pale)':'var(--surface2)'};transition:all .15s" onclick="astParceiros.toggleTagClick(${id},'${t.nome}',this)">
+        ${marcada?'✅ ':'⬜ '}${t.nome}
+      </label>`;
+    }).join('');
 
     const html = `
       <div class="ast-drawer-header">
@@ -2833,14 +2834,17 @@ window.astParceiros = {
 
         <!-- DADOS -->
         <div class="ast-drw-section">
-          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between">
+          <div class="ast-drw-section-title" style="display:flex;justify-content:space-between;align-items:center">
             <span>Dados</span>
-            <select class="ast-select" style="height:26px;font-size:11px" onchange="astParceiros.alterarStatus(${id},this.value)">
-              <option value="ativo" ${p.status==='ativo'?'selected':''}>✅ Ativo</option>
-              <option value="teste" ${p.status==='teste'?'selected':''}>🧪 Em teste</option>
-              <option value="suspenso" ${p.status==='suspenso'?'selected':''}>⏸ Suspenso</option>
-              <option value="inativo" ${p.status==='inativo'?'selected':''}>❌ Inativo</option>
-            </select>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div id="ast-par-stars-${id}" style="display:flex;gap:1px">${this._starsHtml(id, p.avaliacao, '22px')}</div>
+              <select class="ast-select" style="height:26px;font-size:11px" onchange="astParceiros.alterarStatus(${id},this.value)">
+                <option value="ativo" ${p.status==='ativo'?'selected':''}>✅ Ativo</option>
+                <option value="teste" ${p.status==='teste'?'selected':''}>🧪 Em teste</option>
+                <option value="suspenso" ${p.status==='suspenso'?'selected':''}>⏸ Suspenso</option>
+                <option value="inativo" ${p.status==='inativo'?'selected':''}>❌ Inativo</option>
+              </select>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RESPONSÁVEL</label>
@@ -2970,7 +2974,14 @@ window.astParceiros = {
     // Remover overlay/drawer temporários do parceiro se overlay principal não estiver em uso
   },
 
-  async toggleTag(parceiroId, tag, checked) {
+  async toggleTagClick(parceiroId, tag, labelEl) {
+    const p = this._dados.find(r => r.id === parceiroId);
+    if (!p) return;
+    const checked = !p.tags.includes(tag); // inverter estado atual
+    await this.toggleTag(parceiroId, tag, checked, labelEl);
+  },
+
+  async toggleTag(parceiroId, tag, checked, labelEl) {
     const p = this._dados.find(r => r.id === parceiroId);
     if (!p) return;
     if (checked) {
@@ -2989,16 +3000,14 @@ window.astParceiros = {
       if (error) { console.error('toggleTag delete:', error); return; }
       p.tags = p.tags.filter(t => t !== tag);
     }
-    // Atualizar visual do checkbox sem reabrir o drawer inteiro
-    const label = event?.target?.closest('label');
-    if (label) {
-      label.style.background = checked ? 'var(--blue-pale)' : 'var(--surface2)';
-      label.querySelector('span')?.remove();
-      if (checked) {
-        const span = document.createElement('span');
-        span.textContent = '✅ ';
-        label.insertBefore(span, label.querySelector('input').nextSibling);
-      }
+    // Atualizar visual do label
+    if (labelEl) {
+      const p2 = this._dados.find(r => r.id === parceiroId);
+      const marcada = p2?.tags.includes(tag);
+      labelEl.style.background    = marcada ? 'var(--blue-pale)' : 'var(--surface2)';
+      labelEl.style.border        = `1px solid ${marcada ? 'var(--blue-mid)' : 'var(--border)'}`;
+      labelEl.style.fontWeight    = marcada ? '600' : '400';
+      labelEl.textContent         = (marcada ? '✅ ' : '⬜ ') + tag;
     }
   },
 
