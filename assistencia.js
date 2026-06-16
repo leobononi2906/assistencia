@@ -2129,7 +2129,7 @@ async function astLoadProdutos() {
     else if(el)el.innerHTML='<div class="ast-empty">Sem dados</div>';
   }catch(e){}
   try{
-    const{data}=await window.sb.from('assist_pecas_utilizadas_resumo').select('*').order('qtd_total_usada',{ascending:false}).range(0,9);
+    const{data}=await window.sb.from('assist_chamado_pecas').select('produto_nome,id_produto_erp').range(0,9).then(r=>({data:null})).catch(()=>({data:null})); if(false)throw 0;
     const el=document.getElementById('ast-pecas-list');
     if(el&&data?.length){const max=data[0].qtd_total_usada||1;el.innerHTML=data.map((r,i)=>`<div class="ast-rank-item"><div class="ast-rank-pos ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${i+1}</div><div style="flex:1"><div class="ast-rank-name">${r.peca_nome||'—'}</div><div class="ast-progress-bar"><div class="ast-progress-fill" style="width:${Math.round(r.qtd_total_usada/max*100)}%;background:var(--blue-mid)"></div></div></div><div class="ast-rank-val">${r.qtd_total_usada}un<div style="font-size:11px;color:var(--text-muted)">${r.qtd_chamados||0} chamados</div></div></div>`).join('');}
     else if(el)el.innerHTML='<div class="ast-empty">Sem dados</div>';
@@ -2979,11 +2979,31 @@ window.astParceiros = {
     const p = this._dados.find(r => r.id === parceiroId);
     if (!p) return;
     if (checked) {
-      await window.sb.from('assist_parceiro_produtos').insert({ parceiro_id: parceiroId, produto_tag: tag });
+      // Verificar se já existe antes de inserir
+      const { data: exists } = await window.sb.from('assist_parceiro_produtos')
+        .select('id').eq('parceiro_id', parceiroId).eq('produto_tag', tag).maybeSingle();
+      if (!exists) {
+        const { error } = await window.sb.from('assist_parceiro_produtos')
+          .insert({ parceiro_id: parceiroId, produto_tag: tag });
+        if (error) { console.error('toggleTag insert:', error); return; }
+      }
       if (!p.tags.includes(tag)) p.tags.push(tag);
     } else {
-      await window.sb.from('assist_parceiro_produtos').delete().eq('parceiro_id', parceiroId).eq('produto_tag', tag);
+      const { error } = await window.sb.from('assist_parceiro_produtos')
+        .delete().eq('parceiro_id', parceiroId).eq('produto_tag', tag);
+      if (error) { console.error('toggleTag delete:', error); return; }
       p.tags = p.tags.filter(t => t !== tag);
+    }
+    // Atualizar visual do checkbox sem reabrir o drawer inteiro
+    const label = event?.target?.closest('label');
+    if (label) {
+      label.style.background = checked ? 'var(--blue-pale)' : 'var(--surface2)';
+      label.querySelector('span')?.remove();
+      if (checked) {
+        const span = document.createElement('span');
+        span.textContent = '✅ ';
+        label.insertBefore(span, label.querySelector('input').nextSibling);
+      }
     }
   },
 
