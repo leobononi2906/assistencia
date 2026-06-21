@@ -793,7 +793,8 @@ function astPopularSelectsFiltro() {
   _setoresList.forEach(s=>{ seSetorIds[s.id]=s.nome; });
   const ss=document.getElementById('ast-fil-status'), se=document.getElementById('ast-fil-setor');
   if(ss) ss.innerHTML='<option value="">Todos os status</option>'+[...sSet].sort().map(s=>`<option>${s}</option>`).join('');
-  if(se) se.innerHTML='<option value="">Todos os setores</option>'+[...seSet].sort().map(s=>`<option>${s}</option>`).join('');
+  // Setor: usar _setoresList para ter id como value
+  if(se){ const sv=se.value; se.innerHTML='<option value="">Todos os setores</option>'+(_setoresList||[]).sort((a,b)=>a.nome.localeCompare(b.nome)).map(s=>`<option value="${s.id}">${s.nome}</option>`).join(''); se.value=sv; }
 }
 window.astAplicarFiltros = function() {
   const status = document.getElementById('ast-fil-status')?.value||'';
@@ -854,7 +855,12 @@ function astRenderKanban() {
   const board=document.getElementById('ast-kanban-board'); if (!board) return;
   const colunas={};
   _statusList.forEach(s=>{ if(!s.finaliza_chamado) colunas[s.nome]={meta:s,items:[]}; });
-  astFiltrados.forEach(r=>{ const k=r.status_nome||'Sem status'; if(!colunas[k]) colunas[k]={meta:{},items:[]}; colunas[k].items.push(r); });
+  astFiltrados.forEach(r=>{
+    const k = r.status_nome || '';
+    if (!k) return; // ignorar chamados sem status
+    if (!colunas[k]) colunas[k] = { meta: { id: r.status_id, nome: k, cor: null }, items: [] };
+    colunas[k].items.push(r);
+  });
   // Só colunas com cards
   const colsComCards = Object.entries(colunas).filter(([,v])=>v.items.length>0);
   if (!colsComCards.length) { board.innerHTML='<div class="ast-empty"><div class="ast-empty-ico">✅</div>Nenhum chamado ativo</div>'; return; }
@@ -990,6 +996,11 @@ window.astCardAreaDrop = async function(e) {
 
   // Ler dados do dataTransfer — não depende de _dragSrcCard
   const cardId      = parseInt(e.dataTransfer.getData('text/card-id'));
+  if (!cardId || isNaN(cardId)) {
+    if (window._dragCardEl) window._dragCardEl.style.opacity = '';
+    window._dragCardEl = null;
+    return;
+  }
   const statusAtual = e.dataTransfer.getData('text/status-nome');
   const area        = e.currentTarget;
   area.style.outline = '';
@@ -1169,8 +1180,8 @@ window.astAbrirDetalhe = async function(id) {
     const [{ data: det }, { data: fups }, { data: pecas }, { data: nfsVinculadas }] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
-      window.sb.from('assist_chamado_pecas').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
-      window.sb.from('assist_chamado_nfs').select('*').eq('id_chamado',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_chamado_pecas').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_chamado_nfs').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
 
@@ -1559,6 +1570,7 @@ function astModalResolucao(chamadoId) {
     const old = document.getElementById('ast-modal-resolucao');
     if (old) old.remove();
 
+    if (!_procedencias?.length) { resolve(null); return; }
     const opts = _procedencias.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
     const prodNome = document.getElementById('info-prod-busca')?.value?.trim() || '';
     const semProduto = !prodNome;
