@@ -2847,6 +2847,8 @@ window.astParceiros = {
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">NOME</label>
+              <input class="ast-form-input" id="par-f-nome-${id}" value="${p.nome||''}" placeholder="Nome do parceiro" style="width:100%"></div>
             <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RESPONSÁVEL</label>
               <input class="ast-form-input" id="par-f-resp-${id}" value="${p.responsavel||''}" placeholder="Nome" style="width:100%"></div>
             <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">CNPJ</label>
@@ -2969,9 +2971,10 @@ window.astParceiros = {
 
   fecharDrawer() {
     this._drawerAberto = null;
-    document.getElementById('ast-drawer')?.classList.remove('open');
-    document.getElementById('ast-overlay')?.classList.remove('open');
-    // Remover overlay/drawer temporários do parceiro se overlay principal não estiver em uso
+    const drw = document.getElementById('ast-drawer');
+    const ovl = document.getElementById('ast-overlay');
+    if (drw) { drw.classList.remove('open'); drw.style.zIndex = ''; }
+    if (ovl) { ovl.classList.remove('open'); ovl.style.zIndex = ''; }
   },
 
   async toggleTagClick(parceiroId, tag, labelEl) {
@@ -3001,13 +3004,14 @@ window.astParceiros = {
       p.tags = p.tags.filter(t => t !== tag);
     }
     // Atualizar visual do label
-    if (labelEl) {
-      const p2 = this._dados.find(r => r.id === parceiroId);
-      const marcada = p2?.tags.includes(tag);
-      labelEl.style.background    = marcada ? 'var(--blue-pale)' : 'var(--surface2)';
-      labelEl.style.border        = `1px solid ${marcada ? 'var(--blue-mid)' : 'var(--border)'}`;
-      labelEl.style.fontWeight    = marcada ? '600' : '400';
-      labelEl.textContent         = (marcada ? '✅ ' : '⬜ ') + tag;
+    const p2 = this._dados.find(r => r.id === parceiroId);
+    const el = labelEl || document.querySelector(`[onclick*="toggleTagClick(${parceiroId},'${tag}')"]`);
+    if (el && p2) {
+      const marcada = p2.tags.includes(tag);
+      el.style.background = marcada ? 'var(--blue-pale)' : 'var(--surface2)';
+      el.style.border     = `1px solid ${marcada ? 'var(--blue-mid)' : 'var(--border)'}`;
+      el.style.fontWeight = marcada ? '600' : '400';
+      el.textContent      = (marcada ? '✅ ' : '⬜ ') + tag;
     }
   },
 
@@ -3023,9 +3027,24 @@ window.astParceiros = {
     if (!msg) return;
     const usuario = window.getUsuario?.()?.nome || 'Sistema';
     await window.sb.from('assist_parceiro_followups').insert({ parceiro_id: id, tipo, mensagem: msg, usuario_nome: usuario });
-    document.getElementById(`ast-par-fup-msg-${id}`).value = '';
-    // Reabrir para atualizar
-    this.abrirDrawer(id);
+    const msgEl = document.getElementById(`ast-par-fup-msg-${id}`);
+    if (msgEl) msgEl.value = '';
+    // Recarregar followups inline sem fechar o drawer
+    const fupsEl = document.getElementById(`ast-par-fups-${id}`);
+    if (fupsEl) {
+      const { data: fups2 } = await window.sb.from('assist_parceiro_followups')
+        .select('*').eq('parceiro_id', id).order('criado_em', {ascending: false}).range(0, 50);
+      const fmtDate = d => d ? new Date(d).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      fupsEl.innerHTML = (fups2||[]).length
+        ? (fups2||[]).map(f => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:11px;font-weight:600;color:var(--blue-mid)">${f.tipo||'Contato'}</span>
+              <span style="font-size:10px;color:var(--text-muted)">${fmtDate(f.criado_em)} · ${f.usuario_nome||'—'}</span>
+            </div>
+            <div style="font-size:13px">${f.mensagem}</div>
+          </div>`).join('')
+        : '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum acompanhamento</div>';
+    }
   },
 
 
@@ -3115,7 +3134,10 @@ window.astParceiros = {
 
   async salvarDados(id) {
     const g = f => document.getElementById(`par-f-${f}-${id}`)?.value?.trim();
+    // Verificar se nome foi alterado
+    const nomeInput = document.getElementById(`par-f-nome-${id}`);
     const payload = {
+      ...(nomeInput && nomeInput.value.trim() ? { nome: nomeInput.value.trim() } : {}),
       responsavel: g('resp') || null,
       cnpj:        g('cnpj') || null,
       telefone:    g('tel')  || null,
