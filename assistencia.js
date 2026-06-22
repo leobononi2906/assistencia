@@ -259,6 +259,16 @@ const AST_PAGES = {
       <div style="padding:14px 18px" id="ast-evolucao-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
     </div>
   </div>
+  <div class="ast-table-card" style="margin-top:16px">
+    <div class="ast-table-header">
+      <div class="ast-table-title">💰 Custo Garantia por Mês</div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--text-muted)">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px;margin-right:3px"></span>Produtos (custo)</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--orange);border-radius:2px;margin-right:3px"></span>Frete CTe</span>
+      </div>
+    </div>
+    <div style="padding:14px 18px" id="ast-custo-garantia-chart"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+  </div>
   <div class="ast-section-title">Índice de Defeito — últimos 12 meses</div>
   <div class="ast-table-card">
     <div class="ast-table-header">
@@ -467,11 +477,48 @@ const AST_PAGES = {
 </div>`,
 
 'ast-config': `<div class="ast-page" id="page-ast-config">
-  <div style="margin-bottom:18px">
-    <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gerencie status, setores e demais opções sem suporte técnico</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Configurações</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gerencie opções sem suporte técnico</div>
+    </div>
   </div>
-  <div class="ast-cfg-grid" id="ast-cfg-grid"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+  <div class="ast-toggle" style="margin-bottom:18px" id="ast-cfg-tabs">
+    <button class="ast-toggle-btn active" onclick="astCfgMostrarAba('atendimento',this)">🔧 Atendimento</button>
+    <button class="ast-toggle-btn" onclick="astCfgMostrarAba('parceiros',this)">🗺️ Parceiros</button>
+    <button class="ast-toggle-btn" onclick="astCfgMostrarAba('produtos',this)">📦 Produtos</button>
+  </div>
+  <div id="ast-cfg-aba-atendimento">
+    <div class="ast-cfg-grid" id="ast-cfg-grid"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+  </div>
+  <div id="ast-cfg-aba-parceiros" style="display:none">
+    <div class="ast-cfg-grid" id="ast-cfg-grid-parceiros"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div>
+  </div>
+  <div id="ast-cfg-aba-produtos" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">Produtos da Assistência</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Catálogo curado para atendimentos de garantia — <span id="ast-prod-count-cfg">—</span></div>
+      </div>
+      <button class="ast-btn ast-btn-primary" onclick="astAbrirModalProduto()">+ Adicionar Produto</button>
+    </div>
+    <div class="ast-table-card">
+      <div class="ast-table-header">
+        <div class="ast-table-title">Catálogo — <span id="ast-prod-count">—</span></div>
+        <input class="ast-search" id="ast-prod-busca" placeholder="Buscar produto..." oninput="astFiltrarProdutos()">
+      </div>
+      <div class="ast-table-wrap">
+        <table class="ast-table">
+          <thead><tr><th>Referência</th><th>Produto</th><th>Grupo</th><th class="right">Vendidos 12m</th><th class="right">Chamados</th><th class="right">Índice</th><th>Status</th><th style="width:80px"></th></tr></thead>
+          <tbody id="ast-prod-body"><tr class="ast-loading"><td colspan="8">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
+      <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔴 Mais Chamados</div></div><div style="padding:12px 16px" id="ast-criticos-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
+      <div class="ast-table-card"><div class="ast-table-header"><div class="ast-table-title">🔧 Peças Mais Usadas</div></div><div style="padding:12px 16px" id="ast-pecas-list"><div style="color:var(--text-muted);font-size:13px">Carregando...</div></div></div>
+    </div>
+  </div>
 </div>`
 };
 // ══════════════════════════════════════════
@@ -550,7 +597,7 @@ function astInvalidarLookups() { _statusList=[]; _setoresList=[]; }
 // GESTÃO
 // ══════════════════════════════════════════
 async function astLoadGestao() {
-  await Promise.all([astLoadKPIs(), astLoadSetorDistrib(), astLoadEvolucao(), astLoadGraficoDia(), astLoadIndiceDefeito(), astLoadParados(), astLoadBloqueados()]);
+  await Promise.all([astLoadKPIs(), astLoadSetorDistrib(), astLoadEvolucao(), astLoadGraficoDia(), astLoadIndiceDefeito(), astLoadCustoGarantia(), astLoadParados(), astLoadBloqueados()]);
   window.setLastUpdate?.();
 }
 async function astLoadKPIs() {
@@ -640,12 +687,14 @@ async function astLoadGraficoDia() {
       window.sb.from('assist_chamados')
         .select('data_abertura')
         .eq('natureza','garantia')
+        .not('umbler_conversa_id','is',null)
         .gte('data_abertura', inicio)
         .lte('data_abertura', fim + 'T23:59:59')
         .range(0,9999),
       window.sb.from('assist_chamados')
         .select('data_conclusao')
         .eq('natureza','garantia')
+        .not('umbler_conversa_id','is',null)
         .eq('concluido', true)
         .gte('data_conclusao', inicio)
         .lte('data_conclusao', fim + 'T23:59:59')
@@ -2123,6 +2172,90 @@ window.astSalvarNovo=async function(){
 // ══════════════════════════════════════════
 // PRODUTOS
 // ══════════════════════════════════════════
+async function astLoadCustoGarantia() {
+  const el = document.getElementById('ast-custo-garantia-chart'); if (!el) return;
+  try {
+    const meses = [];
+    const hoje = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push({
+        ano: d.getFullYear(),
+        mes: d.getMonth(),
+        inicio: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`,
+        fim: new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().substring(0,10),
+        label: d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})
+      });
+    }
+
+    // Buscar custo de produtos por mês (mov garantia saídas)
+    const { data: movData } = await window.sb
+      .from('vw_assist_mov_garantia')
+      .select('data_mov,custo_total,tipo_es')
+      .eq('tipo_es','S')
+      .gte('data_mov', meses[0].inicio)
+      .lte('data_mov', meses[5].fim)
+      .range(0, 9999);
+
+    // Buscar frete dos CTes (id_vendedor garantia ou custo do período)
+    const { data: fretData } = await window.sb
+      .from('frt_conhecimentos')
+      .select('data_emissao,valor_frete_cte,id_vendedor,departamento')
+      .in('id_vendedor', [49766, 69722, 84986])
+      .gte('data_emissao', meses[0].inicio)
+      .lte('data_emissao', meses[5].fim)
+      .range(0, 999);
+
+    // Agregar por mês
+    const custoProds = {};
+    const custoFrete = {};
+    meses.forEach(m => { custoProds[`${m.ano}-${m.mes}`] = 0; custoFrete[`${m.ano}-${m.mes}`] = 0; });
+
+    (movData||[]).forEach(r => {
+      const d = new Date(r.data_mov);
+      const k = `${d.getFullYear()}-${d.getMonth()}`;
+      if (custoProds[k] !== undefined) custoProds[k] += parseFloat(r.custo_total)||0;
+    });
+    (fretData||[]).forEach(r => {
+      const d = new Date(r.data_emissao);
+      const k = `${d.getFullYear()}-${d.getMonth()}`;
+      if (custoFrete[k] !== undefined) custoFrete[k] += parseFloat(r.valor_frete_cte)||0;
+    });
+
+    const valoresP = meses.map(m => custoProds[`${m.ano}-${m.mes}`]);
+    const valoresF = meses.map(m => custoFrete[`${m.ano}-${m.mes}`]);
+    const maxVal = Math.max(...valoresP.map((v,i)=>v+valoresF[i]), 1);
+    const barH = 80;
+    const fmtR = v => v > 0 ? 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—';
+    const totalP = valoresP.reduce((a,b)=>a+b,0);
+    const totalF = valoresF.reduce((a,b)=>a+b,0);
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:flex-end;gap:6px;height:${barH+48}px;overflow-x:auto;padding-bottom:4px">
+        ${meses.map((m,i) => {
+          const vP = valoresP[i], vF = valoresF[i], tot = vP + vF;
+          const hP = vP ? Math.max(Math.round(vP/maxVal*barH), 3) : 0;
+          const hF = vF ? Math.max(Math.round(vF/maxVal*barH), 3) : 0;
+          const isAtual = m.ano === hoje.getFullYear() && m.mes === hoje.getMonth();
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:60px;max-width:120px">
+            ${tot>0?`<div style="font-size:10px;color:var(--text-muted);margin-bottom:2px">${fmtR(tot)}</div>`:'<div style="font-size:10px;color:var(--border);margin-bottom:2px">—</div>'}
+            <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;height:${barH}px">
+              ${vF?`<div title="Frete: ${fmtR(vF)}" style="width:100%;height:${hF}px;background:var(--orange);border-radius:2px 2px 0 0;opacity:.85"></div>`:''}
+              ${vP?`<div title="Produtos: ${fmtR(vP)}" style="width:100%;height:${hP}px;background:var(--red);border-radius:${vF?'0':'2px 2px'} 0 0"></div>`:''}
+              ${!vP&&!vF?`<div style="width:100%;height:2px;background:var(--border);border-radius:2px;margin-top:auto"></div>`:''}
+            </div>
+            <div style="font-size:11px;color:${isAtual?'var(--blue-mid)':'var(--text-muted)'};font-weight:${isAtual?'700':'400'};text-align:center;white-space:nowrap">${m.label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <span>Total produtos: <strong style="color:var(--red)">${fmtR(totalP)}</strong></span>
+        <span>Total frete: <strong style="color:var(--orange)">${totalF > 0 ? fmtR(totalF) : '<span title=\"CTes de garantia com id_vendedor pendente de sincronização ERP\">R$ 0 ⚠️</span>'}</strong></span>
+        <span>Total geral: <strong>${fmtR(totalP + totalF)}</strong></span>
+      </div>`;
+  } catch(e) { el.innerHTML='<div style="color:var(--text-muted);font-size:13px">Sem dados</div>'; }
+}
+
 async function astLoadProdutos() {
   try {
     const[{data:prods},{data:indice}]=await Promise.all([
@@ -2337,6 +2470,111 @@ window.astMovGarantia = {
     }
   },
 
+  async abrirHistorico(referencia, nomeProduto) {
+    if (!referencia) return;
+    const { inicio, fim, label } = this.getMesRange();
+
+    // Remover modal anterior
+    document.getElementById('ast-mg-historico-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'ast-mg-historico-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(15,29,53,.45)';
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:min(760px,95vw);max-height:85vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:15px;font-weight:700">${nomeProduto}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Ref: ${referencia} · ${label}</div>
+        </div>
+        <button onclick="document.getElementById('ast-mg-historico-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);padding:4px">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:16px 20px" id="ast-mg-hist-body">
+        <div style="color:var(--text-muted);font-size:13px">Carregando...</div>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+    try {
+      const { data } = await window.sb
+        .from('vw_assist_mov_garantia')
+        .select('tipo_es,origem,id_doc,empresa,data_mov,qtd,custo_unit,custo_total,nome_vendedor,motivo')
+        .eq('referencia', referencia)
+        .gte('data_mov', inicio)
+        .lte('data_mov', fim)
+        .order('data_mov', {ascending: false})
+        .range(0, 999);
+
+      const body = document.getElementById('ast-mg-hist-body');
+      if (!body) return;
+
+      if (!data?.length) {
+        body.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:20px 0;text-align:center">Nenhuma movimentação no período</div>';
+        return;
+      }
+
+      const fmt = v => v > 0 ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+      const fmtDt = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+
+      // Totais
+      const saidas   = data.filter(r => r.tipo_es === 'S');
+      const entradas = data.filter(r => r.tipo_es === 'E');
+      const totS = saidas.reduce((a,r) => a + parseFloat(r.custo_total||0), 0);
+      const totE = entradas.reduce((a,r) => a + parseFloat(r.custo_total||0), 0);
+      const totQs = saidas.reduce((a,r) => a + parseFloat(r.qtd||0), 0);
+      const totQe = entradas.reduce((a,r) => a + parseFloat(r.qtd||0), 0);
+
+      body.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+          <div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);text-align:center">
+            <div style="font-size:11px;color:var(--text-muted)">Saídas (qtd)</div>
+            <div style="font-size:18px;font-weight:700;color:var(--red)">${totQs.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})}</div>
+          </div>
+          <div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);text-align:center">
+            <div style="font-size:11px;color:var(--text-muted)">Custo saídas</div>
+            <div style="font-size:18px;font-weight:700;color:var(--red)">${fmt(totS)}</div>
+          </div>
+          <div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);text-align:center">
+            <div style="font-size:11px;color:var(--text-muted)">Retornos (qtd)</div>
+            <div style="font-size:18px;font-weight:700;color:var(--green)">${totQe.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})}</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600">Tipo</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600">Data</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600">Doc / Origem</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600">Empresa</th>
+              <th style="padding:6px 8px;text-align:left;color:var(--text-muted);font-weight:600">Vendedor / Motivo</th>
+              <th style="padding:6px 8px;text-align:right;color:var(--text-muted);font-weight:600">Qtd</th>
+              <th style="padding:6px 8px;text-align:right;color:var(--text-muted);font-weight:600">Custo Unit.</th>
+              <th style="padding:6px 8px;text-align:right;color:var(--text-muted);font-weight:600">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(r => `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:7px 8px">
+                <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:8px;background:${r.tipo_es==='S'?'var(--red-bg)':'var(--green-bg)'};color:${r.tipo_es==='S'?'var(--red)':'var(--green)'}">
+                  ${r.tipo_es==='S'?'⬆ Saída':'⬇ Entrada'}
+                </span>
+              </td>
+              <td style="padding:7px 8px;white-space:nowrap">${fmtDt(r.data_mov)}</td>
+              <td style="padding:7px 8px;font-family:monospace;font-size:11px">${r.id_doc||'—'}<br><span style="color:var(--text-muted)">${r.origem||'—'}</span></td>
+              <td style="padding:7px 8px;font-size:11px;color:var(--text-secondary)">${r.empresa||'—'}</td>
+              <td style="padding:7px 8px;font-size:11px">${r.nome_vendedor||r.motivo||'—'}</td>
+              <td style="padding:7px 8px;text-align:right;font-weight:600">${parseFloat(r.qtd||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
+              <td style="padding:7px 8px;text-align:right;color:var(--text-muted)">${fmt(parseFloat(r.custo_unit||0))}</td>
+              <td style="padding:7px 8px;text-align:right;font-weight:600;color:${r.tipo_es==='S'?'var(--red)':'var(--green)'}">${fmt(parseFloat(r.custo_total||0))}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    } catch(e) {
+      const body = document.getElementById('ast-mg-hist-body');
+      if (body) body.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar histórico</div>';
+    }
+  },
+
   async filtrar() {
     const busca = (document.getElementById('ast-mg-busca')?.value||'').toLowerCase();
     const dados = this._tipo === 'entradas' ? this._entradas : this._saidas;
@@ -2372,7 +2610,7 @@ window.astMovGarantia = {
 
     const fmt = v => v > 0 ? 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
 
-    tbody.innerHTML = dados.map(r => isSaida ? `<tr>
+    tbody.innerHTML = dados.map(r => isSaida ? `<tr style="cursor:pointer" onclick="astMovGarantia.abrirHistorico('${(r.referencia||'').replace(/'/g,"\'")}','${(r.produto||'').replace(/'/g,"\'").substring(0,50)}')">
       <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
       <td style="font-weight:500">${r.produto||'—'}</td>
       <td style="font-size:12px;color:var(--text-muted)">${r.grupo||'—'}</td>
@@ -2380,7 +2618,7 @@ window.astMovGarantia = {
       <td class="right" style="color:var(--red)">${fmt(r.custo)}</td>
       <td class="right" style="font-weight:600;color:${r.estoque===null?'var(--text-muted)':r.estoque<=0?'var(--red)':r.estoque<=5?'var(--orange)':'var(--green)'}">${r.estoque===null?'—':r.estoque.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:2})}</td>
       <td class="right" style="font-size:12px;color:var(--text-muted)">${r.os.size} OS</td>
-    </tr>` : `<tr>
+    </tr>` : `<tr style="cursor:pointer" onclick="astMovGarantia.abrirHistorico('${(r.referencia||'').replace(/'/g,"\'")}','${(r.produto||'').replace(/'/g,"\'").substring(0,50)}')">
       <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
       <td style="font-weight:500">${r.produto||'—'}</td>
       <td style="font-size:12px;color:var(--text-muted)">${r.grupo||'—'}</td>
@@ -2429,7 +2667,7 @@ window.astMovGarantia = {
 
     tbody.innerHTML = itens.map(r => {
       const est = estoqueMapSaldo[r.referencia] ?? null;
-      return `<tr>
+      return `<tr style="cursor:pointer" onclick="astMovGarantia.abrirHistorico('${r.referencia?.replace(/'/g,"\'")||''}','${r.produto?.replace(/'/g,"\'").substring(0,50)||''}')">
         <td class="ast-mono" style="color:var(--text-muted)">${r.referencia||'—'}</td>
         <td style="font-weight:500;font-size:12px">${r.produto}</td>
         <td class="right" style="color:var(--red)">${r.qtdS > 0 ? r.qtdS : '—'}</td>
@@ -3391,12 +3629,21 @@ window.astParceiros = {
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
-const CFG_TABLES=[
+const CFG_TABLES_ATENDIMENTO=[
   {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado', extraCor:true},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
+  {id:'prioridades', tabela:'assist_prioridades',  titulo:'⚡ Prioridades'},
+  {id:'diagnostico', tabela:null, titulo:'🔍 Diagnóstico',  grupo: [
+    {id:'defeitos',  tabela:'assist_defeitos',  titulo:'Defeitos'},
+    {id:'causas',    tabela:'assist_causas',    titulo:'Causas'},
+  ]},
   {id:'procedencias',tabela:'assist_procedencias', titulo:'✅ Tipos de Resolução'},
-  {id:'par-tags',    tabela:'assist_parceiro_tags', titulo:'🔧 Produtos (Parceiros)'},
 ];
+const CFG_TABLES_PARCEIROS=[
+  {id:'par-tags',    tabela:'assist_parceiro_tags', titulo:'🔧 Produtos atendidos (tags)'},
+];
+// alias para compatibilidade
+const CFG_TABLES = CFG_TABLES_ATENDIMENTO;
 async function astLoadConfig(){
   const grid=document.getElementById('ast-cfg-grid');if(!grid)return;
   grid.innerHTML='<div style="color:var(--text-muted);font-size:13px">Carregando...</div>';
@@ -3489,7 +3736,6 @@ window.astCfgSalvarEdit=async function(tabela,cfgId,rowId){
 const AST_LOADERS={
   'ast-chamados': astLoadChamados,
   'ast-gestao':   astLoadGestao,
-  'ast-produtos': astLoadProdutos,
   'ast-entregas': ()=>astEntregas.carregar(),
   'ast-mov-garantia': ()=>astMovGarantia.carregar(),
   'ast-parceiros': ()=>astParceiros.carregar(),
