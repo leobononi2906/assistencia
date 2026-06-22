@@ -3629,105 +3629,149 @@ window.astParceiros = {
 // ══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ══════════════════════════════════════════
-const CFG_TABLES_ATENDIMENTO=[
-  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',            extra:'finaliza_chamado', extraCor:true},
+const CFG_TABLES_ATENDIMENTO = [
+  {id:'status',      tabela:'assist_status',      titulo:'📋 Status',           extra:'finaliza_chamado', extraCor:true},
   {id:'setores',     tabela:'assist_setores',      titulo:'🏢 Setores'},
   {id:'prioridades', tabela:'assist_prioridades',  titulo:'⚡ Prioridades'},
-  {id:'diagnostico', tabela:null, titulo:'🔍 Diagnóstico',  grupo: [
-    {id:'defeitos',  tabela:'assist_defeitos',  titulo:'Defeitos'},
-    {id:'causas',    tabela:'assist_causas',    titulo:'Causas'},
-  ]},
   {id:'procedencias',tabela:'assist_procedencias', titulo:'✅ Tipos de Resolução'},
+  {id:'diagnostico', tabela:null, titulo:'🔍 Diagnóstico', grupo:[
+    {id:'defeitos', tabela:'assist_defeitos', titulo:'Defeitos'},
+    {id:'causas',   tabela:'assist_causas',   titulo:'Causas'},
+  ]},
 ];
-const CFG_TABLES_PARCEIROS=[
-  {id:'par-tags',    tabela:'assist_parceiro_tags', titulo:'🔧 Produtos atendidos (tags)'},
+const CFG_TABLES_PARCEIROS = [
+  {id:'par-tags', tabela:'assist_parceiro_tags', titulo:'🔧 Produtos atendidos (tags)'},
 ];
-// alias para compatibilidade
-const CFG_TABLES = CFG_TABLES_ATENDIMENTO;
-async function astLoadConfig(){
-  const grid=document.getElementById('ast-cfg-grid');if(!grid)return;
-  grid.innerHTML='<div style="color:var(--text-muted);font-size:13px">Carregando...</div>';
-  const results=await Promise.allSettled(CFG_TABLES.map(c=>window.sb.from(c.tabela).select('*').order('nome')));
-  grid.innerHTML=CFG_TABLES.map((c,i)=>{
-    const rows=(results[i].status==='fulfilled'?results[i].value.data:null)||[];
-    const items=rows.map(r=>`
-      <div class="ast-cfg-item" id="cfg-item-${c.id}-${r.id}">
-        ${c.extraCor?`<div style="width:18px;height:18px;border-radius:4px;background:${r.cor||'#6B7280'};flex-shrink:0;border:1px solid var(--border);cursor:pointer" title="Clique para mudar a cor" onclick="astCfgEditarCor('${c.tabela}',${r.id},'${r.cor||'#6B7280'}',this)"></div>`:''}
-        <span class="ast-cfg-name" id="cfg-nm-${c.id}-${r.id}">${r.nome}</span>
-        ${c.extra==='finaliza_chamado'&&r.finaliza_chamado?`<span style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 5px;border-radius:8px;font-weight:600">Finaliza</span>`:''}
-        ${c.extraCor&&r.sla_horas?`<span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:8px;font-weight:600">⏱️ ${r.sla_horas}h úteis</span>`:''}
-        <span class="ast-badge ${r.ativo!==false?'ast-badge-concluido':'ast-badge-cancelado'}" style="font-size:10px">${r.ativo!==false?'Ativo':'Inativo'}</span>
-        <div style="display:flex;gap:3px">
-          <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar('${c.id}',${r.id},'${c.tabela}','${r.nome.replace(/'/g,'\\\'')}')">✏️</button>
-          ${c.extraCor?`<button class="ast-btn ast-btn-secondary ast-btn-sm" title="SLA em horas úteis" onclick="astCfgEditarSLA('${c.tabela}',${r.id},${r.sla_horas||0})">⏱️</button>`:''}
-          <button class="ast-btn ${r.ativo!==false?'ast-btn-danger':'ast-btn-success'} ast-btn-sm" onclick="astCfgToggle('${c.tabela}',${r.id},${!(r.ativo!==false)})">${r.ativo!==false?'🚫':'✅'}</button>
-        </div>
-      </div>`).join('');
-    return `<div class="ast-cfg-card">
-      <div class="ast-cfg-title">${c.titulo}<span style="font-size:11px;color:var(--text-muted);font-weight:400">${rows.length} itens</span></div>
-      ${items||'<div style="color:var(--text-muted);font-size:12px;padding:6px 0">Nenhum item</div>'}
-      <div class="ast-cfg-add">
-        <input class="ast-cfg-input" id="cfg-new-${c.id}" placeholder="Novo item..." onkeydown="if(event.key==='Enter')astCfgAdicionar('${c.tabela}','${c.id}')">
-        <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astCfgAdicionar('${c.tabela}','${c.id}')">+ Add</button>
-      </div>
-    </div>`;
-  }).join('');
-  window.setLastUpdate?.();
-}
-window.astCfgAdicionar=async function(tabela,cfgId){
-  const input=document.getElementById(`cfg-new-${cfgId}`), nome=input?.value.trim();if(!nome)return;
-  const{error}=await window.sb.from(tabela).insert({nome,ativo:true});
-  if(error){alert('Erro: '+error.message);return;}
-  input.value='';astInvalidarLookups();await astLoadConfig();
-};
-window.astCfgToggle=async function(tabela,id,novoAtivo){
-  await window.sb.from(tabela).update({ativo:novoAtivo,atualizado_em:new Date().toISOString()}).eq('id',id);
-  astInvalidarLookups();await astLoadConfig();
-};
-window.astCfgEditar=function(cfgId,rowId,tabela,nomeAtual){
-  const el=document.getElementById(`cfg-nm-${cfgId}-${rowId}`);if(!el)return;
-  el.innerHTML=`<input class="ast-cfg-input" style="width:100%;max-width:150px" value="${nomeAtual}" id="cfg-edit-${cfgId}-${rowId}"
-    onkeydown="if(event.key==='Enter')astCfgSalvarEdit('${tabela}','${cfgId}',${rowId});if(event.key==='Escape')astLoadConfig()">
-    <button class="ast-btn ast-btn-success ast-btn-sm" style="margin-left:4px" onclick="astCfgSalvarEdit('${tabela}','${cfgId}',${rowId})">✅</button>
-    <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astLoadConfig()">✕</button>`;
-  document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.focus();
+
+window.astCfgMostrarAba = function(aba, btn) {
+  ['atendimento','parceiros','produtos'].forEach(function(a) {
+    var el = document.getElementById('ast-cfg-aba-' + a);
+    if (el) el.style.display = a === aba ? '' : 'none';
+  });
+  document.querySelectorAll('#ast-cfg-tabs .ast-toggle-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  if (aba === 'produtos') astLoadProdutos();
 };
 
-// Config — editar cor do status
+function _renderCfgItem(c, r) {
+  var cor = r.cor || '#6B7280';
+  var ativo = r.ativo !== false;
+  var html = '<div class="ast-cfg-item" id="cfg-item-' + c.id + '-' + r.id + '">';
+  if (c.extraCor) html += '<div style="width:18px;height:18px;border-radius:4px;background:' + cor + ';flex-shrink:0;border:1px solid var(--border);cursor:pointer" onclick="astCfgEditarCor(\'' + c.tabela + '\',' + r.id + ',\'' + cor + '\',this)"></div>';
+  html += '<span class="ast-cfg-name" id="cfg-nm-' + c.id + '-' + r.id + '">' + r.nome + '</span>';
+  if (c.extra === 'finaliza_chamado' && r.finaliza_chamado) html += '<span style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 5px;border-radius:8px;font-weight:600">Finaliza</span>';
+  if (c.extraCor && r.sla_horas) html += '<span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:8px;font-weight:600">⏱️ ' + r.sla_horas + 'h</span>';
+  html += '<span class="ast-badge ' + (ativo ? 'ast-badge-concluido' : 'ast-badge-cancelado') + '" style="font-size:10px">' + (ativo ? 'Ativo' : 'Inativo') + '</span>';
+  html += '<div style="display:flex;gap:3px">';
+  html += '<button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditar(\'' + c.id + '\',' + r.id + ',\'' + c.tabela + '\',\'' + r.nome.replace(/'/g, '\\\'') + '\')">✏️</button>';
+  if (c.extraCor) html += '<button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astCfgEditarSLA(\'' + c.tabela + '\',' + r.id + ',' + (r.sla_horas || 0) + ')">⏱️</button>';
+  html += '<button class="ast-btn ' + (ativo ? 'ast-btn-danger' : 'ast-btn-success') + ' ast-btn-sm" onclick="astCfgToggle(\'' + c.tabela + '\',' + r.id + ',' + (!ativo) + ')">' + (ativo ? '🚫' : '✅') + '</button>';
+  html += '</div></div>';
+  return html;
+}
+
+function _renderCfgCard(c, rows) {
+  var items = rows.map(function(r) { return _renderCfgItem(c, r); }).join('');
+  return '<div class="ast-cfg-card">'
+    + '<div class="ast-cfg-title">' + c.titulo + '<span style="font-size:11px;color:var(--text-muted);font-weight:400">' + rows.length + ' itens</span></div>'
+    + (items || '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">Nenhum item</div>')
+    + '<div class="ast-cfg-add">'
+    + '<input class="ast-cfg-input" id="cfg-new-' + c.id + '" placeholder="Novo item..." onkeydown="if(event.key===\'Enter\')astCfgAdicionar(\'' + c.tabela + '\',\'' + c.id + '\')">'
+    + '<button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astCfgAdicionar(\'' + c.tabela + '\',\'' + c.id + '\')">+ Add</button>'
+    + '</div></div>';
+}
+
+async function astLoadConfig() {
+  var grid    = document.getElementById('ast-cfg-grid');
+  var gridPar = document.getElementById('ast-cfg-grid-parceiros');
+  if (!grid && !gridPar) return;
+  if (grid)    grid.innerHTML    = '<div style="color:var(--text-muted);font-size:13px">Carregando...</div>';
+  if (gridPar) gridPar.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Carregando...</div>';
+
+  var tabelasAtend = CFG_TABLES_ATENDIMENTO
+    .flatMap(function(c) { return c.grupo ? c.grupo.map(function(g) { return g.tabela; }) : (c.tabela ? [c.tabela] : []); });
+  var tabelasPar   = CFG_TABLES_PARCEIROS.map(function(c) { return c.tabela; });
+  var todasTabelas = [...new Set([...tabelasAtend, ...tabelasPar])];
+
+  var resultMap = {};
+  await Promise.all(todasTabelas.map(async function(tabela) {
+    try {
+      var r = await window.sb.from(tabela).select('*').order('nome').range(0,999);
+      resultMap[tabela] = r.data || [];
+    } catch(e) { resultMap[tabela] = []; }
+  }));
+
+  if (grid) {
+    grid.innerHTML = CFG_TABLES_ATENDIMENTO.map(function(c) {
+      if (c.grupo) {
+        var subHtml = c.grupo.map(function(g) {
+          var items = (resultMap[g.tabela]||[]).map(function(r) { return _renderCfgItem(g, r); }).join('');
+          return '<div style="margin-bottom:4px">'
+            + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + g.titulo + '</div>'
+            + (items || '<div style="color:var(--text-muted);font-size:12px">Nenhum item</div>')
+            + '<div class="ast-cfg-add" style="margin-top:8px">'
+            + '<input class="ast-cfg-input" id="cfg-new-' + g.id + '" placeholder="Novo ' + g.titulo.toLowerCase() + '..." onkeydown="if(event.key===\'Enter\')astCfgAdicionar(\'' + g.tabela + '\',\'' + g.id + '\')">'
+            + '<button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astCfgAdicionar(\'' + g.tabela + '\',\'' + g.id + '\')">+ Add</button>'
+            + '</div></div>';
+        }).join('<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">');
+        return '<div class="ast-cfg-card"><div class="ast-cfg-title">' + c.titulo + '</div>' + subHtml + '</div>';
+      }
+      return _renderCfgCard(c, resultMap[c.tabela]||[]);
+    }).join('');
+  }
+
+  if (gridPar) {
+    gridPar.innerHTML = CFG_TABLES_PARCEIROS.map(function(c) { return _renderCfgCard(c, resultMap[c.tabela]||[]); }).join('');
+  }
+
+  window.setLastUpdate && window.setLastUpdate();
+}
+
+window.astCfgAdicionar = async function(tabela, cfgId) {
+  var input = document.getElementById('cfg-new-' + cfgId);
+  var nome = input && input.value.trim(); if (!nome) return;
+  var res = await window.sb.from(tabela).insert({nome: nome, ativo: true});
+  if (res.error) { alert('Erro: ' + res.error.message); return; }
+  input.value = ''; astInvalidarLookups(); await astLoadConfig();
+};
+window.astCfgToggle = async function(tabela, id, novoAtivo) {
+  await window.sb.from(tabela).update({ativo: novoAtivo, atualizado_em: new Date().toISOString()}).eq('id', id);
+  astInvalidarLookups(); await astLoadConfig();
+};
+window.astCfgEditar = function(cfgId, rowId, tabela, nomeAtual) {
+  var el = document.getElementById('cfg-nm-' + cfgId + '-' + rowId); if (!el) return;
+  el.innerHTML = '<input class="ast-cfg-input" style="width:100%;max-width:150px" value="' + nomeAtual + '" id="cfg-edit-' + cfgId + '-' + rowId + '" onkeydown="if(event.key===\'Enter\')astCfgSalvarEdit(\'' + tabela + '\',\'' + cfgId + '\',' + rowId + ');if(event.key===\'Escape\')astLoadConfig()">'
+    + '<button class="ast-btn ast-btn-success ast-btn-sm" style="margin-left:4px" onclick="astCfgSalvarEdit(\'' + tabela + '\',\'' + cfgId + '\',' + rowId + ')">✅</button>'
+    + '<button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astLoadConfig()">✕</button>';
+  var inp = document.getElementById('cfg-edit-' + cfgId + '-' + rowId); if (inp) inp.focus();
+};
 window.astCfgEditarCor = function(tabela, id, corAtual, el) {
-  const input = document.createElement('input');
-  input.type = 'color';
-  input.value = corAtual;
-  input.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
-  document.body.appendChild(input);
-  input.click();
-  input.addEventListener('change', async () => {
-    const novaCor = input.value;
+  var inp = document.createElement('input');
+  inp.type = 'color'; inp.value = corAtual;
+  inp.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+  document.body.appendChild(inp); inp.click();
+  inp.addEventListener('change', async function() {
+    var novaCor = inp.value;
     await window.sb.from(tabela).update({cor: novaCor, atualizado_em: new Date().toISOString()}).eq('id', id);
     el.style.background = novaCor;
-    document.body.removeChild(input);
-    astInvalidarLookups();
-    await astLoadConfig();
+    try { document.body.removeChild(inp); } catch(e) {}
+    astInvalidarLookups(); await astLoadConfig();
   });
-  input.addEventListener('blur', () => {
-    setTimeout(() => { try { document.body.removeChild(input); } catch {} }, 500);
-  });
+  inp.addEventListener('blur', function() { setTimeout(function() { try { document.body.removeChild(inp); } catch(e) {} }, 500); });
 };
-
-// Config — editar SLA em horas
 window.astCfgEditarSLA = function(tabela, id, slaAtual) {
-  const novo = prompt('SLA em horas ÚTEIS para este status (08h-18h, seg-sex)\nDeixe vazio para sem SLA:', slaAtual||'');
+  var novo = prompt('SLA em horas ÚTEIS (08h-18h, seg-sex)\nDeixe vazio para sem SLA:', slaAtual || '');
   if (novo === null) return;
-  const horas = novo.trim() === '' ? null : parseInt(novo);
+  var horas = novo.trim() === '' ? null : parseInt(novo);
   if (novo.trim() !== '' && isNaN(horas)) { alert('Digite um número válido'); return; }
   window.sb.from(tabela).update({sla_horas: horas, atualizado_em: new Date().toISOString()}).eq('id', id)
-    .then(() => { astInvalidarLookups(); astLoadConfig(); });
+    .then(function() { astInvalidarLookups(); astLoadConfig(); });
 };
-
-window.astCfgSalvarEdit=async function(tabela,cfgId,rowId){
-  const novoNome=document.getElementById(`cfg-edit-${cfgId}-${rowId}`)?.value.trim();if(!novoNome)return;
-  await window.sb.from(tabela).update({nome:novoNome,atualizado_em:new Date().toISOString()}).eq('id',rowId);
-  astInvalidarLookups();await astLoadConfig();
+window.astCfgSalvarEdit = async function(tabela, cfgId, rowId) {
+  var el = document.getElementById('cfg-edit-' + cfgId + '-' + rowId);
+  var novoNome = el && el.value.trim(); if (!novoNome) return;
+  await window.sb.from(tabela).update({nome: novoNome, atualizado_em: new Date().toISOString()}).eq('id', rowId);
+  astInvalidarLookups(); await astLoadConfig();
 };
 
 // ══════════════════════════════════════════
