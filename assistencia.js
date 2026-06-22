@@ -2697,10 +2697,13 @@ const astEntregas = {
     const inicioStr = inicio.toISOString().slice(0,10);
 
     try {
-      // Busca NFs do ERP do departamento GARANTIA
+      // Busca NFs do ERP apenas dos vendedores do departamento GARANTIA
+      // Jessica Marques (49766) · Victor Hugo (69722) · Dayllon Euclides (84986)
+      const VENDEDORES_GARANTIA = [49766, 69722, 84986];
       const { data } = await window.sb
         .from('vw_comercial_docs_faturados')
         .select('id,id_doc,num_nf,data_faturamento,id_cliente,nome_cliente,nome_transportadora,valor_frete,faturamento_doc,id_vendedor')
+        .in('id_vendedor', VENDEDORES_GARANTIA)
         .gte('data_faturamento', inicioStr)
         .order('data_faturamento',{ascending:false})
         .range(0,999);
@@ -2713,13 +2716,6 @@ const astEntregas = {
         // Só exibe NFs com transportadora informada (precisam de rastreio)
         return r.nome_transportadora && r.nome_transportadora.trim() !== '';
       });
-
-      // Buscar vendedores para filtrar departamento GARANTIA
-      // Como não temos join direto, filtramos por nome_vendedor se disponível
-      // ou usamos todas (a view pode já ter o filtro de departamento via JOIN)
-      // Por segurança: pegamos todas e filtramos na view se ela tiver departamento
-      // Se a vw_comercial_docs_faturados tiver campo departamento_vendedor, filtrar aqui
-      // Por ora usamos o resultado bruto já que a query virá filtrada do ERP via views
 
       this._dados = nfsBruto;
 
