@@ -905,6 +905,7 @@ function astRenderKanban() {
   const colunas={};
   _statusList.forEach(s=>{ if(!s.finaliza_chamado) colunas[s.nome]={meta:s,items:[]}; });
   astFiltrados.forEach(r=>{
+    if (astEhFinalizado(r)) return; // nunca mostrar finalizados no kanban
     const k = r.status_nome || '';
     if (!k) return; // ignorar chamados sem status
     if (!colunas[k]) colunas[k] = { meta: { id: r.status_id, nome: k, cor: null }, items: [] };
