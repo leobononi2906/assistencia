@@ -173,6 +173,13 @@
   .ast-detail-grid,.ast-form-row,.ast-gest-grid { grid-template-columns:1fr; }
   .ast-modal { width:96vw; }
 }
+/* Abas do drawer */
+.ast-drw-tabs { display:flex;gap:0;border-bottom:2px solid var(--border);margin:0 -20px;padding:0 20px;flex-shrink:0; }
+.ast-drw-tab  { padding:10px 18px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap; }
+.ast-drw-tab:hover { color:var(--text-primary); }
+.ast-drw-tab.active { color:var(--blue-mid);border-bottom-color:var(--blue-mid); }
+.ast-drw-pane { display:none;padding-top:4px; }
+.ast-drw-pane.active { display:block; }
   `;
   document.head.appendChild(s);
 })();
@@ -1311,7 +1318,16 @@ window.astAbrirDetalhe = async function(id) {
         <button class="ast-btn ast-btn-success ast-btn-sm" onclick="astDesbloquear(${bloqData.id},'${det.telefone||''}')">Desbloquear</button>
       </div>` : ''}
 
-      <!-- ① NATUREZA + STATUS -->
+      <!-- ABAS DO DRAWER -->
+      <div class="ast-drw-tabs">
+        <button class="ast-drw-tab active" onclick="astDrwTab('atendimento',this)">📋 Atendimento</button>
+        <button class="ast-drw-tab" onclick="astDrwTab('documentos',this)">📄 Documentos${det.cliente_id_erp ? '' : ' ⚠️'}</button>
+        <button class="ast-drw-tab" onclick="astDrwTab('historico',this)">📊 Histórico${histList.length ? ` (${histList.length})` : ''}</button>
+      </div>
+
+      <!-- ABA: ATENDIMENTO -->
+      <div class="ast-drw-pane active" id="ast-pane-atendimento">
+        <!-- ① NATUREZA + STATUS -->
       <div class="ast-drw-section">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
           <button class="ast-btn ast-btn-sm ${det.natureza==='nao_garantia'?'ast-btn-danger':'ast-btn-secondary'}"
@@ -1411,66 +1427,6 @@ window.astAbrirDetalhe = async function(id) {
         </div>
       </div>
 
-      <!-- ⑤ DOCUMENTOS ERP -->
-      <div class="ast-drw-section">
-        <div class="ast-drw-section-title">📄 Documentos</div>
-        ${(osCliente.length === 0 && docsErp.length === 0) ? `
-          <div class="ast-empty" style="padding:16px 0">
-            <div class="ast-empty-ico">📋</div>
-            ${det.cliente_id_erp ? 'Nenhum documento encontrado para este cliente' : 'Cliente ERP não vinculado'}
-          </div>` : `
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead>
-              <tr style="border-bottom:2px solid var(--border)">
-                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Documento</th>
-                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Data</th>
-                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Empresa</th>
-                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Operação</th>
-                <th style="text-align:right;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${osCliente.map(os => {
-                const tipoLabel = os.tipo_os === 'GARANTIA' ? 'Garantia' : os.tipo_os || 'OS';
-                const statusColor = os.status_os === 'A' ? 'var(--green)' : os.status_os === 'F' ? 'var(--blue-mid)' : 'var(--text-muted)';
-                return `<tr style="border-bottom:1px solid var(--border)">
-                  <td style="padding:7px 8px">
-                    <span style="font-weight:600;color:var(--text-primary)">OS ${os.id_os}</span>
-                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:10px">OS</span>
-                  </td>
-                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${os.data_entrada ? new Date(os.data_entrada+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-                  <td style="padding:7px 8px;color:var(--text-secondary)">${os.empresa || '—'}</td>
-                  <td style="padding:7px 8px">
-                    <span style="font-size:11px;color:${statusColor};font-weight:600">${tipoLabel}</span>
-                    ${os.situacao_label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px">(${os.situacao_label})</span>` : ''}
-                  </td>
-                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${os.vl_total && parseFloat(os.vl_total) > 0 ? 'R$ '+parseFloat(os.vl_total).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
-                </tr>`;
-              }).join('')}
-              ${docsErp.map(d => {
-                const tipoDoc = (d.tipo_doc||'').trim();
-                const isOS = tipoDoc === 'O.S.';
-                const tipoOp = d.tipo_saida || tipoDoc;
-                const badgeBg = isOS ? 'var(--blue-pale)' : tipoOp==='ONLINE' ? '#EDE9FE' : tipoOp==='LOJA' ? '#ECFDF5' : tipoOp==='DISTRIBUICAO' ? '#FFF7ED' : 'var(--surface2)';
-                const badgeColor = isOS ? 'var(--blue-mid)' : tipoOp==='ONLINE' ? '#7C3AED' : tipoOp==='LOJA' ? 'var(--green)' : tipoOp==='DISTRIBUICAO' ? 'var(--orange)' : 'var(--text-muted)';
-                const docLabel = d.num_nf ? `NF ${d.num_nf}` : `Doc ${d.id_doc}`;
-                return `<tr style="border-bottom:1px solid var(--border)">
-                  <td style="padding:7px 8px">
-                    <span style="font-weight:600;color:var(--text-primary)">${docLabel}</span>
-                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--surface2);color:var(--text-muted);padding:1px 6px;border-radius:10px">Venda</span>
-                  </td>
-                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${d.data_faturamento ? new Date(d.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-                  <td style="padding:7px 8px;color:var(--text-secondary)">${d.empresa || '—'}</td>
-                  <td style="padding:7px 8px">
-                    <span style="font-size:11px;font-weight:600;background:${badgeBg};color:${badgeColor};padding:2px 8px;border-radius:10px">${tipoOp}</span>
-                  </td>
-                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${d.faturamento_doc ? 'R$ '+parseFloat(d.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>`}
-      </div>
-
       <!-- ⑥ ACOMPANHAMENTO -->
       <div class="ast-drw-section">
         <div class="ast-drw-section-title">Acompanhamento da equipe</div>
@@ -1543,7 +1499,77 @@ window.astAbrirDetalhe = async function(id) {
         </div>` : ''}
       </div>
 
-      <!-- ⑦ HISTÓRICO DO CLIENTE -->
+      
+      </div>
+
+      <!-- ABA: DOCUMENTOS -->
+      <div class="ast-drw-pane" id="ast-pane-documentos">
+        <!-- ⑤ DOCUMENTOS ERP -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">📄 Documentos</div>
+        ${(osCliente.length === 0 && docsErp.length === 0) ? `
+          <div class="ast-empty" style="padding:16px 0">
+            <div class="ast-empty-ico">📋</div>
+            ${det.cliente_id_erp ? 'Nenhum documento encontrado para este cliente' : 'Cliente ERP não vinculado'}
+          </div>` : `
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Documento</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Data</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Empresa</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Operação</th>
+                <th style="text-align:right;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${osCliente.map(os => {
+                const tipoLabel = os.tipo_os === 'GARANTIA' ? 'Garantia' : os.tipo_os || 'OS';
+                const statusColor = os.status_os === 'A' ? 'var(--green)' : os.status_os === 'F' ? 'var(--blue-mid)' : 'var(--text-muted)';
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 8px">
+                    <span style="font-weight:600;color:var(--text-primary)">OS ${os.id_os}</span>
+                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:10px">OS</span>
+                  </td>
+                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${os.data_entrada ? new Date(os.data_entrada+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                  <td style="padding:7px 8px;color:var(--text-secondary)">${os.empresa || '—'}</td>
+                  <td style="padding:7px 8px">
+                    <span style="font-size:11px;color:${statusColor};font-weight:600">${tipoLabel}</span>
+                    ${os.situacao_label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px">(${os.situacao_label})</span>` : ''}
+                  </td>
+                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${os.vl_total && parseFloat(os.vl_total) > 0 ? 'R$ '+parseFloat(os.vl_total).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+                </tr>`;
+              }).join('')}
+              ${docsErp.map(d => {
+                const tipoDoc = (d.tipo_doc||'').trim();
+                const isOS = tipoDoc === 'O.S.';
+                const tipoOp = d.tipo_saida || tipoDoc;
+                const badgeBg = isOS ? 'var(--blue-pale)' : tipoOp==='ONLINE' ? '#EDE9FE' : tipoOp==='LOJA' ? '#ECFDF5' : tipoOp==='DISTRIBUICAO' ? '#FFF7ED' : 'var(--surface2)';
+                const badgeColor = isOS ? 'var(--blue-mid)' : tipoOp==='ONLINE' ? '#7C3AED' : tipoOp==='LOJA' ? 'var(--green)' : tipoOp==='DISTRIBUICAO' ? 'var(--orange)' : 'var(--text-muted)';
+                const docLabel = d.num_nf ? `NF ${d.num_nf}` : `Doc ${d.id_doc}`;
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 8px">
+                    <span style="font-weight:600;color:var(--text-primary)">${docLabel}</span>
+                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--surface2);color:var(--text-muted);padding:1px 6px;border-radius:10px">Venda</span>
+                  </td>
+                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${d.data_faturamento ? new Date(d.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                  <td style="padding:7px 8px;color:var(--text-secondary)">${d.empresa || '—'}</td>
+                  <td style="padding:7px 8px">
+                    <span style="font-size:11px;font-weight:600;background:${badgeBg};color:${badgeColor};padding:2px 8px;border-radius:10px">${tipoOp}</span>
+                  </td>
+                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${d.faturamento_doc ? 'R$ '+parseFloat(d.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+      </div>
+
+      
+      </div>
+
+      <!-- ABA: HISTÓRICO -->
+      <div class="ast-drw-pane" id="ast-pane-historico">
+        <!-- ⑦ HISTÓRICO DO CLIENTE -->
       ${histList.length ? `
       <div class="ast-drw-section">
         <div class="ast-drw-section-title">📞 Histórico do cliente (${histList.length} chamado(s) anterior(es))</div>
@@ -1588,7 +1614,9 @@ window.astAbrirDetalhe = async function(id) {
 
       </div>
 
-    `;
+
+      </div>
+        `;
   } catch(e) {
     console.error(e);
     document.getElementById('ast-drw-body').innerHTML=`<div style="padding:20px;color:var(--red)">Erro ao carregar #${id}: ${e.message}</div>`;
@@ -1601,7 +1629,13 @@ window.astSecTab = function(tab,btn) {
   document.querySelectorAll('.ast-sec-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.ast-sec-content').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById(`ast-sec-${tab}`)?.classList.add('active');
+  document.getElementById('ast-sec-'+tab)?.classList.add('active');
+};
+window.astDrwTab = function(tab, btn) {
+  document.querySelectorAll('.ast-drw-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ast-drw-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ast-pane-'+tab)?.classList.add('active');
 };
 window.astFecharDetalhe = function() {
   astResetDirty();
