@@ -1243,18 +1243,28 @@ window.astAbrirDetalhe = async function(id) {
     ]);
     const osData = osResp.data;
 
-    // Todos os docs ERP do cliente (vendas, NFs, OS)
+    // Todos os docs ERP do cliente (vendas + OS)
     let docsErp = [];
+    let osCliente = [];
     if (det.cliente_id_erp) {
       try {
-        const { data: docsErpData } = await window.sb
-          .from('vw_comercial_docs_faturados')
-          .select('id,id_doc,tipo_doc,num_nf,data_faturamento,tipo_saida,nome_transportadora,valor_frete,faturamento_doc,nome_vendedor')
-          .eq('id_cliente', det.cliente_id_erp)
-          .order('data_faturamento', {ascending:false})
-          .range(0,199);
+        const [{ data: docsErpData }, { data: osClienteData }] = await Promise.all([
+          window.sb
+            .from('vw_comercial_docs_faturados')
+            .select('id,id_doc,tipo_doc,num_nf,data_faturamento,tipo_saida,empresa,faturamento_doc')
+            .eq('id_cliente', det.cliente_id_erp)
+            .order('data_faturamento', {ascending:false})
+            .range(0,199),
+          window.sb
+            .from('assist_os_garantia')
+            .select('id_os,empresa,status_os,tipo_os,data_entrada,vl_total,situacao_label')
+            .eq('id_cliente', det.cliente_id_erp)
+            .order('data_entrada', {ascending:false})
+            .range(0,99)
+        ]);
         const seen = new Set();
         (docsErpData||[]).forEach(r => { if (!seen.has(r.id_doc+'-'+r.tipo_doc)) { seen.add(r.id_doc+'-'+r.tipo_doc); docsErp.push(r); } });
+        osCliente = osClienteData || [];
       } catch(e) {}
     }
 
@@ -1401,7 +1411,67 @@ window.astAbrirDetalhe = async function(id) {
         </div>
       </div>
 
-      <!-- ⑤ ACOMPANHAMENTO -->
+      <!-- ⑤ DOCUMENTOS ERP -->
+      <div class="ast-drw-section">
+        <div class="ast-drw-section-title">📄 Documentos</div>
+        ${(osCliente.length === 0 && docsErp.length === 0) ? `
+          <div class="ast-empty" style="padding:16px 0">
+            <div class="ast-empty-ico">📋</div>
+            ${det.cliente_id_erp ? 'Nenhum documento encontrado para este cliente' : 'Cliente ERP não vinculado'}
+          </div>` : `
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Documento</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Data</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Empresa</th>
+                <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Operação</th>
+                <th style="text-align:right;padding:6px 8px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${osCliente.map(os => {
+                const tipoLabel = os.tipo_os === 'GARANTIA' ? 'Garantia' : os.tipo_os || 'OS';
+                const statusColor = os.status_os === 'A' ? 'var(--green)' : os.status_os === 'F' ? 'var(--blue-mid)' : 'var(--text-muted)';
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 8px">
+                    <span style="font-weight:600;color:var(--text-primary)">OS ${os.id_os}</span>
+                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--blue-pale);color:var(--blue-mid);padding:1px 6px;border-radius:10px">OS</span>
+                  </td>
+                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${os.data_entrada ? new Date(os.data_entrada+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                  <td style="padding:7px 8px;color:var(--text-secondary)">${os.empresa || '—'}</td>
+                  <td style="padding:7px 8px">
+                    <span style="font-size:11px;color:${statusColor};font-weight:600">${tipoLabel}</span>
+                    ${os.situacao_label ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px">(${os.situacao_label})</span>` : ''}
+                  </td>
+                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${os.vl_total && parseFloat(os.vl_total) > 0 ? 'R$ '+parseFloat(os.vl_total).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+                </tr>`;
+              }).join('')}
+              ${docsErp.map(d => {
+                const tipoDoc = (d.tipo_doc||'').trim();
+                const isOS = tipoDoc === 'O.S.';
+                const tipoOp = d.tipo_saida || tipoDoc;
+                const badgeBg = isOS ? 'var(--blue-pale)' : tipoOp==='ONLINE' ? '#EDE9FE' : tipoOp==='LOJA' ? '#ECFDF5' : tipoOp==='DISTRIBUICAO' ? '#FFF7ED' : 'var(--surface2)';
+                const badgeColor = isOS ? 'var(--blue-mid)' : tipoOp==='ONLINE' ? '#7C3AED' : tipoOp==='LOJA' ? 'var(--green)' : tipoOp==='DISTRIBUICAO' ? 'var(--orange)' : 'var(--text-muted)';
+                const docLabel = d.num_nf ? `NF ${d.num_nf}` : `Doc ${d.id_doc}`;
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 8px">
+                    <span style="font-weight:600;color:var(--text-primary)">${docLabel}</span>
+                    <span style="margin-left:6px;font-size:10px;font-weight:700;background:var(--surface2);color:var(--text-muted);padding:1px 6px;border-radius:10px">Venda</span>
+                  </td>
+                  <td style="padding:7px 8px;color:var(--text-secondary);white-space:nowrap">${d.data_faturamento ? new Date(d.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                  <td style="padding:7px 8px;color:var(--text-secondary)">${d.empresa || '—'}</td>
+                  <td style="padding:7px 8px">
+                    <span style="font-size:11px;font-weight:600;background:${badgeBg};color:${badgeColor};padding:2px 8px;border-radius:10px">${tipoOp}</span>
+                  </td>
+                  <td style="padding:7px 8px;text-align:right;font-weight:600;color:var(--text-primary)">${d.faturamento_doc ? 'R$ '+parseFloat(d.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+      </div>
+
+      <!-- ⑥ ACOMPANHAMENTO -->
       <div class="ast-drw-section">
         <div class="ast-drw-section-title">Acompanhamento da equipe</div>
         <div class="ast-fup-form" style="margin-bottom:14px">
@@ -1473,7 +1543,7 @@ window.astAbrirDetalhe = async function(id) {
         </div>` : ''}
       </div>
 
-      <!-- ⑥ HISTÓRICO DO CLIENTE -->
+      <!-- ⑦ HISTÓRICO DO CLIENTE -->
       ${histList.length ? `
       <div class="ast-drw-section">
         <div class="ast-drw-section-title">📞 Histórico do cliente (${histList.length} chamado(s) anterior(es))</div>
@@ -1488,7 +1558,7 @@ window.astAbrirDetalhe = async function(id) {
           </div>`).join('')}
       </div>` : ''}
 
-      <!-- ⑦ ENTREGAS -->
+      <!-- ⑧ ENTREGAS -->
       <div class="ast-drw-section">
         <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between">
           <span>🚚 Entregas</span>
@@ -1516,25 +1586,6 @@ window.astAbrirDetalhe = async function(id) {
           }).join('')}
         </div>` : ''}
 
-        ${docsErp.length ? `
-        <div style="margin-top:8px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">Histórico ERP — ${docsErp.length} documento(s)</div>
-          <div style="overflow-x:auto">
-            <table class="ast-table" style="font-size:12px">
-              <thead><tr><th>Tipo</th><th>Doc/NF</th><th>Data</th><th>Vendedor</th><th>Transp.</th><th class="right">Valor</th></tr></thead>
-              <tbody>
-                ${docsErp.map(d=>`<tr>
-                  <td><span style="font-size:10px;font-weight:600;background:var(--surface2);padding:1px 5px;border-radius:4px">${(d.tipo_doc||'').trim()}</span></td>
-                  <td class="ast-mono">${d.num_nf||d.id_doc||'—'}</td>
-                  <td style="white-space:nowrap">${d.data_faturamento?new Date(d.data_faturamento+'T00:00:00').toLocaleDateString('pt-BR'):'—'}</td>
-                  <td style="color:var(--text-muted);font-size:11px">${d.nome_vendedor||'—'}</td>
-                  <td style="color:var(--text-muted);font-size:11px">${d.nome_transportadora||'—'}</td>
-                  <td class="right">${d.faturamento_doc?'R$ '+parseFloat(d.faturamento_doc).toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>` : `<div class="ast-empty" style="padding:16px 0"><div class="ast-empty-ico">📋</div>${det.cliente_id_erp?'Nenhum documento encontrado para este cliente':'Cliente ERP não vinculado — use o botão Vincular ERP'}</div>`}
       </div>
 
     `;
