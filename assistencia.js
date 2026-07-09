@@ -826,7 +826,7 @@ window.astDesbloquear = async function(id, tel) {
 // ══════════════════════════════════════════
 async function astLoadChamados() {
   try {
-    const { data } = await window.sb.from('assist_kanban').select('*').order('data_abertura',{ascending:false}).range(0,9999);
+    const { data } = await window.sb.from('assist_kanban').select('*').eq('concluido',false).order('data_abertura',{ascending:false}).range(0,9999);
     astData = data||[];
     astPopularSelectsFiltro();
     const novos = astData.filter(r => !r.visualizado && r.natureza!=='nao_garantia' && !astEhFinalizado(r));
