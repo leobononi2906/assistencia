@@ -302,6 +302,20 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
           <a class="nav-item" data-pagina="ast-config"   onclick="navegarPara('ast-config')">  <span class="nav-dot"></span>Configurações</a>
         </div>
       </div>
+      <div class="nav-module" id="nav-module-ra">
+        <div class="nav-module-header" onclick="toggleNavModule('ra')">
+          <div class="nav-module-label"><span class="nav-module-icon">🏪</span>Rede Autorizada</div>
+          <span class="nav-module-chevron">▼</span>
+        </div>
+        <div class="nav-module-items">
+          <a class="nav-item" data-pagina="ra-aprovar"    onclick="navegarPara('ra-aprovar')">   <span class="nav-dot"></span>Aprovar OS</a>
+          <a class="nav-item" data-pagina="ra-servicos"   onclick="navegarPara('ra-servicos')">  <span class="nav-dot"></span>Serviços</a>
+          <a class="nav-item" data-pagina="ra-pecas"      onclick="navegarPara('ra-pecas')">     <span class="nav-dot"></span>Peças</a>
+          <a class="nav-item" data-pagina="ra-envios"     onclick="navegarPara('ra-envios')">    <span class="nav-dot"></span>Envio de Peças</a>
+          <a class="nav-item" data-pagina="ra-pagamentos" onclick="navegarPara('ra-pagamentos')"><span class="nav-dot"></span>Pagamentos</a>
+          <a class="nav-item" data-pagina="ra-materiais"  onclick="navegarPara('ra-materiais')"> <span class="nav-dot"></span>Materiais</a>
+        </div>
+      </div>
       <div class="nav-separator"></div>
       <a class="nav-item" onclick="window.open('https://bononi-hub.vercel.app/','_blank')"
         style="color:rgba(255,255,255,0.35);font-size:12px">
@@ -338,6 +352,9 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
     <div class="module-loading-bar" id="module-loading-bar"></div>
     <div class="content-area" id="content-area">
       <div id="slot-ast" class="module-slot active">
+        <div class="module-placeholder"><div class="spinner"></div><p>Carregando...</p></div>
+      </div>
+      <div id="slot-ra" class="module-slot">
         <div class="module-placeholder"><div class="spinner"></div><p>Carregando...</p></div>
       </div>
     </div>
@@ -385,6 +402,13 @@ const PAGINAS = {
   'ast-mov-garantia':{ label: 'Mov. Garantia',      breadcrumb: 'Assistência · Mov. Garantia'   },
   'ast-parceiros':{ label: 'Rede de Assistência', breadcrumb: 'Assistência · Parceiros'  },
   'ast-config':   { label: 'Configurações',     breadcrumb: 'Assistência · Config'     },
+  'ra-aprovar':    { label: 'Aprovar OS',         breadcrumb: 'Rede Autorizada · Aprovar OS'   },
+  'ra-servicos':   { label: 'Serviços',           breadcrumb: 'Rede Autorizada · Serviços'     },
+  'ra-pecas':      { label: 'Catálogo de Peças',  breadcrumb: 'Rede Autorizada · Peças'        },
+  'ra-envios':     { label: 'Envio de Peças',     breadcrumb: 'Rede Autorizada · Envios'       },
+  'ra-pagamentos': { label: 'Pagamentos',         breadcrumb: 'Rede Autorizada · Pagamentos'   },
+  'ra-materiais':  { label: 'Materiais Técnicos', breadcrumb: 'Rede Autorizada · Materiais'    },
+
 };
 
 async function navegarPara(paginaId) {
@@ -393,9 +417,43 @@ async function navegarPara(paginaId) {
   document.getElementById('page-breadcrumb').textContent = pg.breadcrumb;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`.nav-item[data-pagina="${paginaId}"]`)?.classList.add('active');
-  document.getElementById('nav-module-ast')?.classList.remove('collapsed');
   paginaAtiva = paginaId;
 
+  const isRA = paginaId.startsWith('ra-');
+  
+  // Ativar o slot correto
+  document.querySelectorAll('.module-slot').forEach(s => s.classList.remove('active'));
+  document.getElementById(isRA ? 'slot-ra' : 'slot-ast').classList.add('active');
+  
+  // Expandir o nav module correto
+  if (isRA) {
+    document.getElementById('nav-module-ra')?.classList.remove('collapsed');
+  } else {
+    document.getElementById('nav-module-ast')?.classList.remove('collapsed');
+  }
+  
+  if (isRA) {
+    const slotRA = document.getElementById('slot-ra');
+    if (!window._raLoaded) {
+      document.getElementById('module-loading-bar').classList.add('show');
+      slotRA.innerHTML = '<div class="module-placeholder"><div class="spinner"></div><p>Carregando Rede Autorizada...</p></div>';
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'rede-autorizada.js?v=' + Date.now();
+        s.onload = resolve;
+        s.onerror = () => { console.error('Erro ao carregar rede-autorizada.js'); resolve(); };
+        document.head.appendChild(s);
+      });
+      window._raLoaded = true;
+      document.getElementById('module-loading-bar').classList.remove('show');
+    }
+    if (window.ModuloRedeAutorizada?.showPage) {
+      window.ModuloRedeAutorizada.showPage(paginaId, slotRA);
+    }
+    window.setLastUpdate();
+    return;
+  }
+  
   const slot = document.getElementById('slot-ast');
   if (!moduloCarregado) {
     document.getElementById('module-loading-bar').classList.add('show');
