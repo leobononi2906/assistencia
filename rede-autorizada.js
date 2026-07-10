@@ -500,6 +500,13 @@ window.raSalvarServico = async function(id) {
     teto_categoria: cat.valor_teto
   };
 
+  // Validar: valor não pode ultrapassar o teto da categoria
+  var teto = parseFloat(cat.valor_teto) || 0;
+  if (teto > 0 && valor > teto) {
+    alert('Valor do serviço (R$ ' + valor.toFixed(2).replace('.',',') + ') ultrapassa o teto da categoria "' + cat.nome + '" (R$ ' + teto.toFixed(2).replace('.',',') + ').\n\nReduz o valor ou aumente o teto da categoria primeiro.');
+    return;
+  }
+
   if (id) {
     // edição — mantém código existente
     await raPatch('prt_tabela_servicos', 'id=eq.' + id, d);
@@ -1191,6 +1198,19 @@ window.raCfgSalvar = async function(id) {
   };
   if (!d.nome) { alert('Preencha o nome da categoria'); return; }
   if (!d.prefixo_codigo || d.prefixo_codigo.length < 2) { alert('Prefixo precisa ter ao menos 2 letras'); return; }
+
+  // Validar teto: não pode ser menor que o maior serviço do grupo
+  if (id && d.valor_teto > 0) {
+    var servicos = await raFetch('prt_tabela_servicos?categoria_id=eq.' + id + '&ativo=eq.true&select=valor,descricao&order=valor.desc&limit=1');
+    if (Array.isArray(servicos) && servicos.length) {
+      var maiorValor = parseFloat(servicos[0].valor) || 0;
+      if (d.valor_teto < maiorValor) {
+        alert('Teto não pode ser menor que o maior serviço do grupo!\n\nServiço mais caro: ' + servicos[0].descricao + ' — ' + raFmt(maiorValor) + '\nTeto informado: ' + raFmt(d.valor_teto) + '\n\nAumente o teto para no mínimo ' + raFmt(maiorValor));
+        return;
+      }
+    }
+  }
+
   // slug a partir do nome normalizado
   d.slug = d.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
 
