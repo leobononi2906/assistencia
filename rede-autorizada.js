@@ -34,9 +34,6 @@ var RA_PAGES = {
     <div style="display:flex;gap:8px">
       <select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()">
         <option value="">Todas as linhas</option>
-        <option value="geladeira">Geladeira</option>
-        <option value="ar_condicionado">AR Condicionado</option>
-        <option value="gerador">Gerador</option>
       </select>
       <button class="btn btn-secondary btn-sm" onclick="raGerarPdfServicos()">📄 Gerar PDF</button>
       <button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button>
@@ -65,9 +62,6 @@ var RA_PAGES = {
     <div style="display:flex;gap:8px">
       <select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()">
         <option value="">Todas as linhas</option>
-        <option value="geladeira">Geladeira</option>
-        <option value="ar_condicionado">AR Condicionado</option>
-        <option value="gerador">Gerador</option>
       </select>
       <button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button>
     </div>
@@ -100,6 +94,7 @@ var RA_PAGES = {
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-linhas" onclick="raCfgTab('linhas')">📦 Linhas e Modelos</button>
   </div>
   <div id="ra-cfg-content"></div>
 </div>`,
@@ -168,6 +163,83 @@ function raModal(title, bodyHtml, footerHtml) {
 }
 
 // ═══════════════════════════════════════
+// LINHAS E MODELOS — dinâmicos (prt_linhas_produto / prt_modelos_produto)
+// Antes hardcoded em selects e em MODELOS_POR_LINHA. Agora vêm do banco, com cache.
+// ═══════════════════════════════════════
+var _raLinhas = null;   // cache: [{id, slug, nome, nome_curto, ordem, ativo}]
+var _raModelos = null;  // cache: [{id, linha_id, nome, ordem, ativo}]
+
+async function raGetLinhas(incluirInativas) {
+  if (!_raLinhas) {
+    var l = await raFetch('prt_linhas_produto?order=ordem.asc,nome.asc&select=*');
+    _raLinhas = Array.isArray(l) ? l : [];
+  }
+  return incluirInativas ? _raLinhas : _raLinhas.filter(function(x) { return x.ativo; });
+}
+
+async function raGetModelos(incluirInativos) {
+  if (!_raModelos) {
+    var m = await raFetch('prt_modelos_produto?order=ordem.asc,nome.asc&select=*');
+    _raModelos = Array.isArray(m) ? m : [];
+  }
+  return incluirInativos ? _raModelos : _raModelos.filter(function(x) { return x.ativo; });
+}
+
+function raInvalidarLinhasCache() { _raLinhas = null; _raModelos = null; }
+
+// Nome de exibição a partir do slug (usa cache já carregado; fallback = slug)
+function raLinhaNome(slug) {
+  var l = (_raLinhas || []).find(function(x) { return x.slug === slug; });
+  return l ? l.nome : (slug || '');
+}
+function raLinhaNomeCurto(slug) {
+  var l = (_raLinhas || []).find(function(x) { return x.slug === slug; });
+  return l ? (l.nome_curto || l.nome) : (slug || '');
+}
+
+// Resolve o slug a partir de um valor gravado na OS (pode vir como nome de exibição ou como slug)
+async function raLinhaSlugDe(valor) {
+  if (!valor) return '';
+  var linhas = await raGetLinhas(true);
+  var v = String(valor).toLowerCase();
+  var l = linhas.find(function(x) { return x.slug.toLowerCase() === v || (x.nome || '').toLowerCase() === v; });
+  return l ? l.slug : '';
+}
+
+// Nomes dos modelos ativos de uma linha (por slug)
+async function raModelosDaLinha(slug) {
+  var linhas = await raGetLinhas(true);
+  var l = linhas.find(function(x) { return x.slug === slug; });
+  if (!l) return [];
+  var mods = await raGetModelos();
+  return mods.filter(function(m) { return m.linha_id === l.id; }).map(function(m) { return m.nome; });
+}
+
+// Popula um <select> de linhas preservando o valor atual (seguro para chamadas repetidas)
+async function raPopularSelectLinhas(elId, placeholder) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var linhas = await raGetLinhas();
+  var atual = el.value;
+  var html = (placeholder !== undefined ? '<option value="">' + placeholder + '</option>' : '') +
+    linhas.map(function(l) { return '<option value="' + l.slug + '">' + raEsc(l.nome) + '</option>'; }).join('');
+  if (el.getAttribute('data-linhas-html') !== html) {
+    el.innerHTML = html;
+    el.setAttribute('data-linhas-html', html);
+  }
+  if (atual && el.querySelector('option[value="' + atual + '"]')) el.value = atual;
+}
+
+// Options de linhas para montar select em modal (com selecionada)
+async function raLinhaOptionsHtml(selecionada, placeholder) {
+  var linhas = await raGetLinhas();
+  return (placeholder !== undefined ? '<option value="">' + placeholder + '</option>' : '') +
+    linhas.map(function(l) {
+      return '<option value="' + l.slug + '"' + (l.slug === selecionada ? ' selected' : '') + '>' + raEsc(l.nome) + '</option>';
+    }).join('');
+}
+
+// ═══════════════════════════════════════
 // 1. APROVAR OS
 // ═══════════════════════════════════════
 var _raOS = [];
@@ -230,9 +302,6 @@ window.raDetalheOS = async function(id) {
   // Carregar peças da OS
   var pecasOS = [];
   try { pecasOS = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=*'); if (!Array.isArray(pecasOS)) pecasOS = []; } catch(e) {}
-  // Carregar serviços da OS (multi)
-  var servicosOS = [];
-  try { servicosOS = await raFetch('prt_os_servicos?os_id=eq.' + id + '&select=*'); if (!Array.isArray(servicosOS)) servicosOS = []; } catch(e) {}
   var body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PROTOCOLO</label><div style="font-weight:700">' + (o.protocolo || '#' + o.id) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PARCEIRO</label><div>' + parc + '</div></div>' +
@@ -246,19 +315,11 @@ window.raDetalheOS = async function(id) {
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CÓD. ERRO</label><div>' + (o.codigo_erro || '-') + '</div></div>' +
     '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DEFEITO</label><div>' + (raEsc(o.defeito_descricao) || '-') + '</div></div>' +
     '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DIAGNÓSTICO</label><div>' + (raEsc(o.diagnostico) || '-') + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SOLUÇÃO</label><div>' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DATA SERVIÇO</label><div>' + raDate(o.data_servico) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR TOTAL</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
     '</div>';
-  // Serviços realizados (multi)
-  if (servicosOS.length) {
-    body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SERVIÇOS REALIZADOS (' + servicosOS.length + ')</label>';
-    servicosOS.forEach(function(sv) {
-      body += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #f0f0f0"><div><span style="font-weight:600;color:var(--blue-mid)">' + raEsc(sv.codigo) + '</span> ' + raEsc(sv.descricao) + '<div style="font-size:11px;color:var(--text-muted)">' + (sv.categoria_nome || '') + '</div></div><span style="font-weight:700;white-space:nowrap">' + raFmt(sv.valor) + '</span></div>';
-    });
-    body += '</div>';
-  } else if (o.codigo_servico) {
-    body += '<div style="margin-top:12px;font-size:13px"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + ' — ' + raFmt(o.valor_servico) + '</div></div>';
-  }
   // Peças utilizadas
   if (pecasOS.length) {
     body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PEÇAS UTILIZADAS</label>';
@@ -290,7 +351,7 @@ window.raDetalheOS = async function(id) {
 window.raEditarServicoOS = async function(osId) {
   var o = _raOS.find(function(x) { return x.id === osId; });
   if (!o) return;
-  var linhaDb = {Geladeira:'geladeira','Ar Condicionado':'ar_condicionado',Gerador:'gerador'}[o.produto_linha] || o.produto_linha || '';
+  var linhaDb = await raLinhaSlugDe(o.produto_linha) || o.produto_linha || '';
   // buscar categorias da nova tabela
   var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=ordem.asc&select=*' + (linhaDb ? '&linha_produto=eq.' + linhaDb : ''));
   if (!Array.isArray(categorias)) categorias = [];
@@ -385,6 +446,7 @@ var _raServicos = [];
 var _raCategorias = [];
 
 window.raCarregarServicos = async function() {
+  await raPopularSelectLinhas('ra-srv-linha', 'Todas as linhas');
   var linha = document.getElementById('ra-srv-linha')?.value || '';
   // carregar categorias
   var catUrl = 'prt_categorias_servico?order=ordem.asc&select=*';
@@ -397,7 +459,6 @@ window.raCarregarServicos = async function() {
   _raServicos = await raFetch(url);
   if (!Array.isArray(_raServicos)) _raServicos = [];
   var tbody = document.getElementById('ra-srv-tbody');
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
   // map de categorias por id
   var catMap = {};
   _raCategorias.forEach(function(c) { catMap[c.id] = c; });
@@ -407,7 +468,7 @@ window.raCarregarServicos = async function() {
     return '<tr>' +
       '<td class="mono" style="font-weight:600">' + s.codigo + '</td>' +
       '<td>' + s.descricao + '</td>' +
-      '<td>' + (linhaNomes[s.linha_produto] || s.linha_produto) + '</td>' +
+      '<td>' + raLinhaNome(s.linha_produto) + '</td>' +
       '<td><span class="badge badge-blue">' + (cat.nome || s.categoria) + '</span></td>' +
       '<td class="mono right">' + raFmt(s.valor) + '</td>' +
       '<td class="mono right">' + raFmt(cat.valor_teto || s.teto_categoria) + '</td>' +
@@ -436,8 +497,7 @@ async function raGerarCodigo(categoriaId) {
 window.raNovoServico = function() {
   // filtrar categorias ativas
   var catOpts = _raCategorias.filter(function(c) { return c.ativo; }).map(function(c) {
-    var lnm = {geladeira:'Gel',ar_condicionado:'AR',gerador:'Ger'};
-    return '<option value="' + c.id + '">' + (lnm[c.linha_produto]||c.linha_produto) + ' — ' + c.nome + '</option>';
+    return '<option value="' + c.id + '">' + raLinhaNomeCurto(c.linha_produto) + ' — ' + c.nome + '</option>';
   }).join('');
   if (!catOpts) catOpts = '<option value="">Nenhuma categoria — cadastre primeiro em Configurações</option>';
 
@@ -501,8 +561,7 @@ window.raEditarServico = function(id) {
   var s = _raServicos.find(function(x) { return x.id === id; });
   if (!s) return;
   var catOpts = _raCategorias.filter(function(c) { return c.ativo; }).map(function(c) {
-    var lnm = {geladeira:'Gel',ar_condicionado:'AR',gerador:'Ger'};
-    return '<option value="' + c.id + '"' + (c.id === s.categoria_id ? ' selected' : '') + '>' + (lnm[c.linha_produto]||c.linha_produto) + ' — ' + c.nome + '</option>';
+    return '<option value="' + c.id + '"' + (c.id === s.categoria_id ? ' selected' : '') + '>' + raLinhaNomeCurto(c.linha_produto) + ' — ' + c.nome + '</option>';
   }).join('');
 
   raModal('Editar Serviço',
@@ -524,27 +583,23 @@ window.raToggleServico = async function(id, ativo) {
 // 3. PEÇAS — CRUD (com busca ERP + checkboxes modelos)
 // ═══════════════════════════════════════
 var _raPecas = [];
-var MODELOS_POR_LINHA = {
-  'geladeira': ['Stonni ST 18L','Stonni ST 30L','Adventure 25L','Adventure 40L','Adventure 45L Dual Zone','Adventure 55L Dual Zone'],
-  'ar_condicionado': ['AR Advantage I','AR Advantage II 24V','AR G2 Night Power 24V S2','AR G3 Truck Night Power 24V','AR G3 RV Night Power 12V','AR Compact','AR Slim / Clean'],
-  'gerador': ['Gerador Stonni Autom. Inverter 1800W 24V']
-};
+// Modelos por linha agora vêm do banco (prt_modelos_produto) — ver raModelosDaLinha()
 
 window.raCarregarPecas = async function() {
+  await raPopularSelectLinhas('ra-pec-linha', 'Todas as linhas');
   var linha = document.getElementById('ra-pec-linha')?.value || '';
   var url = 'prt_pecas_catalogo?order=nome.asc&select=*';
   if (linha) url += '&linha_produto=eq.' + linha;
   _raPecas = await raFetch(url);
   if (!Array.isArray(_raPecas)) _raPecas = [];
   var tbody = document.getElementById('ra-pec-tbody');
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
   if (!_raPecas.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma peça cadastrada</td></tr>'; return; }
   tbody.innerHTML = _raPecas.map(function(p) {
     var aplic = Array.isArray(p.aplicacao) ? p.aplicacao.join(', ') : '';
     return '<tr>' +
       '<td class="mono" style="font-weight:600">' + p.referencia + '</td>' +
       '<td>' + p.nome + '</td>' +
-      '<td>' + (linhaNomes[p.linha_produto] || p.linha_produto) + '</td>' +
+      '<td>' + raLinhaNome(p.linha_produto) + '</td>' +
       '<td style="font-size:12px">' + (aplic || '<span style="color:var(--text-muted)">não definida</span>') + '</td>' +
       '<td class="mono right">' + raFmt(p.custo_unitario) + '</td>' +
       '<td>' + (p.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
@@ -552,8 +607,13 @@ window.raCarregarPecas = async function() {
   }).join('');
 };
 
-window.raNovaPeca = function(prefill) {
+window.raNovaPeca = async function(prefill) {
   var p = prefill || {};
+  var linhas = await raGetLinhas();
+  var linhaSel = p.linha_produto || (linhas[0] ? linhas[0].slug : '');
+  var linhaOpts = linhas.map(function(l) {
+    return '<option value="' + l.slug + '"' + (l.slug === linhaSel ? ' selected' : '') + '>' + raEsc(l.nome) + '</option>';
+  }).join('');
   raModal('Nova Peça — Buscar no ERP',
     '<div class="field"><label>Buscar produto no ERP</label><div style="display:flex;gap:6px"><input id="ra-pec-busca-erp" class="search-input" style="flex:1" placeholder="Digite referência ou nome do produto..." value="' + (p.referencia || '') + '"><button class="btn btn-secondary btn-sm" onclick="raBuscarPecaERP()">🔍 Buscar</button></div></div>' +
     '<div id="ra-pec-erp-results" style="max-height:150px;overflow-y:auto;margin-bottom:12px"></div>' +
@@ -561,7 +621,7 @@ window.raNovaPeca = function(prefill) {
     '<div class="field"><label>Referência</label><input id="ra-pec-ref" class="search-input" style="width:100%" value="' + (p.referencia || '') + '" placeholder="Código ERP"></div>' +
     '<div class="field"><label>Nome (editável)</label><input id="ra-pec-nome" class="search-input" style="width:100%" value="' + (p.nome || '') + '" placeholder="Nome da peça"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Linha</label><select id="ra-pec-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'pec\')"><option value="geladeira"' + (p.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (p.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (p.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
+      '<div class="field"><label>Linha</label><select id="ra-pec-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'pec\')">' + linhaOpts + '</select></div>' +
       '<div class="field"><label>Custo (R$)</label><input id="ra-pec-custo" class="search-input" style="width:100%" type="number" step="0.01" value="' + (p.custo_unitario || '') + '"></div>' +
     '</div>' +
     '<div class="field"><label>Aplicação — selecione os modelos</label><div id="ra-pec-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>',
@@ -592,11 +652,17 @@ window.raSelecionarPecaERP = function(ref, nome, custo, ipi) {
   document.getElementById('ra-pec-erp-results').innerHTML = '<div style="padding:6px;color:var(--green);font-size:12px">✅ Produto selecionado: ' + ref + '</div>';
 };
 
-window.raAtualizarCheckboxesModelo = function(prefix) {
+window.raAtualizarCheckboxesModelo = async function(prefix) {
   var linha = document.getElementById('ra-' + prefix + '-linha-new').value;
-  var modelos = MODELOS_POR_LINHA[linha] || [];
-  var aplic = prefix === 'pec' ? (window._pecaAplic || []) : (window._matAplic || []);
   var box = document.getElementById('ra-' + prefix + '-checkboxes');
+  if (!box) return;
+  if (!linha) { box.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Selecione uma linha para listar os modelos</span>'; return; }
+  box.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Carregando modelos...</span>';
+  var modelos = await raModelosDaLinha(linha);
+  // inclui modelos legados marcados na peça que não estão mais na lista (para não sumirem sem aviso)
+  var aplic = prefix === 'pec' ? (window._pecaAplic || []) : (window._matAplic || []);
+  aplic.forEach(function(a) { if (modelos.indexOf(a) === -1) modelos.push(a); });
+  if (!modelos.length) { box.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Nenhum modelo cadastrado para esta linha — cadastre em Configurações → Linhas e Modelos</span>'; return; }
   box.innerHTML = modelos.map(function(m) {
     var checked = aplic.indexOf(m) > -1 ? ' checked' : '';
     return '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:' + (checked ? 'var(--blue-pale)' : 'var(--surface2)') + '"><input type="checkbox" value="' + m + '"' + checked + ' onchange="raToggleModeloCheck(\'' + prefix + '\',this)" style="accent-color:var(--blue-mid)">' + m + '</label>';
@@ -628,10 +694,10 @@ window.raSalvarPeca = async function(id) {
   raCarregarPecas();
 };
 
-window.raEditarPeca = function(id) {
+window.raEditarPeca = async function(id) {
   var p = _raPecas.find(function(x) { return x.id === id; });
   if (!p) return;
-  raNovaPeca(p);
+  await raNovaPeca(p);
   document.querySelector('.modal-title').textContent = 'Editar Peça';
   var btns = document.querySelectorAll('.modal .btn-primary');
   btns[btns.length - 1].setAttribute('onclick', 'raSalvarPeca(' + id + ')');
@@ -818,6 +884,7 @@ window.raMarcarPago = async function(id) {
 // ═══════════════════════════════════════
 var _raMateriais = [];
 window.raCarregarMateriais = async function() {
+  await raPopularSelectLinhas('ra-mat-linha', 'Todas as linhas');
   var linha = document.getElementById('ra-mat-linha')?.value || '';
   var url = 'prt_materiais?order=ordem.asc,criado_em.desc&select=*';
   if (linha) url += '&linha_produto=eq.' + linha;
@@ -825,22 +892,22 @@ window.raCarregarMateriais = async function() {
   if (!Array.isArray(_raMateriais)) _raMateriais = [];
   var tbody = document.getElementById('ra-mat-tbody');
   var tipoIcon = {video:'🎥',pdf:'📄',imagem:'🖼️',link:'🔗'};
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
   if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
   tbody.innerHTML = _raMateriais.map(function(m) {
     var modelos = m.modelo || 'Todos';
     return '<tr>' +
       '<td><a href="' + m.url + '" target="_blank" style="color:var(--blue-mid)">' + m.titulo + '</a></td>' +
       '<td>' + (tipoIcon[m.tipo] || '') + ' ' + m.tipo + '</td>' +
-      '<td>' + (linhaNomes[m.linha_produto] || m.linha_produto || 'Geral') + '</td>' +
+      '<td>' + (m.linha_produto ? raLinhaNome(m.linha_produto) : 'Geral') + '</td>' +
       '<td style="font-size:12px">' + modelos + '</td>' +
       '<td>' + (m.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
       '<td><button class="btn-icon" onclick="raEditarMaterial(' + m.id + ')">✏️</button> <button class="btn-icon" onclick="raToggleMaterial(' + m.id + ',' + !m.ativo + ')">' + (m.ativo ? '🚫' : '✅') + '</button></td></tr>';
   }).join('');
 };
 
-window.raNovoMaterial = function(prefill) {
+window.raNovoMaterial = async function(prefill) {
   var m = prefill || {};
+  var linhaOptsMat = await raLinhaOptionsHtml(m.linha_produto || '', 'Geral');
   raModal('Novo Material Técnico',
     '<div class="field"><label>Título</label><input id="ra-mat-titulo" class="search-input" style="width:100%" placeholder="Ex: Instalação AR G2" value="' + (m.titulo || '') + '"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
@@ -850,7 +917,7 @@ window.raNovoMaterial = function(prefill) {
     '<div id="ra-mat-url-area" class="field"><label>URL</label><input id="ra-mat-url" class="search-input" style="width:100%" placeholder="https://..." value="' + (m.url || '') + '"></div>' +
     '<div id="ra-mat-upload-area" class="field" style="display:none"><label>Upload arquivo</label><input type="file" id="ra-mat-file" accept=".pdf,.png,.jpg,.jpeg,.webp" style="font-size:13px"><div id="ra-mat-upload-status" style="font-size:12px;margin-top:4px"></div></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Linha</label><select id="ra-mat-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'mat\')"><option value="">Geral</option><option value="geladeira"' + (m.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (m.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (m.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
+      '<div class="field"><label>Linha</label><select id="ra-mat-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'mat\')">' + linhaOptsMat + '</select></div>' +
       '<div class="field"><label>Categoria</label><input id="ra-mat-cat" class="search-input" style="width:100%" placeholder="Ex: Instalação, Manutenção..." value="' + (m.categoria || '') + '"></div>' +
     '</div>' +
     '<div class="field"><label>Modelos aplicáveis</label><div id="ra-mat-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>' +
@@ -913,10 +980,10 @@ window.raSalvarMaterial = async function(id) {
   raCarregarMateriais();
 };
 
-window.raEditarMaterial = function(id) {
+window.raEditarMaterial = async function(id) {
   var m = _raMateriais.find(function(x) { return x.id === id; });
   if (!m) return;
-  raNovoMaterial(m);
+  await raNovoMaterial(m);
   document.querySelector('.modal-title').textContent = 'Editar Material';
   var btns = document.querySelectorAll('.modal .btn-primary');
   btns[btns.length - 1].setAttribute('onclick', 'raSalvarMaterial(' + id + ')');
@@ -1004,7 +1071,7 @@ var _raCfgSubTab = 'servicos';
 
 window.raCfgTab = function(tab) {
   _raCfgSubTab = tab;
-  ['servicos','pecas','garantia','precos'].forEach(function(t) {
+  ['servicos','pecas','garantia','precos','linhas'].forEach(function(t) {
     var btn = document.getElementById('ra-cfg-tab-' + t);
     if (btn) { btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface2)'; btn.style.color = t === tab ? '#fff' : ''; }
   });
@@ -1015,12 +1082,13 @@ window.raCfgTab = function(tab) {
     case 'pecas': raCfgPecas(box); break;
     case 'garantia': raCfgGarantia(box); break;
     case 'precos': raCfgPrecos(box); break;
+    case 'linhas': raCfgLinhas(box); break;
   }
 };
 
 function raCfgServicos(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
+    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option></select></div>' +
     '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor</th><th>Teto</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
   raCarregarServicos();
@@ -1030,7 +1098,7 @@ window.raCfgCarregarCategorias = function() { raCfgCarregar(); };
 
 function raCfgPecas(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-pec-linha" onchange="raCarregarPecas()"><option value="">Todas as linhas</option><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
+    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-pec-linha" onchange="raCarregarPecas()"><option value="">Todas as linhas</option></select></div>' +
     '<button class="btn btn-primary btn-sm" onclick="raNovaPeca()">+ Nova peça</button></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Referência</th><th>Nome</th><th>Linha</th><th>Aplicação</th><th>Preço</th><th>IPI</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-pec-tbody"></tbody></table></div></div>';
   raCarregarPecas();
@@ -1041,26 +1109,45 @@ async function raCfgGarantia(box) {
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Modelo</th><th>Prazo (meses)</th><th>Descrição</th><th></th></tr></thead><tbody id="ra-gar-tbody"></tbody></table></div></div>';
   var gars = await raFetch('prt_garantia?ativo=eq.true&order=linha_produto.asc,modelo.asc&select=*');
   if (!Array.isArray(gars)) gars = [];
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  await raGetLinhas();
   var tbody = document.getElementById('ra-gar-tbody');
   if (!gars.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma configuração</td></tr>'; return; }
   tbody.innerHTML = gars.map(function(g) {
-    return '<tr><td>' + (linhaNomes[g.linha_produto] || g.linha_produto) + '</td><td>' + (g.modelo || '<em>Toda a linha</em>') + '</td><td style="text-align:center;font-weight:600">' + g.prazo_meses + '</td><td>' + raEsc(g.descricao || '') + '</td><td><button class="btn-icon" onclick="raCfgEditarGarantia(' + g.id + ')">✏️</button></td></tr>';
+    return '<tr><td>' + raLinhaNome(g.linha_produto) + '</td><td>' + (g.modelo || '<em>Toda a linha</em>') + '</td><td style="text-align:center;font-weight:600">' + g.prazo_meses + '</td><td>' + raEsc(g.descricao || '') + '</td><td><button class="btn-icon" onclick="raCfgEditarGarantia(' + g.id + ')">✏️</button></td></tr>';
   }).join('');
 }
 
-window.raCfgNovaGarantia = function(g) {
+window.raCfgNovaGarantia = async function(g) {
   g = g || {};
+  var linhas = await raGetLinhas();
+  var linhaSel = g.linha_produto || (linhas[0] ? linhas[0].slug : '');
+  var linhaOpts = linhas.map(function(l) {
+    return '<option value="' + l.slug + '"' + (l.slug === linhaSel ? ' selected' : '') + '>' + raEsc(l.nome) + '</option>';
+  }).join('');
   raModal(g.id ? 'Editar Garantia' : 'Nova Garantia',
-    '<div class="field"><label>Linha</label><select id="ra-gar-linha" class="filter-select" style="width:100%"><option value="geladeira"' + (g.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (g.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (g.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
-    '<div class="field"><label>Modelo <span style="font-weight:400;color:var(--text-muted)">(vazio = toda a linha)</span></label><input id="ra-gar-modelo" class="search-input" style="width:100%" value="' + (g.modelo || '') + '" placeholder="Ex: Adventure 40L"></div>' +
+    '<div class="field"><label>Linha</label><select id="ra-gar-linha" class="filter-select" style="width:100%" onchange="raGarPopularModelos()">' + linhaOpts + '</select></div>' +
+    '<div class="field"><label>Modelo <span style="font-weight:400;color:var(--text-muted)">(Toda a linha = vale para todos os modelos)</span></label><select id="ra-gar-modelo" class="filter-select" style="width:100%"></select></div>' +
     '<div class="field"><label>Prazo (meses)</label><input id="ra-gar-prazo" class="search-input" style="width:100%" type="number" value="' + (g.prazo_meses || 12) + '"></div>' +
     '<div class="field"><label>Descrição</label><input id="ra-gar-desc" class="search-input" style="width:100%" value="' + raEsc(g.descricao || '') + '"></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raCfgSalvarGarantia(' + (g.id || 0) + ')">Salvar</button>');
+  await raGarPopularModelos(g.modelo || '');
+};
+
+// popula o select de modelos da garantia conforme a linha escolhida
+window.raGarPopularModelos = async function(modeloAtual) {
+  var linha = document.getElementById('ra-gar-linha')?.value || '';
+  var sel = document.getElementById('ra-gar-modelo');
+  if (!sel) return;
+  var modelos = linha ? await raModelosDaLinha(linha) : [];
+  // preserva valor legado (texto livre antigo) que não esteja na lista
+  if (modeloAtual && modelos.indexOf(modeloAtual) === -1) modelos.push(modeloAtual);
+  sel.innerHTML = '<option value="">Toda a linha</option>' + modelos.map(function(m) {
+    return '<option value="' + raEsc(m) + '"' + (m === modeloAtual ? ' selected' : '') + '>' + raEsc(m) + '</option>';
+  }).join('');
 };
 window.raCfgSalvarGarantia = async function(id) {
-  var d = { linha_produto: document.getElementById('ra-gar-linha').value, modelo: document.getElementById('ra-gar-modelo').value.trim() || null, prazo_meses: parseInt(document.getElementById('ra-gar-prazo').value) || 12, descricao: document.getElementById('ra-gar-desc').value.trim() || null };
+  var d = { linha_produto: document.getElementById('ra-gar-linha').value, modelo: document.getElementById('ra-gar-modelo').value || null, prazo_meses: parseInt(document.getElementById('ra-gar-prazo').value) || 12, descricao: document.getElementById('ra-gar-desc').value.trim() || null };
   if (id) { await raPatch('prt_garantia', 'id=eq.' + id, d); } else { await raPost('prt_garantia', d); }
   document.getElementById('ra-modal')?.remove();
   raCfgTab('garantia');
@@ -1078,7 +1165,7 @@ async function raCfgPrecos(box) {
   var prazoDia = cfgMap.prazo_pagamento_dia || '10';
   var tetos = await raFetch('prt_teto_produto?order=linha_produto.asc&select=*');
   if (!Array.isArray(tetos)) tetos = [];
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  await raGetLinhas();
 
   box.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">' +
     '<div class="table-card" style="padding:16px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Desconto compra peças (%)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="ra-cfg-desconto" class="search-input" type="number" style="width:100px" value="' + desconto + '"><button class="btn btn-primary btn-sm" onclick="raCfgSalvarConfig(\'desconto_autorizada_perc\',document.getElementById(\'ra-cfg-desconto\').value)">Salvar</button></div></div>' +
@@ -1086,7 +1173,7 @@ async function raCfgPrecos(box) {
     '<div style="font-weight:600;margin-bottom:12px">Teto de serviço por linha de produto</div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Valor máximo</th><th></th></tr></thead><tbody>' +
     tetos.map(function(t) {
-      return '<tr><td>' + (linhaNomes[t.linha_produto] || t.linha_produto) + '</td><td><input class="search-input" type="number" step="0.01" style="width:120px" value="' + (t.valor_maximo || 0) + '" id="ra-teto-' + t.id + '"></td><td><button class="btn btn-primary btn-sm" onclick="raCfgSalvarTeto(' + t.id + ')">Salvar</button></td></tr>';
+      return '<tr><td>' + raLinhaNome(t.linha_produto) + '</td><td><input class="search-input" type="number" step="0.01" style="width:120px" value="' + (t.valor_maximo || 0) + '" id="ra-teto-' + t.id + '"></td><td><button class="btn btn-primary btn-sm" onclick="raCfgSalvarTeto(' + t.id + ')">Salvar</button></td></tr>';
     }).join('') + '</tbody></table></div></div>';
 }
 
@@ -1119,7 +1206,7 @@ window.raCfgCarregar = async function() {
   servicos.forEach(function(s) { if (s.categoria_id) contagem[s.categoria_id] = (contagem[s.categoria_id] || 0) + 1; });
 
   var tbody = document.getElementById('ra-cfg-tbody');
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  await raGetLinhas();
   document.getElementById('ra-cfg-count').textContent = _raCfgCategorias.length + ' categorias';
 
   if (!_raCfgCategorias.length) {
@@ -1131,7 +1218,7 @@ window.raCfgCarregar = async function() {
     return '<tr>' +
       '<td style="text-align:center;font-weight:600">' + c.ordem + '</td>' +
       '<td style="font-weight:600">' + c.nome + '</td>' +
-      '<td>' + (linhaNomes[c.linha_produto] || c.linha_produto) + '</td>' +
+      '<td>' + raLinhaNome(c.linha_produto) + '</td>' +
       '<td class="mono">STN-' + c.prefixo_codigo + '</td>' +
       '<td class="mono right" style="font-weight:700">' + raFmt(c.valor_teto) + '</td>' +
       '<td style="text-align:center">' + qtd + '</td>' +
@@ -1143,15 +1230,12 @@ window.raCfgCarregar = async function() {
   }).join('');
 };
 
-window.raCfgNovaCategoria = function(cat) {
+window.raCfgNovaCategoria = async function(cat) {
   cat = cat || {};
+  var linhaOptsCat = await raLinhaOptionsHtml(cat.linha_produto || '');
   raModal(cat.id ? 'Editar Categoria' : 'Nova Categoria',
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Linha</label><select id="ra-cfg-linha-new" class="filter-select" style="width:100%">' +
-        '<option value="geladeira"' + (cat.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option>' +
-        '<option value="ar_condicionado"' + (cat.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option>' +
-        '<option value="gerador"' + (cat.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option>' +
-      '</select></div>' +
+      '<div class="field"><label>Linha</label><select id="ra-cfg-linha-new" class="filter-select" style="width:100%">' + linhaOptsCat + '</select></div>' +
       '<div class="field"><label>Ordem</label><input id="ra-cfg-ordem" class="search-input" style="width:100%" type="number" min="1" value="' + (cat.ordem || _raCfgCategorias.length + 1) + '"></div>' +
     '</div>' +
     '<div class="field"><label>Nome da categoria</label><input id="ra-cfg-nome" class="search-input" style="width:100%" placeholder="Ex: Intervenções Elétricas" value="' + (cat.nome || '') + '"></div>' +
@@ -1215,6 +1299,135 @@ window.raCfgToggle = async function(id, ativo) {
 };
 
 // ═══════════════════════════════════════
+// SUB-ABA: LINHAS E MODELOS — CRUD
+// ═══════════════════════════════════════
+async function raCfgLinhas(box) {
+  raInvalidarLinhasCache();
+  var linhas = await raGetLinhas(true);
+  var modelos = await raGetModelos(true);
+
+  // agrupar modelos por linha_id
+  var modelosPorLinha = {};
+  modelos.forEach(function(m) { if (!modelosPorLinha[m.linha_id]) modelosPorLinha[m.linha_id] = []; modelosPorLinha[m.linha_id].push(m); });
+
+  var cards = linhas.map(function(l) {
+    var mods = modelosPorLinha[l.id] || [];
+    var ativosCount = mods.filter(function(m) { return m.ativo; }).length;
+    return '<div class="table-card" style="padding:16px;margin-bottom:12px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '<div>' +
+          '<span style="font-weight:700;font-size:15px">' + raEsc(l.nome) + '</span>' +
+          (l.nome_curto ? ' <span style="color:var(--text-muted);font-size:12px">(' + raEsc(l.nome_curto) + ')</span>' : '') +
+          ' <span class="mono" style="font-size:11px;color:var(--text-muted)">' + l.slug + '</span>' +
+          (!l.ativo ? ' <span class="badge badge-gray" style="margin-left:4px">Inativa</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:4px">' +
+          '<button class="btn-icon" title="Editar linha" onclick="raCfgEditarLinha(' + l.id + ')">✏️</button>' +
+          '<button class="btn-icon" title="' + (l.ativo ? 'Desativar' : 'Ativar') + '" onclick="raCfgToggleLinha(' + l.id + ',' + !l.ativo + ')">' + (l.ativo ? '🚫' : '✅') + '</button>' +
+          '<button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="raCfgNovoModelo(' + l.id + ')">+ Modelo</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+        (mods.length ? mods.map(function(m) {
+          return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1px solid ' + (m.ativo ? 'var(--blue-mid)' : 'var(--border)') + ';font-size:12px;background:' + (m.ativo ? 'var(--blue-pale)' : 'var(--surface2)') + ';' + (!m.ativo ? 'opacity:.5;text-decoration:line-through' : '') + '">' + raEsc(m.nome) +
+            ' <button class="btn-icon" style="font-size:10px;padding:0" onclick="raCfgEditarModelo(' + m.id + ')">✏️</button>' +
+            ' <button class="btn-icon" style="font-size:10px;padding:0" onclick="raCfgToggleModelo(' + m.id + ',' + !m.ativo + ')">' + (m.ativo ? '🚫' : '✅') + '</button></span>';
+        }).join('') : '<span style="font-size:12px;color:var(--text-muted)">Nenhum modelo cadastrado</span>') +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:8px">' + ativosCount + ' modelo' + (ativosCount !== 1 ? 's' : '') + ' ativo' + (ativosCount !== 1 ? 's' : '') + ' · Ordem: ' + l.ordem + '</div>' +
+    '</div>';
+  }).join('');
+
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+    '<span style="font-weight:600">Linhas de produto e modelos</span>' +
+    '<button class="btn btn-primary btn-sm" onclick="raCfgNovaLinha()">+ Nova linha</button></div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Estas linhas e modelos alimentam todos os selects e checkboxes do portal e da gestão. Alterações são refletidas imediatamente.</p>' +
+    cards;
+}
+
+// CRUD Linha
+window.raCfgNovaLinha = function(l) {
+  l = l || {};
+  raModal(l.id ? 'Editar Linha' : 'Nova Linha',
+    '<div class="field"><label>Nome</label><input id="ra-lp-nome" class="search-input" style="width:100%" value="' + raEsc(l.nome || '') + '" placeholder="Ex: Ar Condicionado"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
+      '<div class="field"><label>Slug <span style="font-weight:400;color:var(--text-muted)">(chave única)</span></label><input id="ra-lp-slug" class="search-input" style="width:100%;' + (l.id ? 'background:var(--surface2);cursor:not-allowed' : '') + '" value="' + raEsc(l.slug || '') + '" placeholder="ar_condicionado"' + (l.id ? ' readonly' : '') + '></div>' +
+      '<div class="field"><label>Nome curto</label><input id="ra-lp-curto" class="search-input" style="width:100%" value="' + raEsc(l.nome_curto || '') + '" placeholder="AR"></div>' +
+      '<div class="field"><label>Ordem</label><input id="ra-lp-ordem" class="search-input" style="width:100%" type="number" value="' + (l.ordem || '') + '"></div>' +
+    '</div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raCfgSalvarLinha(' + (l.id || 0) + ')">Salvar</button>');
+};
+
+window.raCfgSalvarLinha = async function(id) {
+  var nome = document.getElementById('ra-lp-nome').value.trim();
+  var slug = document.getElementById('ra-lp-slug').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  var curto = document.getElementById('ra-lp-curto').value.trim() || null;
+  var ordem = parseInt(document.getElementById('ra-lp-ordem').value) || 1;
+  if (!nome || !slug) { alert('Nome e slug são obrigatórios'); return; }
+  var d = { nome: nome, slug: slug, nome_curto: curto, ordem: ordem };
+  if (id) { await raPatch('prt_linhas_produto', 'id=eq.' + id, d); }
+  else { await raPost('prt_linhas_produto', d); }
+  raLog('ACAO', 'linha_produto', id ? 'EDITAR_LINHA' : 'CRIAR_LINHA', String(id || ''), nome, d);
+  raInvalidarLinhasCache();
+  document.getElementById('ra-modal')?.remove();
+  raCfgTab('linhas');
+};
+
+window.raCfgEditarLinha = async function(id) {
+  var linhas = await raGetLinhas(true);
+  var l = linhas.find(function(x) { return x.id === id; });
+  if (!l) return;
+  raCfgNovaLinha(l);
+};
+
+window.raCfgToggleLinha = async function(id, ativo) {
+  await raPatch('prt_linhas_produto', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO', 'linha_produto', ativo ? 'ATIVAR_LINHA' : 'DESATIVAR_LINHA', String(id));
+  raInvalidarLinhasCache();
+  raCfgTab('linhas');
+};
+
+// CRUD Modelo
+window.raCfgNovoModelo = function(linhaId, m) {
+  m = m || {};
+  raModal(m.id ? 'Editar Modelo' : 'Novo Modelo',
+    '<div class="field"><label>Nome do modelo</label><input id="ra-mp-nome" class="search-input" style="width:100%" value="' + raEsc(m.nome || '') + '" placeholder="Ex: Adventure 45L Dual Zone"></div>' +
+    '<div class="field"><label>Ordem</label><input id="ra-mp-ordem" class="search-input" style="width:100%" type="number" value="' + (m.ordem || '') + '"></div>' +
+    '<input type="hidden" id="ra-mp-linha-id" value="' + (m.linha_id || linhaId || '') + '">',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raCfgSalvarModelo(' + (m.id || 0) + ')">Salvar</button>');
+};
+
+window.raCfgSalvarModelo = async function(id) {
+  var nome = document.getElementById('ra-mp-nome').value.trim();
+  var ordem = parseInt(document.getElementById('ra-mp-ordem').value) || 1;
+  var linhaId = parseInt(document.getElementById('ra-mp-linha-id').value);
+  if (!nome) { alert('Nome é obrigatório'); return; }
+  var d = { nome: nome, ordem: ordem, linha_id: linhaId };
+  if (id) { await raPatch('prt_modelos_produto', 'id=eq.' + id, d); }
+  else { await raPost('prt_modelos_produto', d); }
+  raLog('ACAO', 'modelo_produto', id ? 'EDITAR_MODELO' : 'CRIAR_MODELO', String(id || ''), nome, d);
+  raInvalidarLinhasCache();
+  document.getElementById('ra-modal')?.remove();
+  raCfgTab('linhas');
+};
+
+window.raCfgEditarModelo = async function(id) {
+  var modelos = await raGetModelos(true);
+  var m = modelos.find(function(x) { return x.id === id; });
+  if (!m) return;
+  raCfgNovoModelo(m.linha_id, m);
+};
+
+window.raCfgToggleModelo = async function(id, ativo) {
+  await raPatch('prt_modelos_produto', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO', 'modelo_produto', ativo ? 'ATIVAR_MODELO' : 'DESATIVAR_MODELO', String(id));
+  raInvalidarLinhasCache();
+  raCfgTab('linhas');
+};
+
+// ═══════════════════════════════════════
 // SISTEMA DE LOGS — padrão Bononi
 // ═══════════════════════════════════════
 function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
@@ -1237,8 +1450,9 @@ function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
 // ===== PDF DA TABELA DE SERVIÇOS =====
 window.raGerarPdfServicos = async function() {
   var linhaFiltro = document.getElementById('ra-srv-linha')?.value || '';
-  var linhas = linhaFiltro ? [linhaFiltro] : ['geladeira', 'ar_condicionado', 'gerador'];
-  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'Ar Condicionado',gerador:'Gerador'};
+  await raGetLinhas();
+  var todasLinhas = (_raLinhas || []).filter(function(x) { return x.ativo; });
+  var linhas = linhaFiltro ? [linhaFiltro] : todasLinhas.map(function(l) { return l.slug; });
 
   // Buscar categorias e serviços
   var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=ordem.asc&select=*');
@@ -1257,7 +1471,7 @@ window.raGerarPdfServicos = async function() {
     if (items.length) porLinha[c.linha_produto].push({ cat: c, items: items });
   });
 
-  var titulo = linhaFiltro ? linhaNomes[linhaFiltro] : 'Todas as Linhas';
+  var titulo = linhaFiltro ? raLinhaNome(linhaFiltro) : 'Todas as Linhas';
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tabela de Serviços Stonni — ' + titulo + '</title><style>' +
     '*{margin:0;padding:0;box-sizing:border-box}' +
     'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#222;padding:20px 25px}' +
@@ -1293,7 +1507,7 @@ window.raGerarPdfServicos = async function() {
   linhas.forEach(function(linha) {
     var grupos = porLinha[linha];
     if (!grupos || !grupos.length) return;
-    html += '<div class="linha-header">📦 ' + (linhaNomes[linha] || linha).toUpperCase() + '</div>';
+    html += '<div class="linha-header">📦 ' + raLinhaNome(linha).toUpperCase() + '</div>';
     grupos.forEach(function(g) {
       var teto = parseFloat(g.cat.valor_teto) || 0;
       html += '<div class="cat-header"><span>' + g.cat.nome + ' (' + g.items.length + ' serviços)</span><span class="teto">Teto: R$ ' + teto.toFixed(2).replace('.', ',') + '</span></div>';
@@ -1311,7 +1525,7 @@ window.raGerarPdfServicos = async function() {
   linhas.forEach(function(linha) {
     var grupos = porLinha[linha];
     if (!grupos || !grupos.length) return;
-    html += '<p style="font-weight:700;margin:8px 0 4px;font-size:11px">' + (linhaNomes[linha] || linha) + ':</p><div class="resumo-grid">';
+    html += '<p style="font-weight:700;margin:8px 0 4px;font-size:11px">' + raLinhaNome(linha) + ':</p><div class="resumo-grid">';
     grupos.forEach(function(g) {
       var teto = parseFloat(g.cat.valor_teto) || 0;
       html += '<div class="resumo-item"><div class="label">' + g.cat.nome + '</div><div class="value">R$ ' + teto.toFixed(2).replace('.', ',') + '</div></div>';
@@ -1567,4 +1781,3 @@ window.raEnviarWhatsBoasVindas = function(whatsapp, nome, email, senha) {
   if (fone.length <= 11) fone = '55' + fone;
   window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
 };
-
