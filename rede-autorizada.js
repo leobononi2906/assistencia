@@ -77,19 +77,7 @@ var RA_PAGES = {
   </div>
 </div>`,
 
-'ra-config': `<div class="page-content active" style="padding:20px 24px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Configurações</div>
-  </div>
-  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-cfg-tab-servicos" onclick="raCfgTab('servicos')">🔧 Serviços</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
-  </div>
-  <div id="ra-cfg-content"></div>
-</div>`
-};
+'ra-pagamentos': `<div class="page-content active" style="padding:20px 24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div class="section-title" style="margin:0">Pagamentos — Fechamento Mensal</div>
     <div style="display:flex;gap:8px">
@@ -103,41 +91,17 @@ var RA_PAGES = {
   </div>
 </div>`,
 
-'ra-materiais': `<div class="page-content active" style="padding:20px 24px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Materiais Técnicos</div>
-    <div style="display:flex;gap:8px">
-      <select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()">
-        <option value="">Todas as linhas</option>
-        <option value="geladeira">Geladeira</option>
-        <option value="ar_condicionado">AR Condicionado</option>
-        <option value="gerador">Gerador</option>
-      </select>
-      <button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button>
-    </div>
-  </div>
-  <div class="table-card">
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="6" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
-  </div>
-</div>`,
-
 'ra-config': `<div class="page-content active" style="padding:20px 24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Configurações — Categorias de Serviço</div>
-    <div style="display:flex;gap:8px">
-      <select class="filter-select" id="ra-cfg-linha" onchange="raCfgCarregar()">
-        <option value="">Todas as linhas</option>
-        <option value="geladeira">Geladeira</option>
-        <option value="ar_condicionado">AR Condicionado</option>
-        <option value="gerador">Gerador</option>
-      </select>
-      <button class="btn btn-primary btn-sm" onclick="raCfgNovaCategoria()">+ Nova categoria</button>
-    </div>
+    <div class="section-title" style="margin:0">Configurações</div>
   </div>
-  <div class="table-card">
-    <div class="table-card-header"><span class="table-card-title">Categorias</span><span id="ra-cfg-count" style="font-size:12px;color:var(--text-muted)"></span></div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Ordem</th><th>Nome</th><th>Linha</th><th>Prefixo</th><th>Teto</th><th>Serviços</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-cfg-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-cfg-tab-servicos" onclick="raCfgTab('servicos')">🔧 Serviços</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
   </div>
+  <div id="ra-cfg-content"></div>
 </div>`,
 
 'ra-parceiros': `<div class="page-content active" style="padding:20px 24px">
