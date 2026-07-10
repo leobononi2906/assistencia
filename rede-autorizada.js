@@ -50,8 +50,8 @@ var RA_PAGES = {
   </div>
   <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-estoque" onclick="raPecTab('estoque')">📦 Estoque parceiro</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-compras" onclick="raPecTab('compras')">🛒 Compras parceiro</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-pec-tab-reposicao" onclick="raPecTab('reposicao')">🔄 Reposição garantia</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2);position:relative" id="ra-pec-tab-compras" onclick="raPecTab('compras')">🛒 Compras parceiro <span id="ra-badge-compras" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;min-width:16px;text-align:center"></span></button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff;position:relative" id="ra-pec-tab-reposicao" onclick="raPecTab('reposicao')">🔄 Reposição garantia <span id="ra-badge-reposicao" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;min-width:16px;text-align:center"></span></button>
   </div>
   <div id="ra-pec-content"></div>
 </div>`,
@@ -129,12 +129,65 @@ window.ModuloRedeAutorizada = {
       case 'ra-config':     raCfgTab('servicos'); break;
       case 'ra-parceiros':  raCarregarParceiros(); break;
     }
+    raAtualizarBadgesPecas();
   }
 };
 
 // ═══ HELPERS ═══
 var SB_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+
+// ═══ BADGES DE ALERTA — PEÇAS ═══
+async function raAtualizarBadgesPecas() {
+  try {
+    // Contar reposições pendentes
+    var repResp = await fetch(SB_URL + '/rest/v1/prt_reposicao_pecas?status=eq.pendente&select=id', {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range': '0-0'}
+    });
+    var repCount = parseInt(repResp.headers.get('content-range')?.split('/')[1]) || 0;
+
+    // Contar compras pendentes
+    var cprResp = await fetch(SB_URL + '/rest/v1/prt_compras_pecas?status=eq.pendente&select=id', {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range': '0-0'}
+    });
+    var cprCount = parseInt(cprResp.headers.get('content-range')?.split('/')[1]) || 0;
+
+    // Badge da sub-aba Reposição
+    var badgeRep = document.getElementById('ra-badge-reposicao');
+    if (badgeRep) {
+      if (repCount > 0) { badgeRep.textContent = repCount; badgeRep.style.display = 'inline-block'; }
+      else { badgeRep.style.display = 'none'; }
+    }
+
+    // Badge da sub-aba Compras
+    var badgeCpr = document.getElementById('ra-badge-compras');
+    if (badgeCpr) {
+      if (cprCount > 0) { badgeCpr.textContent = cprCount; badgeCpr.style.display = 'inline-block'; }
+      else { badgeCpr.style.display = 'none'; }
+    }
+
+    // Badge na sidebar "Peças" — total pendentes
+    var totalPend = repCount + cprCount;
+    var navPecas = document.querySelector('a[data-pagina="ra-pecas"]');
+    if (navPecas) {
+      var existBadge = navPecas.querySelector('.ra-nav-badge');
+      if (totalPend > 0) {
+        if (!existBadge) {
+          existBadge = document.createElement('span');
+          existBadge.className = 'ra-nav-badge';
+          existBadge.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;min-width:16px;text-align:center;line-height:16px';
+          navPecas.appendChild(existBadge);
+        }
+        existBadge.textContent = totalPend;
+      } else if (existBadge) {
+        existBadge.remove();
+      }
+    }
+  } catch(e) { console.error('Badge pecas:', e); }
+}
+// Atualizar badges ao carregar o módulo e a cada 60s
+setInterval(raAtualizarBadgesPecas, 60000);
+setTimeout(raAtualizarBadgesPecas, 2000);
 
 function raFetch(path) {
   return fetch(SB_URL + '/rest/v1/' + path, { headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY} }).then(function(r) { return r.json(); });
@@ -435,7 +488,7 @@ window.raAprovarOS = async function(id) {
     }
   } catch (e) { console.error('Baixa de estoque/reposição falhou:', e); raLog('ERRO', 'estoque', 'BAIXA_ESTOQUE_FALHOU', String(id), null, {erro: String(e)}); }
   document.getElementById('ra-modal')?.remove();
-  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
+  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();raAtualizarBadgesPecas();
 };
 
 window.raRecusarOS = function(id) {
@@ -801,7 +854,7 @@ window.raSalvarEnvio = async function() {
   if (repIdEl && repIdEl.value) {
     await raPatch('prt_reposicao_pecas', 'id=eq.' + repIdEl.value, { status: 'enviada', atualizado_em: new Date().toISOString() });
   }
-  raCarregarEnvios();
+  raCarregarEnvios();raAtualizarBadgesPecas();
 };
 
 // ═══════════════════════════════════════
@@ -1078,7 +1131,7 @@ window.raAprovarCompra = async function(id) {
   if (!confirm('Aprovar pedido de compra?')) return;
   await raPatch('prt_compras_pecas', 'id=eq.' + id, { status: 'aprovado', aprovado_por: (window.getUsuario() || {}).nome || 'gestor', data_aprovacao: new Date().toISOString() });
   raLog('ACAO','compra_peca','APROVAR_COMPRA',String(id));
-  raPecTab('compras');
+  raPecTab('compras');raAtualizarBadgesPecas();
 };
 
 window.raEnviarReposicao = async function(repId, parceiroId, ref, nome, qtd) {
