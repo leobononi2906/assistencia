@@ -164,7 +164,8 @@ function raDelete(table, filter) {
 }
 
 function raFmt(v) { return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
-function raDate(d) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—'; }
+function raEsc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function raDate(d) { if (!d) return '—'; var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d); if (m) return m[3] + '/' + m[2] + '/' + m[1]; return new Date(d).toLocaleDateString('pt-BR'); }
 function raToast(msg) { alert(msg); } // simplificado — usa o toast do index se existir
 function raModal(title, bodyHtml, footerHtml) {
   var el = document.createElement('div');
@@ -222,7 +223,7 @@ window.raFiltrarOS = function() {
     return '<tr style="cursor:pointer" onclick="raDetalheOS(' + o.id + ')">' +
       '<td class="mono" style="font-weight:600">' + (o.protocolo || '#' + o.id) + '</td>' +
       '<td>' + parc + '</td>' +
-      '<td>' + (o.cliente_nome || '') + '</td>' +
+      '<td>' + raEsc(o.cliente_nome) + '</td>' +
       '<td>' + (o.produto_linha || '') + '</td>' +
       '<td>' + (o.codigo_servico || '') + '</td>' +
       '<td class="mono right">' + raFmt(o.valor_servico) + '</td>' +
@@ -241,16 +242,16 @@ window.raDetalheOS = async function(id) {
   var body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PROTOCOLO</label><div style="font-weight:700">' + (o.protocolo || '#' + o.id) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PARCEIRO</label><div>' + parc + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CLIENTE</label><div>' + (o.cliente_nome || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">TELEFONE</label><div>' + (o.cliente_telefone || '-') + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CLIENTE</label><div>' + (raEsc(o.cliente_nome) || '-') + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">TELEFONE</label><div>' + (raEsc(o.cliente_telefone) || '-') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CIDADE/UF</label><div>' + (o.cliente_cidade || '') + '/' + (o.cliente_uf || '') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PRODUTO</label><div>' + (o.produto_linha || '') + (o.produto_modelo ? ' — ' + o.produto_modelo : '') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">Nº SÉRIE</label><div>' + (o.numero_serie || '-') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">NF COMPRA</label><div>' + (o.numero_nf || '-') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DATA COMPRA</label><div>' + raDate(o.data_compra) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CÓD. ERRO</label><div>' + (o.codigo_erro || '-') + '</div></div>' +
-    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DEFEITO</label><div>' + (o.defeito_descricao || '-') + '</div></div>' +
-    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DIAGNÓSTICO</label><div>' + (o.diagnostico || '-') + '</div></div>' +
+    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DEFEITO</label><div>' + (raEsc(o.defeito_descricao) || '-') + '</div></div>' +
+    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DIAGNÓSTICO</label><div>' + (raEsc(o.diagnostico) || '-') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SOLUÇÃO</label><div>' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
@@ -260,7 +261,7 @@ window.raDetalheOS = async function(id) {
   if (pecasOS.length) {
     body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PEÇAS UTILIZADAS</label>';
     pecasOS.forEach(function(p) {
-      body += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f0f0f0"><span>' + p.referencia + ' — ' + p.nome_peca + '</span><span style="font-weight:600">x' + p.quantidade + '</span></div>';
+      body += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f0f0f0"><span>' + raEsc(p.referencia) + ' — ' + raEsc(p.nome_peca) + '</span><span style="font-weight:600">x' + p.quantidade + '</span></div>';
     });
     body += '</div>';
   }
@@ -271,7 +272,7 @@ window.raDetalheOS = async function(id) {
     if (o.foto_equipamento) body += '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">EQUIPAMENTO</label><br><img src="' + o.foto_equipamento + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open(\'' + o.foto_equipamento + '\')"></div>';
     body += '</div>';
   }
-  if (o.motivo_recusa) body += '<div class="alert alert-error" style="margin-top:12px"><strong>Motivo recusa:</strong> ' + o.motivo_recusa + '</div>';
+  if (o.motivo_recusa) body += '<div class="alert alert-error" style="margin-top:12px"><strong>Motivo recusa:</strong> ' + raEsc(o.motivo_recusa) + '</div>';
 
   var footer = '';
   if (o.status === 'enviada') {
@@ -287,7 +288,7 @@ window.raDetalheOS = async function(id) {
 window.raEditarServicoOS = async function(osId) {
   var o = _raOS.find(function(x) { return x.id === osId; });
   if (!o) return;
-  var linhaDb = {Geladeira:'geladeira','Ar Condicionado':'ar_condicionado',Gerador:'gerador',Outros:'outros'}[o.produto_linha] || o.produto_linha || '';
+  var linhaDb = {Geladeira:'geladeira','Ar Condicionado':'ar_condicionado',Gerador:'gerador'}[o.produto_linha] || o.produto_linha || '';
   // buscar categorias da nova tabela
   var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=ordem.asc&select=*' + (linhaDb ? '&linha_produto=eq.' + linhaDb : ''));
   if (!Array.isArray(categorias)) categorias = [];
@@ -328,12 +329,27 @@ window.raConfirmarServicoOS = async function(osId, codigo, valor) {
     atualizado_em: new Date().toISOString()
   });
   document.getElementById('ra-modal')?.remove();
-  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
+  raLog('ACAO','os','ALTERAR_SERVICO_OS',String(osId),null,{codigo:codigo,valor:valor});
+  raCarregarOS();
 };
 
 window.raAprovarOS = async function(id) {
   if (!confirm('Confirma aprovação desta OS?')) return;
+  var o = _raOS.find(function(x) { return x.id === id; }) || {};
   await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'aprovada', data_aprovacao: new Date().toISOString(), aprovado_por: (window.getUsuario() || {}).nome || 'gestor' });
+  // baixar estoque do parceiro: incrementa quantidade_usada das peças da OS
+  try {
+    var pecas = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=referencia,quantidade');
+    if (Array.isArray(pecas) && o.parceiro_id) {
+      for (var i = 0; i < pecas.length; i++) {
+        var pe = pecas[i];
+        var est = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + o.parceiro_id + '&referencia=eq.' + encodeURIComponent(pe.referencia));
+        if (Array.isArray(est) && est.length) {
+          await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_usada: (est[0].quantidade_usada || 0) + (pe.quantidade || 1), atualizado_em: new Date().toISOString() });
+        }
+      }
+    }
+  } catch (e) { console.error('Baixa de estoque falhou:', e); raLog('ERRO', 'estoque', 'BAIXA_ESTOQUE_FALHOU', String(id), null, {erro: String(e)}); }
   document.getElementById('ra-modal')?.remove();
   raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
 };
@@ -347,9 +363,10 @@ window.raRecusarOS = function(id) {
 window.raConfirmarRecusa = async function(id) {
   var motivo = document.getElementById('ra-motivo-recusa').value.trim();
   if (!motivo) { alert('Informe o motivo'); return; }
-  await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'recusada', motivo_recusa: motivo });raLog('ACAO','os','RECUSAR_OS',String(id),null,{motivo:motivo});
+  await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'recusada', motivo_recusa: motivo });
+  raLog('ACAO','os','RECUSAR_OS',String(id),null,{motivo:motivo});
   document.getElementById('ra-modal')?.remove();
-  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
+  raCarregarOS();
 };
 
 // ═══════════════════════════════════════
@@ -390,15 +407,16 @@ window.raCarregarServicos = async function() {
   }).join('');
 };
 
-// gera próximo código automático: STN-{prefixo}{nn}
-function raGerarCodigo(categoriaId) {
+// gera próximo código automático: STN-{prefixo}{nn} — consulta o banco para nunca duplicar
+async function raGerarCodigo(categoriaId) {
   var cat = _raCategorias.find(function(c) { return c.id === categoriaId; });
   if (!cat) return '';
   var prefixo = 'STN-' + cat.prefixo_codigo;
-  var existentes = _raServicos.filter(function(s) { return s.codigo && s.codigo.indexOf(prefixo) === 0; });
+  var existentes = await raFetch('prt_tabela_servicos?select=codigo&codigo=like.' + encodeURIComponent(prefixo) + '*');
+  if (!Array.isArray(existentes)) existentes = [];
   var maxNum = 0;
   existentes.forEach(function(s) {
-    var num = parseInt(s.codigo.replace(prefixo, ''), 10);
+    var num = parseInt(String(s.codigo).replace(prefixo, ''), 10);
     if (num > maxNum) maxNum = num;
   });
   var next = String(maxNum + 1);
@@ -424,10 +442,10 @@ window.raNovoServico = function() {
   raPreviewCodigo();
 };
 
-window.raPreviewCodigo = function() {
+window.raPreviewCodigo = async function() {
   var catId = parseInt(document.getElementById('ra-srv-cat').value);
   var el = document.getElementById('ra-srv-codigo');
-  if (catId) { el.value = raGerarCodigo(catId); }
+  if (catId) { el.value = '...'; el.value = await raGerarCodigo(catId); }
   else { el.value = ''; }
 };
 
@@ -453,8 +471,8 @@ window.raSalvarServico = async function(id) {
     await raPatch('prt_tabela_servicos', 'id=eq.' + id, d);
     raLog('ACAO','prt_tabela_servicos','EDITAR_SERVICO',String(id),null,d);
   } else {
-    // novo — gera código automático
-    d.codigo = document.getElementById('ra-srv-codigo').value;
+    // novo — gera código automático direto do banco no momento de salvar
+    d.codigo = await raGerarCodigo(catId);
     if (!d.codigo) { alert('Erro ao gerar código'); return; }
     await raPost('prt_tabela_servicos', d);
     raLog('ACAO','prt_tabela_servicos','CRIAR_SERVICO',null,null,d);
@@ -493,8 +511,7 @@ var _raPecas = [];
 var MODELOS_POR_LINHA = {
   'geladeira': ['Stonni ST 18L','Stonni ST 30L','Adventure 25L','Adventure 40L','Adventure 45L Dual Zone','Adventure 55L Dual Zone'],
   'ar_condicionado': ['AR Advantage I','AR Advantage II 24V','AR G2 Night Power 24V S2','AR G3 Truck Night Power 24V','AR G3 RV Night Power 12V','AR Compact','AR Slim / Clean'],
-  'gerador': ['Gerador Stonni Autom. Inverter 1800W 24V'],
-  'outros': ['Air Fryer 24V 3L','Aquecedor Vela 12V']
+  'gerador': ['Gerador Stonni Autom. Inverter 1800W 24V']
 };
 
 window.raCarregarPecas = async function() {
@@ -544,7 +561,8 @@ window.raBuscarPecaERP = async function() {
   if (q.length < 2) { alert('Digite pelo menos 2 caracteres'); return; }
   var box = document.getElementById('ra-pec-erp-results');
   box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Buscando...</div>';
-  var results = await raFetch('comp_produtos_consolidado?or=(referencia.ilike.*' + q + '*,nome.ilike.*' + q + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_compra');
+  var qe = encodeURIComponent(q);
+  var results = await raFetch('comp_produtos_consolidado?or=(referencia.ilike.*' + qe + '*,nome.ilike.*' + qe + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_compra');
   if (!Array.isArray(results) || !results.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Nenhum produto encontrado</div>'; return; }
   box.innerHTML = results.map(function(r) {
     return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + (r.preco_compra || 0) + ')"><span><strong>' + r.referencia + '</strong> — ' + r.nome + '</span><span>' + raFmt(r.preco_compra) + '</span></div>';
@@ -673,9 +691,9 @@ window.raSalvarEnvio = async function() {
   };
   await raPost('prt_envios_pecas', d);
   // atualizar estoque do parceiro
-  var estoque = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + d.parceiro_id + '&referencia=eq.' + d.referencia);
+  var estoque = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + d.parceiro_id + '&referencia=eq.' + encodeURIComponent(d.referencia));
   if (Array.isArray(estoque) && estoque.length) {
-    await raPatch('prt_estoque_parceiro', 'id=eq.' + estoque[0].id, { quantidade_enviada: estoque[0].quantidade_enviada + d.quantidade, ultimo_envio: new Date().toISOString().substring(0, 10) });
+    await raPatch('prt_estoque_parceiro', 'id=eq.' + estoque[0].id, { quantidade_enviada: (estoque[0].quantidade_enviada || 0) + d.quantidade, ultimo_envio: new Date().toISOString().substring(0, 10) });
   } else {
     await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(parcId), referencia: d.referencia, nome_peca: d.nome_peca, quantidade_enviada: d.quantidade, custo_unitario: d.custo_unitario, ultimo_envio: new Date().toISOString().substring(0, 10) });
   }
@@ -696,8 +714,12 @@ window.raCarregarPagamentos = async function() {
       var val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       sel.innerHTML += '<option value="' + val + '">' + val + '</option>';
     }
+    sel.innerHTML += '<option value="">Todos os meses</option>';
   }
-  var pags = await raFetch('prt_pagamentos?order=mes_referencia.desc,criado_em.desc&select=*,assist_parceiros(nome)');
+  var mesSel = sel ? sel.value : '';
+  var pagUrl = 'prt_pagamentos?order=mes_referencia.desc,criado_em.desc&select=*,assist_parceiros(nome)';
+  if (mesSel) pagUrl += '&mes_referencia=eq.' + mesSel;
+  var pags = await raFetch(pagUrl);
   if (!Array.isArray(pags)) pags = [];
   var kpis = document.getElementById('ra-pag-kpis');
   var pend = pags.filter(function(p) { return p.status === 'pendente'; });
@@ -719,32 +741,52 @@ window.raCarregarPagamentos = async function() {
   }).join('');
 };
 
+// primeiro dia do mês seguinte (para filtro de período sem data inválida tipo 2026-06-31)
+function raProximoMes(mes) {
+  var p = mes.split('-');
+  var y = parseInt(p[0], 10), m = parseInt(p[1], 10) + 1;
+  if (m > 12) { m = 1; y++; }
+  return y + '-' + String(m).padStart(2, '0') + '-01';
+}
+
 window.raGerarFechamento = async function() {
   var mes = document.getElementById('ra-pag-mes')?.value;
   if (!mes) { alert('Selecione o mês'); return; }
-  if (!confirm('Gerar fechamento de ' + mes + '? Vai consolidar todas as OS aprovadas do mês por parceiro.')) return;
-  var osAprovadas = await raFetch('prt_ordens_servico?status=in.(aprovada)&data_servico=gte.' + mes + '-01&data_servico=lte.' + mes + '-31&select=parceiro_id,valor_servico');
-  if (!Array.isArray(osAprovadas) || !osAprovadas.length) { alert('Nenhuma OS aprovada encontrada no mês ' + mes); return; }
+  if (!confirm('Gerar fechamento de ' + mes + '? Vai consolidar as OS aprovadas do mês por parceiro.')) return;
+  var fim = raProximoMes(mes);
+  // só OS aprovadas que ainda não entraram em nenhum fechamento
+  var osAprovadas = await raFetch('prt_ordens_servico?status=eq.aprovada&pagamento_id=is.null&data_servico=gte.' + mes + '-01&data_servico=lt.' + fim + '&select=id,parceiro_id,valor_servico');
+  if (!Array.isArray(osAprovadas) || !osAprovadas.length) { alert('Nenhuma OS aprovada (fora de fechamento) encontrada no mês ' + mes); return; }
   var porParceiro = {};
   osAprovadas.forEach(function(o) {
-    if (!porParceiro[o.parceiro_id]) porParceiro[o.parceiro_id] = { qtd: 0, valor: 0 };
+    if (!porParceiro[o.parceiro_id]) porParceiro[o.parceiro_id] = { qtd: 0, valor: 0, ids: [] };
     porParceiro[o.parceiro_id].qtd++;
     porParceiro[o.parceiro_id].valor += parseFloat(o.valor_servico) || 0;
+    porParceiro[o.parceiro_id].ids.push(o.id);
   });
   for (var pid in porParceiro) {
     var pp = porParceiro[pid];
-    await raPost('prt_pagamentos', {
+    var novo = await raPost('prt_pagamentos', {
       parceiro_id: parseInt(pid), mes_referencia: mes, qtd_os: pp.qtd,
-      valor_servicos: pp.valor, valor_total: pp.valor, status: 'pendente'
+      valor_servicos: pp.valor, valor_pecas: 0, valor_total: pp.valor, status: 'pendente'
     });
+    var pagRow = Array.isArray(novo) ? novo[0] : novo;
+    if (pagRow && pagRow.id) {
+      // vincula as OS ao fechamento (status continua 'aprovada' até o pagamento real)
+      await raPatch('prt_ordens_servico', 'id=in.(' + pp.ids.join(',') + ')', { pagamento_id: pagRow.id });
+      raLog('ACAO', 'pagamento', 'GERAR_FECHAMENTO', String(pagRow.id), mes, { parceiro_id: parseInt(pid), qtd_os: pp.qtd, valor: pp.valor });
+    }
   }
-  await raPatch('prt_ordens_servico', 'status=eq.aprovada&data_servico=gte.' + mes + '-01&data_servico=lte.' + mes + '-31', { status: 'paga', data_pagamento: new Date().toISOString() });
   raCarregarPagamentos();
 };
 
 window.raMarcarPago = async function(id) {
   if (!confirm('Confirma pagamento?')) return;
-  await raPatch('prt_pagamentos', 'id=eq.' + id, { status: 'pago', data_pagamento: new Date().toISOString() });
+  var agora = new Date().toISOString();
+  await raPatch('prt_pagamentos', 'id=eq.' + id, { status: 'pago', data_pagamento: agora });
+  // marca como pagas as OS vinculadas a este fechamento
+  await raPatch('prt_ordens_servico', 'pagamento_id=eq.' + id, { status: 'paga', data_pagamento: agora });
+  raLog('ACAO', 'pagamento', 'MARCAR_PAGO', String(id));
   raCarregarPagamentos();
 };
 
@@ -763,7 +805,7 @@ window.raCarregarMateriais = async function() {
   var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
   if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
   tbody.innerHTML = _raMateriais.map(function(m) {
-    var modelos = Array.isArray(m.aplicacao_modelos) ? m.aplicacao_modelos.join(', ') : (m.modelo || 'Todos');
+    var modelos = m.modelo || 'Todos';
     return '<tr>' +
       '<td><a href="' + m.url + '" target="_blank" style="color:var(--blue-mid)">' + m.titulo + '</a></td>' +
       '<td>' + (tipoIcon[m.tipo] || '') + ' ' + m.tipo + '</td>' +
@@ -792,7 +834,7 @@ window.raNovoMaterial = function(prefill) {
     '<div class="field"><label>Descrição (opcional)</label><textarea id="ra-mat-desc" class="search-input" style="width:100%;height:60px;resize:vertical" placeholder="Breve descrição...">' + (m.descricao || '') + '</textarea></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarMaterial()">Salvar</button>');
-  window._matAplic = Array.isArray(m.aplicacao_modelos) ? m.aplicacao_modelos.slice() : [];
+  window._matAplic = m.modelo ? String(m.modelo).split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
   raAtualizarCheckboxesModelo('mat');
   raMatTipoChange();
 };
@@ -813,8 +855,8 @@ window.raMatTipoChange = function() {
 window.raSalvarMaterial = async function(id) {
   var tipo = document.getElementById('ra-mat-tipo').value;
   var url = document.getElementById('ra-mat-url').value.trim();
-  // Se é upload, fazer upload primeiro
-  if ((tipo === 'pdf' || tipo === 'imagem') && !id) {
+  // Se é upload, fazer upload primeiro (também na edição, se um novo arquivo foi selecionado)
+  if (tipo === 'pdf' || tipo === 'imagem') {
     var file = document.getElementById('ra-mat-file')?.files[0];
     if (!file && !url) { alert('Selecione um arquivo para upload'); return; }
     if (file) {
