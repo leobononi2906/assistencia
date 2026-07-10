@@ -433,6 +433,7 @@ const AST_PAGES = {
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <div class="ast-toggle" id="ast-par-tag-filter">
         <button class="ast-toggle-btn active" onclick="astParceiros.filtrarTag('',this)">Todos</button>
+        <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('__credenciado__',this)">⭐ Rede Autorizada</button>
         <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Ar Condicionado',this)">❄️ Ar</button>
         <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Geladeira',this)">🧊 Geladeira</button>
         <button class="ast-toggle-btn" onclick="astParceiros.filtrarTag('Gerador',this)">⚡ Gerador</button>
@@ -3036,13 +3037,16 @@ window.astParceiros = {
     this._filtrados.forEach(p => {
       if (!p.lat || !p.lng) return;
       const cor = this._corStatus(p.status);
+      const isCred = p.credenciado === true;
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s" onmouseover="this.style.transform='scale(1.8)'" onmouseout="this.style.transform=''"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
+        html: isCred
+          ? `<div style="position:relative;width:22px;height:22px" onmouseover="this.style.transform='scale(1.5)'" onmouseout="this.style.transform=''"><div style="width:22px;height:22px;background:${cor};border:2px solid #FFD700;border-radius:50%;box-shadow:0 0 6px rgba(255,215,0,.6),0 1px 4px rgba(0,0,0,.35)"></div><div style="position:absolute;top:-6px;right:-6px;font-size:12px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">⭐</div></div>`
+          : `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s" onmouseover="this.style.transform='scale(1.8)'" onmouseout="this.style.transform=''"></div>`,
+        iconSize: isCred ? [22, 22] : [14, 14],
+        iconAnchor: isCred ? [11, 11] : [7, 7]
       });
-      const tooltip = `<b>${p.nome}</b><br>${p.responsavel||''}<br>${p.telefone||''}<br>${p.cidade||''}${p.cidade&&p.uf?' / ':''}${p.uf||''}`;
+      const tooltip = `${isCred?'⭐ ':''}<b>${p.nome}</b><br>${p.responsavel||''}<br>${p.telefone||''}<br>${p.cidade||''}${p.cidade&&p.uf?' / ':''}${p.uf||''}`;
       const m = L.marker([p.lat, p.lng], { icon })
         .addTo(this._map)
         .bindTooltip(tooltip, { permanent: false, direction: 'top', offset: [0, -8], className: 'ast-map-tooltip' })
@@ -3065,7 +3069,8 @@ window.astParceiros = {
     this._filtrados = this._dados.filter(p => {
       if (status && p.status !== status) return false;
       if (uf && p.uf !== uf) return false;
-      if (this._tagAtiva && !p.tags.includes(this._tagAtiva)) return false;
+      if (this._tagAtiva === '__credenciado__') { if (!p.credenciado) return false; }
+      else if (this._tagAtiva && !p.tags.includes(this._tagAtiva)) return false;
       if (busca && !`${p.nome} ${p.responsavel||''} ${p.cidade||''} ${p.uf||''}`.toLowerCase().includes(busca)) return false;
       return true;
     });
@@ -3087,7 +3092,7 @@ window.astParceiros = {
       return;
     }
     tbody.innerHTML = this._filtrados.map(p => `<tr style="cursor:pointer" onclick="astParceiros.abrirDrawer(${p.id})">
-      <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome}">${p.nome}</td>
+      <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome}">${p.credenciado?'⭐ ':''}${p.nome}</td>
       <td style="color:var(--text-secondary);font-size:12px">${p.responsavel||'—'}</td>
       <td style="font-family:monospace;font-size:11px">${p.telefone||'—'}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${p.cidade||'—'}</td>
@@ -3220,7 +3225,25 @@ window.astParceiros = {
           <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.salvarDados(${id})" style="width:100%">💾 Salvar dados</button>
         </div>
 
-        <!-- PRODUTOS -->
+        <!-- CREDENCIAMENTO REDE AUTORIZADA -->
+        <div class="ast-drw-section" id="ast-par-cred-${id}">
+          ${p.credenciado
+            ? `<div style="background:var(--green-bg,#e8f5e9);border:1px solid var(--green,#4caf50);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
+                <div style="font-weight:700;color:var(--green,#4caf50);font-size:13px">⭐ Rede Autorizada Stonni</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Credenciada em ${p.data_credenciamento ? new Date(p.data_credenciamento).toLocaleDateString('pt-BR') : '—'}</div>
+                <button class="ast-btn ast-btn-sm" style="margin-top:8px;background:var(--red-bg);color:var(--red)" onclick="astParceiros.descredenciar(${id})">Remover credenciamento</button>
+              </div>`
+            : `<div style="background:var(--orange-bg,#fff3e0);border:1px solid var(--orange,#ff9800);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
+                <div style="font-weight:700;color:var(--orange,#ff9800);font-size:13px">🔹 Prospect — ainda não é autorizada</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Credenciar dá acesso ao Portal do Parceiro</div>
+                <div style="margin-top:10px">
+                  <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">E-MAIL P/ LOGIN (obrigatório)</label>
+                  <input class="ast-form-input" id="par-cred-email-${id}" value="${p.email||''}" placeholder="email@parceiro.com" style="width:100%;margin-bottom:8px">
+                </div>
+                <button class="ast-btn ast-btn-primary ast-btn-sm" style="width:100%" onclick="astParceiros.credenciar(${id})">⭐ Credenciar como Autorizada</button>
+              </div>`
+          }
+        </div>
         <div class="ast-drw-section">
           <div class="ast-drw-section-title">Produtos atendidos</div>
           <div style="margin-bottom:8px">${tagHtml}</div>
@@ -3705,6 +3728,79 @@ window.astParceiros = {
     // Recarregar dados e abrir drawer do novo parceiro
     await this.carregar();
     this.abrirDrawer(data.id);
+  },
+
+  // ═══ CREDENCIAMENTO REDE AUTORIZADA ═══
+  async credenciar(id) {
+    const emailEl = document.getElementById(`par-cred-email-${id}`);
+    const email = emailEl?.value?.trim();
+    if (!email || !email.includes('@')) { alert('Informe um e-mail válido para o login'); return; }
+
+    if (!confirm(`Credenciar este parceiro como Rede Autorizada?\n\nSerá criado login para:\n${email}\n\nUma senha temporária será gerada.`)) return;
+
+    // Gerar senha temporária
+    const senha = 'Stonni' + Math.random().toString(36).substring(2, 8) + '!';
+
+    try {
+      // 1. Criar usuário no Supabase Auth
+      const SB_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
+      const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+      
+      const authRes = await fetch(SB_URL + '/auth/v1/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ email, password: senha })
+      });
+      const authData = await authRes.json();
+      if (!authRes.ok || authData.error) throw new Error(authData.error?.message || authData.msg || 'Erro ao criar usuário');
+      
+      const userId = authData.user?.id || authData.id;
+      if (!userId) throw new Error('User ID não retornado');
+
+      // 2. Vincular na prt_usuarios
+      await fetch(SB_URL + '/rest/v1/prt_usuarios', {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, parceiro_id: id, perfil: 'parceiro' })
+      });
+
+      // 3. Marcar como credenciado
+      await window.sb.from('assist_parceiros').update({
+        credenciado: true,
+        data_credenciamento: new Date().toISOString(),
+        email: email
+      }).eq('id', id);
+
+      // 4. Mostrar senha
+      alert(`✅ Parceiro credenciado!\n\n📧 Login: ${email}\n🔑 Senha: ${senha}\n\nAnote a senha — ela não poderá ser recuperada depois.\nO parceiro pode acessar: parceiro-stonni.vercel.app`);
+
+      await this.carregar();
+      this.abrirDrawer(id);
+    } catch(e) {
+      console.error('Credenciamento:', e);
+      alert('Erro ao credenciar: ' + e.message);
+    }
+  },
+
+  async descredenciar(id) {
+    if (!confirm('Remover credenciamento deste parceiro?\nO login será desativado.')) return;
+    
+    // Desativar vínculo
+    const SB_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+    
+    await fetch(SB_URL + '/rest/v1/prt_usuarios?parceiro_id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo: false })
+    });
+    
+    await window.sb.from('assist_parceiros').update({
+      credenciado: false
+    }).eq('id', id);
+
+    await this.carregar();
+    this.abrirDrawer(id);
   }
 };
 
