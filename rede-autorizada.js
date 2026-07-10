@@ -95,6 +95,9 @@ var RA_PAGES = {
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-linhas" onclick="raCfgTab('linhas')">📦 Linhas e Modelos</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-empresa" onclick="raCfgTab('empresa')">🏢 Empresa</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-prazos" onclick="raCfgTab('prazos')">⏱ Textos e Prazos</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-boasvindas" onclick="raCfgTab('boasvindas')">💬 Boas-vindas</button>
   </div>
   <div id="ra-cfg-content"></div>
 </div>`,
@@ -1145,7 +1148,7 @@ var _raCfgSubTab = 'servicos';
 
 window.raCfgTab = function(tab) {
   _raCfgSubTab = tab;
-  ['servicos','pecas','garantia','precos','linhas'].forEach(function(t) {
+  ['servicos','pecas','garantia','precos','linhas','empresa','prazos','boasvindas'].forEach(function(t) {
     var btn = document.getElementById('ra-cfg-tab-' + t);
     if (btn) { btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface2)'; btn.style.color = t === tab ? '#fff' : ''; }
   });
@@ -1157,6 +1160,9 @@ window.raCfgTab = function(tab) {
     case 'garantia': raCfgGarantia(box); break;
     case 'precos': raCfgPrecos(box); break;
     case 'linhas': raCfgLinhas(box); break;
+    case 'empresa': raCfgEmpresa(box); break;
+    case 'prazos': raCfgPrazos(box); break;
+    case 'boasvindas': raCfgBoasVindas(box); break;
   }
 };
 
@@ -1799,47 +1805,237 @@ window.raDescredenciar = async function(id, nome) {
 };
 
 // ═══════════════════════════════════════
-// MENSAGEM DE BOAS-VINDAS WHATSAPP
+// CONFIG: DADOS DA EMPRESA
 // ═══════════════════════════════════════
-window.raGerarMsgBoasVindas = function(nome, email, senha) {
-  var primeiro = (nome || '').split(' ')[0] || 'Parceiro';
-  var msg = 'Olá ' + primeiro + '! 👋\n' +
-    'Seja bem-vindo(a) à *Rede de Assistência Técnica Autorizada Stonni!*\n\n' +
-    'A partir de agora, você faz parte de um grupo seleto de parceiros que atendem nossos clientes em todo o Brasil.\n\n' +
-    'Preparamos um portal exclusivo para facilitar todo o seu trabalho com a Stonni. Veja como funciona:\n\n' +
-    '🔗 *Acesse o portal:*\nparceiro-stonni.vercel.app\n\n' +
-    '👤 *Seu login:*\nE-mail: ' + email + '\nSenha: ' + senha + '\n' +
-    '(Recomendamos trocar a senha no primeiro acesso)\n\n' +
-    '━━━━━━━━━━━━━━━\n' +
-    '📋 *COMO ABRIR UMA OS*\n\n' +
-    '1️⃣ Acesse o portal e clique em *Nova OS*\n' +
-    '2️⃣ Preencha os dados do cliente e do produto (tenha a NF de compra em mãos — vai precisar tirar foto dela)\n' +
-    '3️⃣ Registre o diagnóstico, selecione o serviço realizado e tire fotos do equipamento\n' +
-    '4️⃣ Revise tudo e envie\n\n' +
-    'Nossa equipe analisa e responde em até *3 dias úteis*.\n\n' +
-    '━━━━━━━━━━━━━━━\n' +
-    '🔧 *PEÇAS DE REPOSIÇÃO*\n\n' +
-    'Quando você utilizar uma peça em uma OS de garantia, ao aprovarmos a OS a reposição já é gerada automaticamente. O envio da peça de reposição acontece em até *5 dias úteis* após a aprovação.\n\n' +
-    'Você acompanha tudo pelo portal, na aba *Meu Estoque*.\n\n' +
-    '━━━━━━━━━━━━━━━\n' +
-    '💰 *PAGAMENTOS*\n\n' +
-    'O fechamento é feito *mensalmente*:\n' +
-    '• No início do mês, consolidamos todas as OS aprovadas do mês anterior\n' +
-    '• Enviamos o relatório para você\n' +
-    '• Você emite a NF de serviço com base no valor informado\n' +
-    '• O pagamento é realizado *até o dia 10*\n\n' +
-    'Tudo fica visível na aba *Financeiro* do portal.\n\n' +
-    '━━━━━━━━━━━━━━━\n' +
-    '📚 *MATERIAL TÉCNICO*\n\n' +
-    'No portal você encontra vídeos, manuais e documentos técnicos por linha de produto. Consulte sempre antes de iniciar um atendimento.\n\n' +
-    '━━━━━━━━━━━━━━━\n\n' +
-    'Qualquer dúvida, pode chamar aqui neste número.\n' +
-    'Bem-vindo(a) à Stonni! 💙❄️';
-  return msg;
+async function raCfgEmpresa(box) {
+  box.innerHTML = '<div class="loading-full"><span class="spinner"></span> Carregando...</div>';
+  var chaves = ['empresa_razao_social','empresa_nome_fantasia','empresa_cnpj','empresa_endereco','empresa_telefone','empresa_email','empresa_site'];
+  var cfgs = {};
+  try {
+    var r = await raFetch('prt_configuracoes?chave=in.(' + chaves.join(',') + ')&select=chave,valor');
+    if (Array.isArray(r)) r.forEach(function(c) { cfgs[c.chave] = c.valor || ''; });
+  } catch(e) {}
+  box.innerHTML = '<div style="font-weight:600;margin-bottom:16px">Dados da Empresa</div>' +
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Usados nos PDFs, relatórios e comunicações com parceiros.</p>' +
+    '<div class="card" style="max-width:600px">' +
+    '<div class="field"><label>Razão Social</label><input type="text" id="ra-emp-razao" class="search-input" value="' + raEsc(cfgs.empresa_razao_social || '') + '" placeholder="Ex: Bononi Acessórios Ltda"></div>' +
+    '<div class="field"><label>Nome Fantasia</label><input type="text" id="ra-emp-fantasia" class="search-input" value="' + raEsc(cfgs.empresa_nome_fantasia || '') + '" placeholder="Ex: Stonni"></div>' +
+    '<div class="field"><label>CNPJ</label><input type="text" id="ra-emp-cnpj" class="search-input" value="' + raEsc(cfgs.empresa_cnpj || '') + '" placeholder="00.000.000/0000-00"></div>' +
+    '<div class="field"><label>Endereço</label><input type="text" id="ra-emp-endereco" class="search-input" value="' + raEsc(cfgs.empresa_endereco || '') + '" placeholder="Rua, nº, cidade/UF, CEP"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div class="field"><label>Telefone</label><input type="text" id="ra-emp-telefone" class="search-input" value="' + raEsc(cfgs.empresa_telefone || '') + '" placeholder="(44) 3333-0000"></div>' +
+    '<div class="field"><label>E-mail</label><input type="text" id="ra-emp-email" class="search-input" value="' + raEsc(cfgs.empresa_email || '') + '" placeholder="contato@stonni.com.br"></div></div>' +
+    '<div class="field"><label>Site</label><input type="text" id="ra-emp-site" class="search-input" value="' + raEsc(cfgs.empresa_site || '') + '" placeholder="www.stonni.com.br"></div>' +
+    '<button class="btn btn-primary mt-16" onclick="raSalvarEmpresa()">Salvar dados</button></div>';
+}
+
+window.raSalvarEmpresa = async function() {
+  var campos = {
+    empresa_razao_social: document.getElementById('ra-emp-razao').value.trim(),
+    empresa_nome_fantasia: document.getElementById('ra-emp-fantasia').value.trim(),
+    empresa_cnpj: document.getElementById('ra-emp-cnpj').value.trim(),
+    empresa_endereco: document.getElementById('ra-emp-endereco').value.trim(),
+    empresa_telefone: document.getElementById('ra-emp-telefone').value.trim(),
+    empresa_email: document.getElementById('ra-emp-email').value.trim(),
+    empresa_site: document.getElementById('ra-emp-site').value.trim()
+  };
+  try {
+    for (var chave in campos) {
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + chave + '&select=id');
+      if (Array.isArray(existe) && existe.length) {
+        await raPatch('prt_configuracoes', 'chave=eq.' + chave, { valor: campos[chave] });
+      } else {
+        await raPost('prt_configuracoes', { chave: chave, valor: campos[chave], descricao: chave.replace(/empresa_/g, '').replace(/_/g, ' ') });
+      }
+    }
+    raLog('ACAO', 'config', 'SALVAR_DADOS_EMPRESA');
+    alert('Dados da empresa salvos!');
+  } catch(e) { console.error(e); alert('Erro ao salvar: ' + e.message); }
 };
 
-window.raCopiarBoasVindas = function(nome, email, senha) {
-  var msg = raGerarMsgBoasVindas(nome, email, senha);
+// ═══════════════════════════════════════
+// CONFIG: TEXTOS E PRAZOS OPERACIONAIS
+// ═══════════════════════════════════════
+var _raPrazosConfig = [
+  { chave: 'prazo_resposta_os_dias', label: 'Prazo de resposta da OS (dias úteis)', placeholder: '3', tipo: 'number' },
+  { chave: 'prazo_envio_peca_dias', label: 'Prazo de envio de peça de reposição (dias úteis)', placeholder: '5', tipo: 'number' },
+  { chave: 'prazo_pagamento_dia', label: 'Dia do pagamento (mês seguinte)', placeholder: '10', tipo: 'number' },
+  { chave: 'texto_os_enviada', label: 'Mensagem ao enviar OS (toast no portal)', placeholder: 'Nossa equipe analisará e retornará em até {prazo_resposta_os_dias} dias úteis.', tipo: 'text' },
+  { chave: 'texto_financeiro_banner', label: 'Banner no Financeiro do parceiro', placeholder: 'Os pagamentos são realizados até o dia {prazo_pagamento_dia} do mês seguinte. Após o fechamento, envie sua NF para liberação do pagamento.', tipo: 'text' },
+  { chave: 'texto_reposicao_info', label: 'Info de reposição de peças (boas-vindas)', placeholder: 'O envio da peça de reposição acontece em até {prazo_envio_peca_dias} dias úteis após a aprovação.', tipo: 'text' }
+];
+
+async function raCfgPrazos(box) {
+  box.innerHTML = '<div class="loading-full"><span class="spinner"></span> Carregando...</div>';
+  var chaves = _raPrazosConfig.map(function(p) { return p.chave; });
+  var cfgs = {};
+  try {
+    var r = await raFetch('prt_configuracoes?chave=in.(' + chaves.join(',') + ')&select=chave,valor');
+    if (Array.isArray(r)) r.forEach(function(c) { cfgs[c.chave] = c.valor || ''; });
+  } catch(e) {}
+  var html = '<div style="font-weight:600;margin-bottom:8px">Textos e Prazos Operacionais</div>' +
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Estes valores aparecem no portal do parceiro e na mensagem de boas-vindas. Use <code style="background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:12px">{chave}</code> nos textos para inserir valores dinâmicos.</p>' +
+    '<div class="card" style="max-width:700px">';
+  _raPrazosConfig.forEach(function(p) {
+    var val = cfgs[p.chave] || '';
+    if (p.tipo === 'number') {
+      html += '<div class="field"><label>' + p.label + '</label><input type="number" id="ra-prazo-' + p.chave + '" class="search-input" value="' + raEsc(val) + '" placeholder="' + p.placeholder + '" style="width:120px" min="1"></div>';
+    } else {
+      html += '<div class="field"><label>' + p.label + '</label><input type="text" id="ra-prazo-' + p.chave + '" class="search-input" value="' + raEsc(val) + '" placeholder="' + p.placeholder + '"></div>';
+    }
+  });
+  html += '<button class="btn btn-primary mt-16" onclick="raSalvarPrazos()">Salvar textos e prazos</button></div>';
+  box.innerHTML = html;
+}
+
+window.raSalvarPrazos = async function() {
+  try {
+    for (var i = 0; i < _raPrazosConfig.length; i++) {
+      var p = _raPrazosConfig[i];
+      var el = document.getElementById('ra-prazo-' + p.chave);
+      if (!el) continue;
+      var val = el.value.trim();
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + p.chave + '&select=id');
+      if (Array.isArray(existe) && existe.length) {
+        await raPatch('prt_configuracoes', 'chave=eq.' + p.chave, { valor: val });
+      } else {
+        await raPost('prt_configuracoes', { chave: p.chave, valor: val, descricao: p.label });
+      }
+    }
+    raLog('ACAO', 'config', 'SALVAR_PRAZOS');
+    alert('Textos e prazos salvos!');
+  } catch(e) { console.error(e); alert('Erro ao salvar: ' + e.message); }
+};
+
+// ═══════════════════════════════════════
+// CONFIG: MENSAGEM DE BOAS-VINDAS
+// ═══════════════════════════════════════
+var _raBoasVindasDefault = 'Olá {primeiro_nome}! 👋\n' +
+  'Seja bem-vindo(a) à *Rede de Assistência Técnica Autorizada Stonni!*\n\n' +
+  'A partir de agora, você faz parte de um grupo seleto de parceiros que atendem nossos clientes em todo o Brasil.\n\n' +
+  'Preparamos um portal exclusivo para facilitar todo o seu trabalho com a Stonni. Veja como funciona:\n\n' +
+  '🔗 *Acesse o portal:*\nparceiro-stonni.vercel.app\n\n' +
+  '👤 *Seu login:*\nE-mail: {email}\nSenha: {senha}\n' +
+  '(Recomendamos trocar a senha no primeiro acesso)\n\n' +
+  '━━━━━━━━━━━━━━━\n' +
+  '📋 *COMO ABRIR UMA OS*\n\n' +
+  '1️⃣ Acesse o portal e clique em *Nova OS*\n' +
+  '2️⃣ Preencha os dados do cliente e do produto (tenha a NF de compra em mãos — vai precisar tirar foto dela)\n' +
+  '3️⃣ Registre o diagnóstico, selecione o serviço realizado e tire fotos do equipamento\n' +
+  '4️⃣ Revise tudo e envie\n\n' +
+  'Nossa equipe analisa e responde em até *{prazo_resposta_os_dias} dias úteis*.\n\n' +
+  '━━━━━━━━━━━━━━━\n' +
+  '🔧 *PEÇAS DE REPOSIÇÃO*\n\n' +
+  'Quando você utilizar uma peça em uma OS de garantia, ao aprovarmos a OS a reposição já é gerada automaticamente. {texto_reposicao_info}\n\n' +
+  'Você acompanha tudo pelo portal, na aba *Meu Estoque*.\n\n' +
+  '━━━━━━━━━━━━━━━\n' +
+  '💰 *PAGAMENTOS*\n\n' +
+  'O fechamento é feito *mensalmente*:\n' +
+  '• No início do mês, consolidamos todas as OS aprovadas do mês anterior\n' +
+  '• Enviamos o relatório para você\n' +
+  '• Você emite a NF de serviço com base no valor informado\n' +
+  '• O pagamento é realizado *até o dia {prazo_pagamento_dia}*\n\n' +
+  'Tudo fica visível na aba *Financeiro* do portal.\n\n' +
+  '━━━━━━━━━━━━━━━\n' +
+  '📚 *MATERIAL TÉCNICO*\n\n' +
+  'No portal você encontra vídeos, manuais e documentos técnicos por linha de produto. Consulte sempre antes de iniciar um atendimento.\n\n' +
+  '━━━━━━━━━━━━━━━\n\n' +
+  'Qualquer dúvida, pode chamar aqui neste número.\n' +
+  'Bem-vindo(a) à Stonni! 💙❄️';
+
+async function raCfgBoasVindas(box) {
+  box.innerHTML = '<div class="loading-full"><span class="spinner"></span> Carregando...</div>';
+  var template = '';
+  try {
+    var r = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=valor');
+    if (Array.isArray(r) && r.length && r[0].valor) template = r[0].valor;
+  } catch(e) {}
+  if (!template) template = _raBoasVindasDefault;
+  box.innerHTML = '<div style="font-weight:600;margin-bottom:8px">Mensagem de Boas-Vindas (WhatsApp)</div>' +
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Esta mensagem é enviada ao parceiro quando credenciado. Edite à vontade — use as variáveis abaixo que serão substituídas automaticamente.</p>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Primeiro nome do parceiro">{primeiro_nome}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="E-mail de login">{email}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Senha gerada">{senha}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Nome completo do parceiro">{nome_completo}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Prazo de resposta da OS">{prazo_resposta_os_dias}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Prazo de envio de peça">{prazo_envio_peca_dias}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Dia do pagamento">{prazo_pagamento_dia}</code>' +
+    '<code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;cursor:help" title="Texto de reposição configurado">{texto_reposicao_info}</code></div>' +
+    '<div class="card" style="max-width:700px"><textarea id="ra-bv-template" style="width:100%;height:500px;font-family:monospace;font-size:12px;line-height:1.5;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);resize:vertical">' + raEsc(template) + '</textarea>' +
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn btn-primary" onclick="raSalvarBoasVindas()">Salvar mensagem</button>' +
+    '<button class="btn btn-secondary" onclick="raPreviewBoasVindas()">👁 Preview</button>' +
+    '<button class="btn btn-secondary" style="color:var(--text-muted)" onclick="raResetBoasVindas()">↺ Restaurar padrão</button></div></div>' +
+    '<div id="ra-bv-preview" style="margin-top:16px;display:none"></div>';
+}
+
+window.raSalvarBoasVindas = async function() {
+  var template = document.getElementById('ra-bv-template').value;
+  if (!template.trim()) { alert('A mensagem não pode ficar vazia'); return; }
+  try {
+    var existe = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=id');
+    if (Array.isArray(existe) && existe.length) {
+      await raPatch('prt_configuracoes', 'chave=eq.msg_boas_vindas', { valor: template });
+    } else {
+      await raPost('prt_configuracoes', { chave: 'msg_boas_vindas', valor: template, descricao: 'Template da mensagem de boas-vindas WhatsApp' });
+    }
+    raLog('ACAO', 'config', 'SALVAR_BOAS_VINDAS');
+    alert('Mensagem salva!');
+  } catch(e) { console.error(e); alert('Erro: ' + e.message); }
+};
+
+window.raPreviewBoasVindas = async function() {
+  var template = document.getElementById('ra-bv-template').value;
+  var preview = await raSubstituirVariaveisMsg(template, 'João da Silva', 'joao@email.com', 'Abc@1234');
+  var el = document.getElementById('ra-bv-preview');
+  el.style.display = 'block';
+  el.innerHTML = '<div class="card" style="max-width:700px;background:#DCF8C6;border-color:#b5d6a0"><div style="font-weight:600;margin-bottom:8px;font-size:12px;color:#128C7E">📱 Preview (exemplo)</div><pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:13px;margin:0;color:#111">' + raEsc(preview) + '</pre></div>';
+};
+
+window.raResetBoasVindas = function() {
+  if (!confirm('Restaurar a mensagem padrão? A edição atual será perdida.')) return;
+  document.getElementById('ra-bv-template').value = _raBoasVindasDefault;
+};
+
+// Helper: buscar configurações e substituir variáveis na mensagem
+async function raSubstituirVariaveisMsg(template, nome, email, senha) {
+  var cfgs = {};
+  try {
+    var r = await raFetch('prt_configuracoes?select=chave,valor');
+    if (Array.isArray(r)) r.forEach(function(c) { cfgs[c.chave] = c.valor || ''; });
+  } catch(e) {}
+  var primeiro = (nome || '').split(' ')[0] || 'Parceiro';
+  var vars = {
+    primeiro_nome: primeiro,
+    nome_completo: nome || 'Parceiro',
+    email: email || '',
+    senha: senha || '',
+    prazo_resposta_os_dias: cfgs.prazo_resposta_os_dias || '3',
+    prazo_envio_peca_dias: cfgs.prazo_envio_peca_dias || '5',
+    prazo_pagamento_dia: cfgs.prazo_pagamento_dia || '10',
+    texto_reposicao_info: cfgs.texto_reposicao_info || 'O envio da peça de reposição acontece em até ' + (cfgs.prazo_envio_peca_dias || '5') + ' dias úteis após a aprovação.'
+  };
+  var result = template;
+  for (var key in vars) { result = result.replace(new RegExp('\\{' + key + '\\}', 'g'), vars[key]); }
+  return result;
+}
+
+// ═══════════════════════════════════════
+// MENSAGEM DE BOAS-VINDAS WHATSAPP
+// ═══════════════════════════════════════
+window.raGerarMsgBoasVindas = async function(nome, email, senha) {
+  // Buscar template do banco, fallback para padrão
+  var template = '';
+  try {
+    var r = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=valor');
+    if (Array.isArray(r) && r.length && r[0].valor) template = r[0].valor;
+  } catch(e) {}
+  if (!template) template = _raBoasVindasDefault;
+  return await raSubstituirVariaveisMsg(template, nome, email, senha);
+};
+
+window.raCopiarBoasVindas = async function(nome, email, senha) {
+  var msg = await raGerarMsgBoasVindas(nome, email, senha);
   navigator.clipboard.writeText(msg).then(function() {
     var btn = event.target;
     var original = btn.textContent;
@@ -1848,8 +2044,8 @@ window.raCopiarBoasVindas = function(nome, email, senha) {
   });
 };
 
-window.raEnviarWhatsBoasVindas = function(whatsapp, nome, email, senha) {
-  var msg = raGerarMsgBoasVindas(nome, email, senha);
+window.raEnviarWhatsBoasVindas = async function(whatsapp, nome, email, senha) {
+  var msg = await raGerarMsgBoasVindas(nome, email, senha);
   var fone = (whatsapp || '').replace(/\D/g, '');
   if (!fone) { alert('Parceiro sem WhatsApp cadastrado'); return; }
   if (fone.length <= 11) fone = '55' + fone;
