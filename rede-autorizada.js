@@ -49,9 +49,9 @@ var RA_PAGES = {
     <div class="section-title" style="margin:0">Peças</div>
   </div>
   <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-pec-tab-estoque" onclick="raPecTab('estoque')">📦 Estoque parceiro</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-estoque" onclick="raPecTab('estoque')">📦 Estoque parceiro</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-compras" onclick="raPecTab('compras')">🛒 Compras parceiro</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-reposicao" onclick="raPecTab('reposicao')">🔄 Reposição garantia</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-pec-tab-reposicao" onclick="raPecTab('reposicao')">🔄 Reposição garantia</button>
   </div>
   <div id="ra-pec-content"></div>
 </div>`,
@@ -123,7 +123,7 @@ window.ModuloRedeAutorizada = {
     slot.innerHTML = html;
     switch(paginaId) {
       case 'ra-aprovar':    raCarregarOS(); break;
-      case 'ra-pecas':      raPecTab('estoque'); break;
+      case 'ra-pecas':      raPecTab('reposicao'); break;
       case 'ra-pagamentos': raCarregarPagamentos(); break;
       case 'ra-materiais':  raCarregarMateriais(); break;
       case 'ra-config':     raCfgTab('servicos'); break;
@@ -404,20 +404,34 @@ window.raAprovarOS = async function(id) {
   // + criar reposição automática na fila
   try {
     var pecas = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=referencia,nome_peca,quantidade');
-    if (Array.isArray(pecas) && o.parceiro_id) {
+    if (Array.isArray(pecas) && pecas.length && o.parceiro_id) {
+      var reposCriadas = 0;
       for (var i = 0; i < pecas.length; i++) {
         var pe = pecas[i];
+        // baixar estoque
         var est = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + o.parceiro_id + '&referencia=eq.' + encodeURIComponent(pe.referencia));
         if (Array.isArray(est) && est.length) {
           await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_usada: (est[0].quantidade_usada || 0) + (pe.quantidade || 1), atualizado_em: new Date().toISOString() });
         }
-        // criar reposição automática
-        await raPost('prt_reposicao_pecas', {
-          parceiro_id: o.parceiro_id, os_id: id,
-          referencia: pe.referencia, nome_peca: pe.nome_peca || pe.referencia,
-          quantidade: pe.quantidade || 1, status: 'pendente'
+        // criar reposição automática — com verificação de resposta
+        var repResp = await fetch(SB_URL + '/rest/v1/prt_reposicao_pecas', {
+          method: 'POST',
+          headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+          body: JSON.stringify({
+            parceiro_id: o.parceiro_id, os_id: id,
+            referencia: pe.referencia, nome_peca: pe.nome_peca || pe.referencia,
+            quantidade: pe.quantidade || 1, status: 'pendente'
+          })
         });
+        if (repResp.ok) { reposCriadas++; }
+        else { var errBody = await repResp.text(); console.error('Reposição falhou para ' + pe.referencia + ':', repResp.status, errBody); raLog('ERRO', 'reposicao', 'CRIAR_REPOSICAO_FALHOU', String(id), pe.referencia, {status: repResp.status, erro: errBody}); }
       }
+      if (reposCriadas > 0) { raToast('OS aprovada! ' + reposCriadas + ' reposição(ões) criada(s) na fila.'); }
+      else { raToast('OS aprovada, mas reposição de peças falhou. Verifique o console.'); }
+    } else if (Array.isArray(pecas) && !pecas.length) {
+      // OS sem peças — só aprova normalmente
+    } else if (!o.parceiro_id) {
+      console.error('OS sem parceiro_id — reposição não criada'); raLog('ERRO', 'reposicao', 'OS_SEM_PARCEIRO', String(id));
     }
   } catch (e) { console.error('Baixa de estoque/reposição falhou:', e); raLog('ERRO', 'estoque', 'BAIXA_ESTOQUE_FALHOU', String(id), null, {erro: String(e)}); }
   document.getElementById('ra-modal')?.remove();
@@ -998,7 +1012,7 @@ window.raToggleMaterial = async function(id, ativo) {
 // ═══════════════════════════════════════
 // 7. PEÇAS — SUB-ABAS (Estoque, Compras, Reposição)
 // ═══════════════════════════════════════
-var _raPecSubTab = 'estoque';
+var _raPecSubTab = 'reposicao';
 
 window.raPecTab = function(tab) {
   _raPecSubTab = tab;
@@ -1040,8 +1054,15 @@ async function raPecCompras(box) {
 async function raPecReposicao(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Reposição de peças de garantia</span></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
-  var reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
-  if (!Array.isArray(reps)) reps = [];
+  var reps = [];
+  try {
+    reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
+    if (!Array.isArray(reps)) {
+      // join pode falhar se FK não existir — tenta sem join
+      reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*');
+      if (!Array.isArray(reps)) reps = [];
+    }
+  } catch(e) { console.error('Fetch reposição falhou:', e); reps = []; }
   var tbody = document.getElementById('ra-rep-tbody');
   if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
