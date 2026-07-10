@@ -230,6 +230,9 @@ window.raDetalheOS = async function(id) {
   // Carregar peças da OS
   var pecasOS = [];
   try { pecasOS = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=*'); if (!Array.isArray(pecasOS)) pecasOS = []; } catch(e) {}
+  // Carregar serviços da OS (multi)
+  var servicosOS = [];
+  try { servicosOS = await raFetch('prt_os_servicos?os_id=eq.' + id + '&select=*'); if (!Array.isArray(servicosOS)) servicosOS = []; } catch(e) {}
   var body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PROTOCOLO</label><div style="font-weight:700">' + (o.protocolo || '#' + o.id) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PARCEIRO</label><div>' + parc + '</div></div>' +
@@ -243,11 +246,19 @@ window.raDetalheOS = async function(id) {
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CÓD. ERRO</label><div>' + (o.codigo_erro || '-') + '</div></div>' +
     '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DEFEITO</label><div>' + (raEsc(o.defeito_descricao) || '-') + '</div></div>' +
     '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DIAGNÓSTICO</label><div>' + (raEsc(o.diagnostico) || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SOLUÇÃO</label><div>' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
     '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DATA SERVIÇO</label><div>' + raDate(o.data_servico) + '</div></div>' +
+    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR TOTAL</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
     '</div>';
+  // Serviços realizados (multi)
+  if (servicosOS.length) {
+    body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SERVIÇOS REALIZADOS (' + servicosOS.length + ')</label>';
+    servicosOS.forEach(function(sv) {
+      body += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #f0f0f0"><div><span style="font-weight:600;color:var(--blue-mid)">' + raEsc(sv.codigo) + '</span> ' + raEsc(sv.descricao) + '<div style="font-size:11px;color:var(--text-muted)">' + (sv.categoria_nome || '') + '</div></div><span style="font-weight:700;white-space:nowrap">' + raFmt(sv.valor) + '</span></div>';
+    });
+    body += '</div>';
+  } else if (o.codigo_servico) {
+    body += '<div style="margin-top:12px;font-size:13px"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + ' — ' + raFmt(o.valor_servico) + '</div></div>';
+  }
   // Peças utilizadas
   if (pecasOS.length) {
     body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PEÇAS UTILIZADAS</label>';
@@ -1556,3 +1567,4 @@ window.raEnviarWhatsBoasVindas = function(whatsapp, nome, email, senha) {
   if (fone.length <= 11) fone = '55' + fone;
   window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
 };
+
