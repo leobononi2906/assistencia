@@ -297,14 +297,14 @@ window.raConfirmarServicoOS = async function(osId, codigo, valor) {
     atualizado_em: new Date().toISOString()
   });
   document.getElementById('ra-modal')?.remove();
-  raCarregarOS();
+  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
 };
 
 window.raAprovarOS = async function(id) {
   if (!confirm('Confirma aprovação desta OS?')) return;
   await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'aprovada', data_aprovacao: new Date().toISOString(), aprovado_por: (window.getUsuario() || {}).nome || 'gestor' });
   document.getElementById('ra-modal')?.remove();
-  raCarregarOS();
+  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
 };
 
 window.raRecusarOS = function(id) {
@@ -316,9 +316,9 @@ window.raRecusarOS = function(id) {
 window.raConfirmarRecusa = async function(id) {
   var motivo = document.getElementById('ra-motivo-recusa').value.trim();
   if (!motivo) { alert('Informe o motivo'); return; }
-  await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'recusada', motivo_recusa: motivo });
+  await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'recusada', motivo_recusa: motivo });raLog('ACAO','os','RECUSAR_OS',String(id),null,{motivo:motivo});
   document.getElementById('ra-modal')?.remove();
-  raCarregarOS();
+  raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
 };
 
 // ═══════════════════════════════════════
@@ -399,9 +399,16 @@ window.raToggleServico = async function(id, ativo) {
 };
 
 // ═══════════════════════════════════════
-// 3. PEÇAS — CRUD
+// 3. PEÇAS — CRUD (com busca ERP + checkboxes modelos)
 // ═══════════════════════════════════════
 var _raPecas = [];
+var MODELOS_POR_LINHA = {
+  'geladeira': ['Stonni ST 18L','Stonni ST 30L','Adventure 25L','Adventure 40L','Adventure 45L Dual Zone','Adventure 55L Dual Zone'],
+  'ar_condicionado': ['AR Advantage I','AR Advantage II 24V','AR G2 Night Power 24V S2','AR G3 Truck Night Power 24V','AR G3 RV Night Power 12V','AR Compact','AR Slim / Clean'],
+  'gerador': ['Gerador Stonni Autom. Inverter 1800W 24V'],
+  'outros': ['Air Fryer 24V 3L','Aquecedor Vela 12V']
+};
+
 window.raCarregarPecas = async function() {
   var linha = document.getElementById('ra-pec-linha')?.value || '';
   var url = 'prt_pecas_catalogo?order=nome.asc&select=*';
@@ -424,31 +431,77 @@ window.raCarregarPecas = async function() {
   }).join('');
 };
 
-window.raNovaPeca = function() {
-  raModal('Nova Peça',
-    '<div class="field"><label>Referência (código ERP)</label><input id="ra-pec-ref" class="search-input" style="width:100%" placeholder="016186"></div>' +
-    '<div class="field"><label>Nome</label><input id="ra-pec-nome" class="search-input" style="width:100%" placeholder="União c/ válvula Schrader"></div>' +
+window.raNovaPeca = function(prefill) {
+  var p = prefill || {};
+  raModal('Nova Peça — Buscar no ERP',
+    '<div class="field"><label>Buscar produto no ERP</label><div style="display:flex;gap:6px"><input id="ra-pec-busca-erp" class="search-input" style="flex:1" placeholder="Digite referência ou nome do produto..." value="' + (p.referencia || '') + '"><button class="btn btn-secondary btn-sm" onclick="raBuscarPecaERP()">🔍 Buscar</button></div></div>' +
+    '<div id="ra-pec-erp-results" style="max-height:150px;overflow-y:auto;margin-bottom:12px"></div>' +
+    '<hr style="border:0;border-top:1px solid var(--border);margin:8px 0">' +
+    '<div class="field"><label>Referência</label><input id="ra-pec-ref" class="search-input" style="width:100%" value="' + (p.referencia || '') + '" placeholder="Código ERP"></div>' +
+    '<div class="field"><label>Nome (editável)</label><input id="ra-pec-nome" class="search-input" style="width:100%" value="' + (p.nome || '') + '" placeholder="Nome da peça"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Linha</label><select id="ra-pec-linha-new" class="filter-select" style="width:100%"><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
-      '<div class="field"><label>Custo (R$)</label><input id="ra-pec-custo" class="search-input" style="width:100%" type="number" step="0.01"></div>' +
+      '<div class="field"><label>Linha</label><select id="ra-pec-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'pec\')"><option value="geladeira"' + (p.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (p.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (p.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
+      '<div class="field"><label>Custo (R$)</label><input id="ra-pec-custo" class="search-input" style="width:100%" type="number" step="0.01" value="' + (p.custo_unitario || '') + '"></div>' +
     '</div>' +
-    '<div class="field"><label>Aplicação (modelos — separar por vírgula)</label><input id="ra-pec-aplic" class="search-input" style="width:100%" placeholder="ADV 40L, ADV 45L, ST 30L"></div>',
+    '<div class="field"><label>Aplicação — selecione os modelos</label><div id="ra-pec-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarPeca()">Salvar</button>');
+  // renderizar checkboxes
+  window._pecaAplic = Array.isArray(p.aplicacao) ? p.aplicacao.slice() : [];
+  raAtualizarCheckboxesModelo('pec');
+};
+
+window.raBuscarPecaERP = async function() {
+  var q = document.getElementById('ra-pec-busca-erp').value.trim();
+  if (q.length < 2) { alert('Digite pelo menos 2 caracteres'); return; }
+  var box = document.getElementById('ra-pec-erp-results');
+  box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Buscando...</div>';
+  var results = await raFetch('comp_produtos_consolidado?or=(referencia.ilike.*' + q + '*,nome.ilike.*' + q + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_compra');
+  if (!Array.isArray(results) || !results.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Nenhum produto encontrado</div>'; return; }
+  box.innerHTML = results.map(function(r) {
+    return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + (r.preco_compra || 0) + ')"><span><strong>' + r.referencia + '</strong> — ' + r.nome + '</span><span>' + raFmt(r.preco_compra) + '</span></div>';
+  }).join('');
+};
+
+window.raSelecionarPecaERP = function(ref, nome, custo) {
+  document.getElementById('ra-pec-ref').value = ref;
+  document.getElementById('ra-pec-nome').value = nome;
+  document.getElementById('ra-pec-custo').value = custo || '';
+  document.getElementById('ra-pec-erp-results').innerHTML = '<div style="padding:6px;color:var(--green);font-size:12px">✅ Produto selecionado: ' + ref + '</div>';
+};
+
+window.raAtualizarCheckboxesModelo = function(prefix) {
+  var linha = document.getElementById('ra-' + prefix + '-linha-new').value;
+  var modelos = MODELOS_POR_LINHA[linha] || [];
+  var aplic = prefix === 'pec' ? (window._pecaAplic || []) : (window._matAplic || []);
+  var box = document.getElementById('ra-' + prefix + '-checkboxes');
+  box.innerHTML = modelos.map(function(m) {
+    var checked = aplic.indexOf(m) > -1 ? ' checked' : '';
+    return '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:' + (checked ? 'var(--blue-pale)' : 'var(--surface2)') + '"><input type="checkbox" value="' + m + '"' + checked + ' onchange="raToggleModeloCheck(\'' + prefix + '\',this)" style="accent-color:var(--blue-mid)">' + m + '</label>';
+  }).join('');
+};
+
+window.raToggleModeloCheck = function(prefix, cb) {
+  var aplic = prefix === 'pec' ? window._pecaAplic : window._matAplic;
+  var v = cb.value;
+  var idx = aplic.indexOf(v);
+  if (cb.checked && idx === -1) aplic.push(v);
+  else if (!cb.checked && idx > -1) aplic.splice(idx, 1);
+  cb.parentElement.style.background = cb.checked ? 'var(--blue-pale)' : 'var(--surface2)';
 };
 
 window.raSalvarPeca = async function(id) {
-  var aplic = document.getElementById('ra-pec-aplic').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
   var d = {
     referencia: document.getElementById('ra-pec-ref').value.trim(),
     nome: document.getElementById('ra-pec-nome').value.trim(),
     linha_produto: document.getElementById('ra-pec-linha-new').value,
     custo_unitario: parseFloat(document.getElementById('ra-pec-custo').value) || null,
-    aplicacao: aplic.length ? aplic : []
+    aplicacao: window._pecaAplic || []
   };
   if (!d.referencia || !d.nome) { alert('Preencha referência e nome'); return; }
   if (id) { await raPatch('prt_pecas_catalogo', 'id=eq.' + id, d); }
   else { await raPost('prt_pecas_catalogo', d); }
+  raLog('ACAO', 'peca', id ? 'EDITAR_PECA' : 'CRIAR_PECA', d.referencia, d.nome);
   document.getElementById('ra-modal')?.remove();
   raCarregarPecas();
 };
@@ -456,19 +509,15 @@ window.raSalvarPeca = async function(id) {
 window.raEditarPeca = function(id) {
   var p = _raPecas.find(function(x) { return x.id === id; });
   if (!p) return;
-  raNovaPeca();
+  raNovaPeca(p);
   document.querySelector('.modal-title').textContent = 'Editar Peça';
-  document.getElementById('ra-pec-ref').value = p.referencia;
-  document.getElementById('ra-pec-nome').value = p.nome;
-  document.getElementById('ra-pec-linha-new').value = p.linha_produto;
-  document.getElementById('ra-pec-custo').value = p.custo_unitario || '';
-  document.getElementById('ra-pec-aplic').value = Array.isArray(p.aplicacao) ? p.aplicacao.join(', ') : '';
   var btns = document.querySelectorAll('.modal .btn-primary');
   btns[btns.length - 1].setAttribute('onclick', 'raSalvarPeca(' + id + ')');
 };
 
 window.raTogglePeca = async function(id, ativo) {
   await raPatch('prt_pecas_catalogo', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO', 'peca', ativo ? 'ATIVAR_PECA' : 'DESATIVAR_PECA', String(id));
   raCarregarPecas();
 };
 
@@ -626,44 +675,87 @@ window.raCarregarMateriais = async function() {
   var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
   if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
   tbody.innerHTML = _raMateriais.map(function(m) {
+    var modelos = Array.isArray(m.aplicacao_modelos) ? m.aplicacao_modelos.join(', ') : (m.modelo || 'Todos');
     return '<tr>' +
       '<td><a href="' + m.url + '" target="_blank" style="color:var(--blue-mid)">' + m.titulo + '</a></td>' +
       '<td>' + (tipoIcon[m.tipo] || '') + ' ' + m.tipo + '</td>' +
       '<td>' + (linhaNomes[m.linha_produto] || m.linha_produto || 'Geral') + '</td>' +
-      '<td>' + (m.modelo || 'Todos') + '</td>' +
+      '<td style="font-size:12px">' + modelos + '</td>' +
       '<td>' + (m.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
       '<td><button class="btn-icon" onclick="raEditarMaterial(' + m.id + ')">✏️</button> <button class="btn-icon" onclick="raToggleMaterial(' + m.id + ',' + !m.ativo + ')">' + (m.ativo ? '🚫' : '✅') + '</button></td></tr>';
   }).join('');
 };
 
-window.raNovoMaterial = function() {
+window.raNovoMaterial = function(prefill) {
+  var m = prefill || {};
   raModal('Novo Material Técnico',
-    '<div class="field"><label>Título</label><input id="ra-mat-titulo" class="search-input" style="width:100%" placeholder="Ex: Instalação AR G2"></div>' +
-    '<div class="field"><label>URL (YouTube, PDF, link)</label><input id="ra-mat-url" class="search-input" style="width:100%" placeholder="https://..."></div>' +
+    '<div class="field"><label>Título</label><input id="ra-mat-titulo" class="search-input" style="width:100%" placeholder="Ex: Instalação AR G2" value="' + (m.titulo || '') + '"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Tipo</label><select id="ra-mat-tipo" class="filter-select" style="width:100%"><option value="video">Vídeo</option><option value="pdf">PDF</option><option value="imagem">Imagem</option><option value="link">Link</option></select></div>' +
-      '<div class="field"><label>Linha</label><select id="ra-mat-linha-new" class="filter-select" style="width:100%"><option value="">Geral</option><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
-      '<div class="field"><label>Modelo (opcional)</label><input id="ra-mat-modelo" class="search-input" style="width:100%" placeholder="ADV 40L, G2..."></div>' +
-      '<div class="field"><label>Ordem</label><input id="ra-mat-ordem" class="search-input" style="width:100%" type="number" value="0"></div>' +
+      '<div class="field"><label>Tipo</label><select id="ra-mat-tipo" class="filter-select" style="width:100%" onchange="raMatTipoChange()"><option value="video"' + (m.tipo === 'video' ? ' selected' : '') + '>🎥 Vídeo (URL)</option><option value="pdf"' + (m.tipo === 'pdf' ? ' selected' : '') + '>📄 PDF (upload)</option><option value="imagem"' + (m.tipo === 'imagem' ? ' selected' : '') + '>🖼️ Imagem (upload)</option><option value="link"' + (m.tipo === 'link' ? ' selected' : '') + '>🔗 Link (URL)</option></select></div>' +
+      '<div class="field"><label>Ordem</label><input id="ra-mat-ordem" class="search-input" style="width:100%" type="number" value="' + (m.ordem || 0) + '"></div>' +
     '</div>' +
-    '<div class="field"><label>Descrição (opcional)</label><textarea id="ra-mat-desc" class="search-input" style="width:100%;height:60px;resize:vertical" placeholder="Breve descrição..."></textarea></div>',
+    '<div id="ra-mat-url-area" class="field"><label>URL</label><input id="ra-mat-url" class="search-input" style="width:100%" placeholder="https://..." value="' + (m.url || '') + '"></div>' +
+    '<div id="ra-mat-upload-area" class="field" style="display:none"><label>Upload arquivo</label><input type="file" id="ra-mat-file" accept=".pdf,.png,.jpg,.jpeg,.webp" style="font-size:13px"><div id="ra-mat-upload-status" style="font-size:12px;margin-top:4px"></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div class="field"><label>Linha</label><select id="ra-mat-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'mat\')"><option value="">Geral</option><option value="geladeira"' + (m.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (m.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (m.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
+      '<div class="field"><label>Categoria</label><input id="ra-mat-cat" class="search-input" style="width:100%" placeholder="Ex: Instalação, Manutenção..." value="' + (m.categoria || '') + '"></div>' +
+    '</div>' +
+    '<div class="field"><label>Modelos aplicáveis</label><div id="ra-mat-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>' +
+    '<div class="field"><label>Descrição (opcional)</label><textarea id="ra-mat-desc" class="search-input" style="width:100%;height:60px;resize:vertical" placeholder="Breve descrição...">' + (m.descricao || '') + '</textarea></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarMaterial()">Salvar</button>');
+  window._matAplic = Array.isArray(m.aplicacao_modelos) ? m.aplicacao_modelos.slice() : [];
+  raAtualizarCheckboxesModelo('mat');
+  raMatTipoChange();
+};
+
+window.raMatTipoChange = function() {
+  var tipo = document.getElementById('ra-mat-tipo')?.value;
+  var urlArea = document.getElementById('ra-mat-url-area');
+  var uploadArea = document.getElementById('ra-mat-upload-area');
+  if (tipo === 'pdf' || tipo === 'imagem') {
+    urlArea.style.display = 'none';
+    uploadArea.style.display = 'block';
+  } else {
+    urlArea.style.display = 'block';
+    uploadArea.style.display = 'none';
+  }
 };
 
 window.raSalvarMaterial = async function(id) {
+  var tipo = document.getElementById('ra-mat-tipo').value;
+  var url = document.getElementById('ra-mat-url').value.trim();
+  // Se é upload, fazer upload primeiro
+  if ((tipo === 'pdf' || tipo === 'imagem') && !id) {
+    var file = document.getElementById('ra-mat-file')?.files[0];
+    if (!file && !url) { alert('Selecione um arquivo para upload'); return; }
+    if (file) {
+      var status = document.getElementById('ra-mat-upload-status');
+      status.textContent = 'Enviando...';
+      var ext = file.name.split('.').pop().toLowerCase();
+      var path = 'mat-' + Date.now() + '.' + ext;
+      var r = await fetch(SB_URL + '/storage/v1/object/prt-materiais/' + path, {
+        method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type}, body: file
+      });
+      if (!r.ok) { status.textContent = 'Erro no upload!'; return; }
+      url = SB_URL + '/storage/v1/object/public/prt-materiais/' + path;
+      status.textContent = '✅ Upload concluído';
+    }
+  }
   var d = {
     titulo: document.getElementById('ra-mat-titulo').value.trim(),
-    url: document.getElementById('ra-mat-url').value.trim(),
-    tipo: document.getElementById('ra-mat-tipo').value,
+    url: url,
+    tipo: tipo,
     linha_produto: document.getElementById('ra-mat-linha-new').value || null,
-    modelo: document.getElementById('ra-mat-modelo').value.trim() || null,
+    categoria: document.getElementById('ra-mat-cat').value.trim() || null,
+    modelo: (window._matAplic || []).join(', ') || null,
     ordem: parseInt(document.getElementById('ra-mat-ordem').value) || 0,
     descricao: document.getElementById('ra-mat-desc').value.trim() || null
   };
-  if (!d.titulo || !d.url) { alert('Preencha título e URL'); return; }
+  if (!d.titulo || !d.url) { alert('Preencha título e URL/arquivo'); return; }
   if (id) { await raPatch('prt_materiais', 'id=eq.' + id, d); }
   else { await raPost('prt_materiais', d); }
+  raLog('ACAO', 'material', id ? 'EDITAR_MATERIAL' : 'CRIAR_MATERIAL', String(id || ''), d.titulo);
   document.getElementById('ra-modal')?.remove();
   raCarregarMateriais();
 };
@@ -671,20 +763,32 @@ window.raSalvarMaterial = async function(id) {
 window.raEditarMaterial = function(id) {
   var m = _raMateriais.find(function(x) { return x.id === id; });
   if (!m) return;
-  raNovoMaterial();
+  raNovoMaterial(m);
   document.querySelector('.modal-title').textContent = 'Editar Material';
-  document.getElementById('ra-mat-titulo').value = m.titulo;
-  document.getElementById('ra-mat-url').value = m.url;
-  document.getElementById('ra-mat-tipo').value = m.tipo;
-  document.getElementById('ra-mat-linha-new').value = m.linha_produto || '';
-  document.getElementById('ra-mat-modelo').value = m.modelo || '';
-  document.getElementById('ra-mat-ordem').value = m.ordem || 0;
-  document.getElementById('ra-mat-desc').value = m.descricao || '';
   var btns = document.querySelectorAll('.modal .btn-primary');
   btns[btns.length - 1].setAttribute('onclick', 'raSalvarMaterial(' + id + ')');
 };
 
 window.raToggleMaterial = async function(id, ativo) {
   await raPatch('prt_materiais', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO', 'material', ativo ? 'ATIVAR_MATERIAL' : 'DESATIVAR_MATERIAL', String(id));
   raCarregarMateriais();
 };
+
+// ═══════════════════════════════════════
+// SISTEMA DE LOGS — padrão Bononi
+// ═══════════════════════════════════════
+function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
+  var usr = window.getUsuario ? window.getUsuario() : {};
+  var payload = {
+    tipo: tipo, nivel: tipo === 'ERRO' ? 'ERROR' : 'INFO',
+    modulo: 'rede-autorizada', acao: acao,
+    usuario_email: usr.email || null, usuario_nome: usr.nome || null,
+    entidade: entidade, id_entidade: idEntidade || null, nome_entidade: nomeEntidade || null,
+    contexto: extra || null, url: window.location.href, user_agent: navigator.userAgent
+  };
+  fetch(SB_URL + '/rest/v1/prt_logs', {
+    method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(function(e) { console.error('Log falhou:', e); });
+}
