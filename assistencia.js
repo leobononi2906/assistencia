@@ -3562,9 +3562,20 @@ window.astParceiros = {
   },
 
   abrirNovo() {
+    // Garantir que overlay/drawer existem (mesmo padrão do abrirDrawer)
+    if (!document.getElementById('ast-overlay')) {
+      const ovlEl = document.createElement('div');
+      ovlEl.id = 'ast-overlay'; ovlEl.className = 'ast-overlay';
+      ovlEl.style.zIndex = '1001';
+      ovlEl.onclick = () => astParceiros.fecharDrawer();
+      document.body.appendChild(ovlEl);
+      const drwEl = document.createElement('div');
+      drwEl.id = 'ast-drawer'; drwEl.className = 'ast-drawer';
+      drwEl.style.zIndex = '1002';
+      document.body.appendChild(drwEl);
+    }
     const drw = document.getElementById('ast-drawer');
     const ovl = document.getElementById('ast-overlay');
-    if (!drw || !ovl) return;
 
     const html = `
       <div class="ast-drawer-header">
