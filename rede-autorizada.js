@@ -138,6 +138,21 @@ var RA_PAGES = {
     <div class="table-card-header"><span class="table-card-title">Categorias</span><span id="ra-cfg-count" style="font-size:12px;color:var(--text-muted)"></span></div>
     <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Ordem</th><th>Nome</th><th>Linha</th><th>Prefixo</th><th>Teto</th><th>Serviços</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-cfg-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
   </div>
+</div>`,
+
+'ra-parceiros': `<div class="page-content active" style="padding:20px 24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div class="section-title" style="margin:0">Parceiros Autorizados</div>
+    <div style="display:flex;gap:8px">
+      <input class="search-input" id="ra-parc-busca" placeholder="Buscar parceiro..." oninput="raFiltrarParceiros()" style="width:200px">
+      <button class="btn btn-primary btn-sm" onclick="raCredenciarNovo()">⭐ Credenciar novo</button>
+    </div>
+  </div>
+  <div class="cards-grid cards-grid-3" id="ra-parc-kpis"></div>
+  <div class="table-card">
+    <div class="table-card-header"><span class="table-card-title">Autorizadas ativas</span><span id="ra-parc-count" style="font-size:12px;color:var(--text-muted)"></span></div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>Cidade/UF</th><th>Responsável</th><th>WhatsApp</th><th>Login</th><th>Senha</th><th>Credenciado em</th><th></th></tr></thead><tbody id="ra-parc-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+  </div>
 </div>`
 };
 
@@ -153,6 +168,7 @@ window.ModuloRedeAutorizada = {
       case 'ra-pagamentos': raCarregarPagamentos(); break;
       case 'ra-materiais':  raCarregarMateriais(); break;
       case 'ra-config':     raCfgTab('servicos'); break;
+      case 'ra-parceiros':  raCarregarParceiros(); break;
     }
   }
 };
@@ -1318,4 +1334,168 @@ window.raGerarPdfServicos = async function() {
   w.document.close();
   setTimeout(function() { w.print(); }, 600);
   raLog('ACAO', 'servico', 'GERAR_PDF_SERVICOS', linhaFiltro || 'todas');
+};
+
+// ═══════════════════════════════════════
+// PARCEIROS AUTORIZADOS — credenciamento + login/senha
+// ═══════════════════════════════════════
+var _raParceiros = [];
+var _raParceirosLogin = {};
+
+window.raCarregarParceiros = async function() {
+  var parceiros = await raFetch('assist_parceiros?credenciado=eq.true&order=nome.asc&select=id,nome,responsavel,cidade,uf,telefone,whatsapp,email,data_credenciamento,credenciado');
+  _raParceiros = Array.isArray(parceiros) ? parceiros : [];
+  
+  // Buscar logins de todos credenciados
+  var logins = await raFetch('prt_usuarios?ativo=eq.true&select=parceiro_id,senha_inicial,perfil');
+  _raParceirosLogin = {};
+  if (Array.isArray(logins)) logins.forEach(function(l) { _raParceirosLogin[l.parceiro_id] = l; });
+
+  // KPIs
+  var kpis = document.getElementById('ra-parc-kpis');
+  if (kpis) kpis.innerHTML =
+    '<div class="card"><div class="card-label">Autorizadas ativas</div><div class="card-value green">' + _raParceiros.length + '</div></div>' +
+    '<div class="card"><div class="card-label">Com login criado</div><div class="card-value blue">' + Object.keys(_raParceirosLogin).length + '</div></div>' +
+    '<div class="card"><div class="card-label">Total parceiros</div><div class="card-value">' + 252 + '</div></div>';
+
+  raFiltrarParceiros();
+};
+
+window.raFiltrarParceiros = function() {
+  var busca = (document.getElementById('ra-parc-busca')?.value || '').toLowerCase();
+  var lista = _raParceiros.filter(function(p) {
+    if (busca && (p.nome + ' ' + (p.cidade||'') + ' ' + (p.responsavel||'')).toLowerCase().indexOf(busca) === -1) return false;
+    return true;
+  });
+  var count = document.getElementById('ra-parc-count');
+  if (count) count.textContent = lista.length + ' parceiros';
+  var tbody = document.getElementById('ra-parc-tbody');
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro autorizado ainda. Use "Credenciar novo" para começar.</td></tr>'; return; }
+  tbody.innerHTML = lista.map(function(p) {
+    var login = _raParceirosLogin[p.id];
+    var senha = login ? login.senha_inicial : '—';
+    return '<tr>' +
+      '<td style="font-weight:600">⭐ ' + p.nome + '</td>' +
+      '<td>' + (p.cidade||'') + '/' + (p.uf||'') + '</td>' +
+      '<td>' + (p.responsavel||'—') + '</td>' +
+      '<td>' + (p.whatsapp ? '<a href="https://wa.me/' + (p.whatsapp||'').replace(/\D/g,'') + '" target="_blank" style="color:var(--green)">' + p.whatsapp + '</a>' : (p.telefone||'—')) + '</td>' +
+      '<td style="font-size:12px">' + (p.email||'—') + '</td>' +
+      '<td style="font-family:monospace;font-weight:700;letter-spacing:1px">' + senha + ' ' +
+        (senha !== '—' ? '<button class="btn-icon" title="Copiar senha" onclick="navigator.clipboard.writeText(\'' + senha + '\');this.textContent=\'✅\'">📋</button>' : '') + '</td>' +
+      '<td style="font-size:12px">' + raDate(p.data_credenciamento) + '</td>' +
+      '<td><button class="btn-icon" title="Descredenciar" onclick="raDescredenciar(' + p.id + ',\'' + raEsc(p.nome) + '\')">❌</button></td></tr>';
+  }).join('');
+};
+
+window.raCredenciarNovo = async function() {
+  // Buscar parceiros NÃO credenciados
+  var todos = await raFetch('assist_parceiros?credenciado=eq.false&status=eq.ativo&order=nome.asc&select=id,nome,cidade,uf,email,responsavel');
+  if (!Array.isArray(todos)) todos = [];
+  
+  var listaHtml = todos.length
+    ? '<div style="max-height:300px;overflow-y:auto">' + todos.map(function(p) {
+        return '<div style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raIniciarCredenciamento(' + p.id + ')">' +
+          '<div><strong>' + p.nome + '</strong><br><span style="font-size:11px;color:var(--text-muted)">' + (p.cidade||'') + '/' + (p.uf||'') + ' · ' + (p.responsavel||'') + '</span></div>' +
+          '<button class="btn btn-primary btn-sm" style="font-size:11px">⭐ Credenciar</button></div>';
+      }).join('') + '</div>'
+    : '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nenhum parceiro ativo disponível para credenciamento</div>';
+
+  raModal('Credenciar Parceiro', 
+    '<div class="field"><label>Buscar</label><input class="search-input" id="ra-cred-busca" style="width:100%" placeholder="Nome do parceiro..." oninput="raFiltrarCredBusca()"></div>' +
+    '<div id="ra-cred-lista">' + listaHtml + '</div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Fechar</button>');
+  
+  // Guardar lista pra filtro
+  window._raCredTodos = todos;
+};
+
+window.raFiltrarCredBusca = function() {
+  var busca = (document.getElementById('ra-cred-busca')?.value || '').toLowerCase();
+  var todos = window._raCredTodos || [];
+  var filtrados = busca ? todos.filter(function(p) { return (p.nome + ' ' + (p.cidade||'')).toLowerCase().indexOf(busca) > -1; }) : todos;
+  var box = document.getElementById('ra-cred-lista');
+  if (!filtrados.length) { box.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted)">Nenhum resultado</div>'; return; }
+  box.innerHTML = '<div style="max-height:300px;overflow-y:auto">' + filtrados.map(function(p) {
+    return '<div style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raIniciarCredenciamento(' + p.id + ')">' +
+      '<div><strong>' + p.nome + '</strong><br><span style="font-size:11px;color:var(--text-muted)">' + (p.cidade||'') + '/' + (p.uf||'') + '</span></div>' +
+      '<button class="btn btn-primary btn-sm" style="font-size:11px">⭐ Credenciar</button></div>';
+  }).join('') + '</div>';
+};
+
+window.raIniciarCredenciamento = function(id) {
+  var p = (window._raCredTodos || []).find(function(x) { return x.id === id; });
+  if (!p) return;
+  document.getElementById('ra-modal')?.remove();
+  
+  raModal('Credenciar: ' + p.nome,
+    '<div style="font-size:13px;margin-bottom:16px">' +
+      '<p><strong>' + p.nome + '</strong></p>' +
+      '<p style="color:var(--text-muted)">' + (p.cidade||'') + '/' + (p.uf||'') + ' · ' + (p.responsavel||'') + '</p>' +
+    '</div>' +
+    '<div class="field"><label>E-mail para login (obrigatório)</label><input class="search-input" id="ra-cred-email" style="width:100%" placeholder="email@parceiro.com" value="' + (p.email || '') + '"></div>' +
+    '<div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-muted)">' +
+      '🔑 Uma senha será gerada automaticamente e ficará visível aqui na gestão.<br>' +
+      '📧 O parceiro usará o e-mail + senha para acessar <strong>parceiro-stonni.vercel.app</strong>' +
+    '</div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raConfirmarCredenciamento(' + id + ')">⭐ Confirmar credenciamento</button>');
+};
+
+window.raConfirmarCredenciamento = async function(id) {
+  var email = document.getElementById('ra-cred-email')?.value?.trim();
+  if (!email || email.indexOf('@') === -1) { alert('Informe um e-mail válido'); return; }
+
+  // Gerar senha legível
+  var palavras = ['Stonni','Solar','Truck','Road','Cool','Frost','Power','Drive','Fleet','Route'];
+  var senha = palavras[Math.floor(Math.random()*palavras.length)] + Math.floor(100 + Math.random()*900) + '!';
+
+  try {
+    // 1. Criar usuário no Supabase Auth
+    var authRes = await fetch(SB_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ email: email, password: senha })
+    });
+    var authData = await authRes.json();
+    if (!authRes.ok || authData.error) throw new Error(authData.error?.message || authData.msg || 'Erro ao criar usuário');
+    var userId = authData.user?.id || authData.id;
+    if (!userId) throw new Error('User ID não retornado');
+
+    // 2. Vincular na prt_usuarios com senha salva
+    await raPost('prt_usuarios', { user_id: userId, parceiro_id: id, perfil: 'parceiro', senha_inicial: senha });
+
+    // 3. Marcar como credenciado
+    await raPatch('assist_parceiros', 'id=eq.' + id, {
+      credenciado: true, data_credenciamento: new Date().toISOString(), email: email
+    });
+
+    raLog('ACAO', 'parceiro', 'CREDENCIAR', String(id), email, { senha: senha });
+
+    document.getElementById('ra-modal')?.remove();
+
+    // Mostrar resultado com senha
+    raModal('✅ Parceiro credenciado!',
+      '<div style="text-align:center;padding:12px">' +
+        '<div style="font-size:40px;margin-bottom:12px">⭐</div>' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:16px">Acesso criado com sucesso</div>' +
+        '<div style="background:var(--surface2);border-radius:8px;padding:16px;text-align:left;font-size:14px">' +
+          '<div style="margin-bottom:8px">📧 Login: <strong>' + email + '</strong></div>' +
+          '<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">🔑 Senha: <strong style="font-family:monospace;font-size:16px;letter-spacing:1px">' + senha + '</strong> <button class="btn btn-secondary btn-sm" style="font-size:11px" onclick="navigator.clipboard.writeText(\'' + senha + '\');this.textContent=\'✅ Copiada!\'">📋 Copiar</button></div>' +
+          '<div style="font-size:12px;color:var(--text-muted)">Portal: parceiro-stonni.vercel.app</div>' +
+        '</div>' +
+      '</div>',
+      '<button class="btn btn-primary" onclick="document.getElementById(\'ra-modal\').remove();raCarregarParceiros()">Fechar</button>');
+
+  } catch(e) {
+    console.error('Credenciamento:', e);
+    alert('Erro ao credenciar: ' + e.message);
+  }
+};
+
+window.raDescredenciar = async function(id, nome) {
+  if (!confirm('Remover credenciamento de ' + nome + '?\nO login será desativado.')) return;
+  await raPatch('prt_usuarios', 'parceiro_id=eq.' + id, { ativo: false });
+  await raPatch('assist_parceiros', 'id=eq.' + id, { credenciado: false });
+  raLog('ACAO', 'parceiro', 'DESCREDENCIAR', String(id), nome);
+  raCarregarParceiros();
 };
