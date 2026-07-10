@@ -48,35 +48,47 @@ var RA_PAGES = {
 
 'ra-pecas': `<div class="page-content active" style="padding:20px 24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Catálogo de Peças</div>
+    <div class="section-title" style="margin:0">Peças</div>
+  </div>
+  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-pec-tab-estoque" onclick="raPecTab('estoque')">📦 Estoque parceiro</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-compras" onclick="raPecTab('compras')">🛒 Compras parceiro</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-pec-tab-reposicao" onclick="raPecTab('reposicao')">🔄 Reposição garantia</button>
+  </div>
+  <div id="ra-pec-content"></div>
+</div>`,
+
+'ra-materiais': `<div class="page-content active" style="padding:20px 24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div class="section-title" style="margin:0">Materiais Técnicos</div>
     <div style="display:flex;gap:8px">
-      <select class="filter-select" id="ra-pec-linha" onchange="raCarregarPecas()">
+      <select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()">
         <option value="">Todas as linhas</option>
         <option value="geladeira">Geladeira</option>
         <option value="ar_condicionado">AR Condicionado</option>
         <option value="gerador">Gerador</option>
       </select>
-      <button class="btn btn-primary btn-sm" onclick="raNovaPeca()">+ Nova peça</button>
+      <button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button>
     </div>
   </div>
   <div class="table-card">
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Referência</th><th>Nome</th><th>Linha</th><th>Aplicação</th><th>Custo</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-pec-tbody"><tr><td colspan="7" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="6" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
   </div>
 </div>`,
 
-'ra-envios': `<div class="page-content active" style="padding:20px 24px">
+'ra-config': `<div class="page-content active" style="padding:20px 24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Envio de Peças</div>
-    <button class="btn btn-primary btn-sm" onclick="raNovoEnvio()">+ Novo envio</button>
+    <div class="section-title" style="margin:0">Configurações</div>
   </div>
-  <div class="cards-grid cards-grid-3" id="ra-env-kpis"></div>
-  <div class="table-card">
-    <div class="table-card-header"><span class="table-card-title">Envios recentes</span></div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>Peça</th><th>Qtd</th><th>NF</th><th>Rastreio</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-env-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-cfg-tab-servicos" onclick="raCfgTab('servicos')">🔧 Serviços</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
   </div>
-</div>`,
-
-'ra-pagamentos': `<div class="page-content active" style="padding:20px 24px">
+  <div id="ra-cfg-content"></div>
+</div>`
+};
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div class="section-title" style="margin:0">Pagamentos — Fechamento Mensal</div>
     <div style="display:flex;gap:8px">
@@ -136,12 +148,10 @@ window.ModuloRedeAutorizada = {
     slot.innerHTML = html;
     switch(paginaId) {
       case 'ra-aprovar':    raCarregarOS(); break;
-      case 'ra-servicos':   raCarregarServicos(); break;
-      case 'ra-pecas':      raCarregarPecas(); break;
-      case 'ra-envios':     raCarregarEnvios(); break;
+      case 'ra-pecas':      raPecTab('estoque'); break;
       case 'ra-pagamentos': raCarregarPagamentos(); break;
       case 'ra-materiais':  raCarregarMateriais(); break;
-      case 'ra-config':     raCfgCarregar(); break;
+      case 'ra-config':     raCfgTab('servicos'); break;
     }
   }
 };
@@ -338,8 +348,9 @@ window.raAprovarOS = async function(id) {
   var o = _raOS.find(function(x) { return x.id === id; }) || {};
   await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'aprovada', data_aprovacao: new Date().toISOString(), aprovado_por: (window.getUsuario() || {}).nome || 'gestor' });
   // baixar estoque do parceiro: incrementa quantidade_usada das peças da OS
+  // + criar reposição automática na fila
   try {
-    var pecas = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=referencia,quantidade');
+    var pecas = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=referencia,nome_peca,quantidade');
     if (Array.isArray(pecas) && o.parceiro_id) {
       for (var i = 0; i < pecas.length; i++) {
         var pe = pecas[i];
@@ -347,9 +358,15 @@ window.raAprovarOS = async function(id) {
         if (Array.isArray(est) && est.length) {
           await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_usada: (est[0].quantidade_usada || 0) + (pe.quantidade || 1), atualizado_em: new Date().toISOString() });
         }
+        // criar reposição automática
+        await raPost('prt_reposicao_pecas', {
+          parceiro_id: o.parceiro_id, os_id: id,
+          referencia: pe.referencia, nome_peca: pe.nome_peca || pe.referencia,
+          quantidade: pe.quantidade || 1, status: 'pendente'
+        });
       }
     }
-  } catch (e) { console.error('Baixa de estoque falhou:', e); raLog('ERRO', 'estoque', 'BAIXA_ESTOQUE_FALHOU', String(id), null, {erro: String(e)}); }
+  } catch (e) { console.error('Baixa de estoque/reposição falhou:', e); raLog('ERRO', 'estoque', 'BAIXA_ESTOQUE_FALHOU', String(id), null, {erro: String(e)}); }
   document.getElementById('ra-modal')?.remove();
   raLog('ACAO','os','APROVAR_OS',String(id));raCarregarOS();
 };
@@ -562,14 +579,14 @@ window.raBuscarPecaERP = async function() {
   var box = document.getElementById('ra-pec-erp-results');
   box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Buscando...</div>';
   var qe = encodeURIComponent(q);
-  var results = await raFetch('comp_produtos_consolidado?or=(referencia.ilike.*' + qe + '*,nome.ilike.*' + qe + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_compra');
-  if (!Array.isArray(results) || !results.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Nenhum produto encontrado</div>'; return; }
+  var results = await raFetch('geral_pecas_preco_bononi_sc?or=(referencia.ilike.*' + qe + '*,nome.ilike.*' + qe + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_venda,ipi_saida,subgrupo');
+  if (!Array.isArray(results) || !results.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Nenhuma peça encontrada</div>'; return; }
   box.innerHTML = results.map(function(r) {
-    return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + (r.preco_compra || 0) + ')"><span><strong>' + r.referencia + '</strong> — ' + r.nome + '</span><span>' + raFmt(r.preco_compra) + '</span></div>';
+    return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + (r.preco_venda || 0) + ',' + (r.ipi_saida || 0) + ')"><span><strong>' + r.referencia + '</strong> — ' + r.nome + '</span><span>' + raFmt(r.preco_venda) + (r.ipi_saida ? ' +IPI ' + r.ipi_saida + '%' : '') + '</span></div>';
   }).join('');
 };
 
-window.raSelecionarPecaERP = function(ref, nome, custo) {
+window.raSelecionarPecaERP = function(ref, nome, custo, ipi) {
   document.getElementById('ra-pec-ref').value = ref;
   document.getElementById('ra-pec-nome').value = nome;
   document.getElementById('ra-pec-custo').value = custo || '';
@@ -656,21 +673,23 @@ window.raMarcarRecebido = async function(id) {
   raCarregarEnvios();
 };
 
-window.raNovoEnvio = async function() {
+window.raNovoEnvio = async function(preParc, preRef, preNome, preQtd, repId) {
   var parceiros = await raFetch('assist_parceiros?credenciado=eq.true&order=nome.asc&select=id,nome');
   if (!Array.isArray(parceiros)) parceiros = [];
   var pecas = await raFetch('prt_pecas_catalogo?ativo=eq.true&order=nome.asc&select=id,referencia,nome,custo_unitario');
   if (!Array.isArray(pecas)) pecas = [];
   raModal('Novo Envio de Peças',
     '<div class="field"><label>Parceiro</label><select id="ra-env-parc" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
-      parceiros.map(function(p) { return '<option value="' + p.id + '">' + p.nome + '</option>'; }).join('') + '</select></div>' +
+      parceiros.map(function(p) { return '<option value="' + p.id + '"' + (preParc && p.id == preParc ? ' selected' : '') + '>' + p.nome + '</option>'; }).join('') + '</select></div>' +
     '<div class="field"><label>Peça</label><select id="ra-env-peca" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
-      pecas.map(function(p) { return '<option value="' + p.id + '" data-ref="' + p.referencia + '" data-nome="' + p.nome + '" data-custo="' + (p.custo_unitario || 0) + '">' + p.referencia + ' — ' + p.nome + '</option>'; }).join('') + '</select></div>' +
+      pecas.map(function(p) { return '<option value="' + p.id + '" data-ref="' + p.referencia + '" data-nome="' + p.nome + '" data-custo="' + (p.custo_unitario || 0) + '"' + (preRef && p.referencia === preRef ? ' selected' : '') + '>' + p.referencia + ' — ' + p.nome + '</option>'; }).join('') + '</select></div>' +
+    (preRef && !pecas.find(function(p){return p.referencia===preRef}) ? '<p style="font-size:11px;color:var(--text-muted);margin:-8px 0 8px">Peça ' + raEsc(preRef) + ' (' + raEsc(preNome) + ') não está no catálogo — adicione primeiro em Configurações → Peças</p>' : '') +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Quantidade</label><input id="ra-env-qtd" class="search-input" style="width:100%" type="number" value="1" min="1"></div>' +
+      '<div class="field"><label>Quantidade</label><input id="ra-env-qtd" class="search-input" style="width:100%" type="number" value="' + (preQtd || 1) + '" min="1"></div>' +
       '<div class="field"><label>NF Envio</label><input id="ra-env-nf" class="search-input" style="width:100%" placeholder="Número NF"></div>' +
       '<div class="field"><label>Rastreio</label><input id="ra-env-rastreio" class="search-input" style="width:100%" placeholder="Código rastreio"></div>' +
-    '</div>',
+    '</div>' +
+    (repId ? '<input type="hidden" id="ra-env-rep-id" value="' + repId + '">' : ''),
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarEnvio()">Registrar envio</button>');
 };
@@ -698,6 +717,11 @@ window.raSalvarEnvio = async function() {
     await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(parcId), referencia: d.referencia, nome_peca: d.nome_peca, quantidade_enviada: d.quantidade, custo_unitario: d.custo_unitario, ultimo_envio: new Date().toISOString().substring(0, 10) });
   }
   document.getElementById('ra-modal')?.remove();
+  // Se veio de reposição, marcar como enviada
+  var repIdEl = document.getElementById('ra-env-rep-id');
+  if (repIdEl && repIdEl.value) {
+    await raPatch('prt_reposicao_pecas', 'id=eq.' + repIdEl.value, { status: 'enviada', atualizado_em: new Date().toISOString() });
+  }
   raCarregarEnvios();
 };
 
@@ -906,8 +930,181 @@ window.raToggleMaterial = async function(id, ativo) {
 };
 
 // ═══════════════════════════════════════
-// 7. CONFIGURAÇÕES — CRUD Categorias de Serviço
+// 7. PEÇAS — SUB-ABAS (Estoque, Compras, Reposição)
 // ═══════════════════════════════════════
+var _raPecSubTab = 'estoque';
+
+window.raPecTab = function(tab) {
+  _raPecSubTab = tab;
+  ['estoque','compras','reposicao'].forEach(function(t) {
+    var btn = document.getElementById('ra-pec-tab-' + t);
+    if (btn) { btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface2)'; btn.style.color = t === tab ? '#fff' : ''; }
+  });
+  var box = document.getElementById('ra-pec-content');
+  if (!box) return;
+  switch(tab) {
+    case 'estoque': raPecEstoque(box); break;
+    case 'compras': raPecCompras(box); break;
+    case 'reposicao': raPecReposicao(box); break;
+  }
+};
+
+async function raPecEstoque(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="font-weight:600">Estoque dos parceiros</span><button class="btn btn-primary btn-sm" onclick="raNovoEnvio()">+ Novo envio</button></div>' +
+    '<div class="cards-grid cards-grid-3" id="ra-env-kpis"></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>Peça</th><th>Qtd</th><th>NF</th><th>Rastreio</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-env-tbody"><tr><td colspan="8"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div></div>';
+  raCarregarEnvios();
+}
+
+async function raPecCompras(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Pedidos de compra dos parceiros</span></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Parceiro</th><th>Itens</th><th>Total</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-cpr-tbody"></tbody></table></div></div>';
+  var compras = await raFetch('prt_compras_pecas?order=criado_em.desc&select=*,assist_parceiros(nome)');
+  if (!Array.isArray(compras)) compras = [];
+  var tbody = document.getElementById('ra-cpr-tbody');
+  if (!compras.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pedido de compra</td></tr>'; return; }
+  var statusBadge = {pendente:'badge-blue',aprovado:'badge-green',faturado:'badge-purple',cancelado:'badge-gray'};
+  tbody.innerHTML = compras.map(function(c) {
+    var parcNome = c.assist_parceiros ? c.assist_parceiros.nome : '—';
+    return '<tr><td class="mono" style="font-weight:600">' + (c.codigo || '#' + c.id) + '</td><td>' + raEsc(parcNome) + '</td><td style="text-align:center">—</td><td class="mono right">' + raFmt(c.valor_final) + '</td><td><span class="badge ' + (statusBadge[c.status] || '') + '">' + c.status + '</span></td><td>' + raDate(c.criado_em) + '</td><td>' +
+      (c.status === 'pendente' ? '<button class="btn-icon" onclick="raAprovarCompra(' + c.id + ')">✓</button>' : '') + '</td></tr>';
+  }).join('');
+}
+
+async function raPecReposicao(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Reposição de peças de garantia</span></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
+  var reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
+  if (!Array.isArray(reps)) reps = [];
+  var tbody = document.getElementById('ra-rep-tbody');
+  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
+  var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
+  tbody.innerHTML = reps.map(function(r) {
+    var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : '—';
+    var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : '—';
+    return '<tr><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
+      (r.status === 'pendente' ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
+  }).join('');
+}
+
+window.raAprovarCompra = async function(id) {
+  if (!confirm('Aprovar pedido de compra?')) return;
+  await raPatch('prt_compras_pecas', 'id=eq.' + id, { status: 'aprovado', aprovado_por: (window.getUsuario() || {}).nome || 'gestor', data_aprovacao: new Date().toISOString() });
+  raLog('ACAO','compra_peca','APROVAR_COMPRA',String(id));
+  raPecTab('compras');
+};
+
+window.raEnviarReposicao = async function(repId, parceiroId, ref, nome, qtd) {
+  raNovoEnvio(parceiroId, ref, nome, qtd, repId);
+};
+
+// ═══════════════════════════════════════
+// 8. CONFIGURAÇÕES — SUB-ABAS
+// ═══════════════════════════════════════
+var _raCfgSubTab = 'servicos';
+
+window.raCfgTab = function(tab) {
+  _raCfgSubTab = tab;
+  ['servicos','pecas','garantia','precos'].forEach(function(t) {
+    var btn = document.getElementById('ra-cfg-tab-' + t);
+    if (btn) { btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface2)'; btn.style.color = t === tab ? '#fff' : ''; }
+  });
+  var box = document.getElementById('ra-cfg-content');
+  if (!box) return;
+  switch(tab) {
+    case 'servicos': raCfgServicos(box); break;
+    case 'pecas': raCfgPecas(box); break;
+    case 'garantia': raCfgGarantia(box); break;
+    case 'precos': raCfgPrecos(box); break;
+  }
+};
+
+function raCfgServicos(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
+    '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor</th><th>Teto</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
+  raCarregarServicos();
+}
+
+window.raCfgCarregarCategorias = function() { raCfgCarregar(); };
+
+function raCfgPecas(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+    '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-pec-linha" onchange="raCarregarPecas()"><option value="">Todas as linhas</option><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
+    '<button class="btn btn-primary btn-sm" onclick="raNovaPeca()">+ Nova peça</button></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Referência</th><th>Nome</th><th>Linha</th><th>Aplicação</th><th>Preço</th><th>IPI</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-pec-tbody"></tbody></table></div></div>';
+  raCarregarPecas();
+}
+
+async function raCfgGarantia(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Prazo de garantia por linha / modelo</span><button class="btn btn-primary btn-sm" onclick="raCfgNovaGarantia()">+ Adicionar</button></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Modelo</th><th>Prazo (meses)</th><th>Descrição</th><th></th></tr></thead><tbody id="ra-gar-tbody"></tbody></table></div></div>';
+  var gars = await raFetch('prt_garantia?ativo=eq.true&order=linha_produto.asc,modelo.asc&select=*');
+  if (!Array.isArray(gars)) gars = [];
+  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  var tbody = document.getElementById('ra-gar-tbody');
+  if (!gars.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma configuração</td></tr>'; return; }
+  tbody.innerHTML = gars.map(function(g) {
+    return '<tr><td>' + (linhaNomes[g.linha_produto] || g.linha_produto) + '</td><td>' + (g.modelo || '<em>Toda a linha</em>') + '</td><td style="text-align:center;font-weight:600">' + g.prazo_meses + '</td><td>' + raEsc(g.descricao || '') + '</td><td><button class="btn-icon" onclick="raCfgEditarGarantia(' + g.id + ')">✏️</button></td></tr>';
+  }).join('');
+}
+
+window.raCfgNovaGarantia = function(g) {
+  g = g || {};
+  raModal(g.id ? 'Editar Garantia' : 'Nova Garantia',
+    '<div class="field"><label>Linha</label><select id="ra-gar-linha" class="filter-select" style="width:100%"><option value="geladeira"' + (g.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option><option value="ar_condicionado"' + (g.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option><option value="gerador"' + (g.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option></select></div>' +
+    '<div class="field"><label>Modelo <span style="font-weight:400;color:var(--text-muted)">(vazio = toda a linha)</span></label><input id="ra-gar-modelo" class="search-input" style="width:100%" value="' + (g.modelo || '') + '" placeholder="Ex: Adventure 40L"></div>' +
+    '<div class="field"><label>Prazo (meses)</label><input id="ra-gar-prazo" class="search-input" style="width:100%" type="number" value="' + (g.prazo_meses || 12) + '"></div>' +
+    '<div class="field"><label>Descrição</label><input id="ra-gar-desc" class="search-input" style="width:100%" value="' + raEsc(g.descricao || '') + '"></div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raCfgSalvarGarantia(' + (g.id || 0) + ')">Salvar</button>');
+};
+window.raCfgSalvarGarantia = async function(id) {
+  var d = { linha_produto: document.getElementById('ra-gar-linha').value, modelo: document.getElementById('ra-gar-modelo').value.trim() || null, prazo_meses: parseInt(document.getElementById('ra-gar-prazo').value) || 12, descricao: document.getElementById('ra-gar-desc').value.trim() || null };
+  if (id) { await raPatch('prt_garantia', 'id=eq.' + id, d); } else { await raPost('prt_garantia', d); }
+  document.getElementById('ra-modal')?.remove();
+  raCfgTab('garantia');
+};
+window.raCfgEditarGarantia = async function(id) {
+  var gars = await raFetch('prt_garantia?id=eq.' + id); var g = Array.isArray(gars) && gars[0] ? gars[0] : {};
+  raCfgNovaGarantia(g);
+};
+
+async function raCfgPrecos(box) {
+  var cfg = await raFetch('prt_configuracoes?select=*');
+  if (!Array.isArray(cfg)) cfg = [];
+  var cfgMap = {}; cfg.forEach(function(c) { cfgMap[c.chave] = c.valor; });
+  var desconto = cfgMap.desconto_autorizada_perc || '15';
+  var prazoDia = cfgMap.prazo_pagamento_dia || '10';
+  var tetos = await raFetch('prt_teto_produto?order=linha_produto.asc&select=*');
+  if (!Array.isArray(tetos)) tetos = [];
+  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+
+  box.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">' +
+    '<div class="table-card" style="padding:16px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Desconto compra peças (%)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="ra-cfg-desconto" class="search-input" type="number" style="width:100px" value="' + desconto + '"><button class="btn btn-primary btn-sm" onclick="raCfgSalvarConfig(\'desconto_autorizada_perc\',document.getElementById(\'ra-cfg-desconto\').value)">Salvar</button></div></div>' +
+    '<div class="table-card" style="padding:16px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Dia pagamento (mês seguinte)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="ra-cfg-prazo" class="search-input" type="number" style="width:100px" value="' + prazoDia + '"><button class="btn btn-primary btn-sm" onclick="raCfgSalvarConfig(\'prazo_pagamento_dia\',document.getElementById(\'ra-cfg-prazo\').value)">Salvar</button></div></div></div>' +
+    '<div style="font-weight:600;margin-bottom:12px">Teto de serviço por linha de produto</div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Valor máximo</th><th></th></tr></thead><tbody>' +
+    tetos.map(function(t) {
+      return '<tr><td>' + (linhaNomes[t.linha_produto] || t.linha_produto) + '</td><td><input class="search-input" type="number" step="0.01" style="width:120px" value="' + (t.valor_maximo || 0) + '" id="ra-teto-' + t.id + '"></td><td><button class="btn btn-primary btn-sm" onclick="raCfgSalvarTeto(' + t.id + ')">Salvar</button></td></tr>';
+    }).join('') + '</tbody></table></div></div>';
+}
+
+window.raCfgSalvarConfig = async function(chave, valor) {
+  await raPatch('prt_configuracoes', 'chave=eq.' + chave, { valor: valor, atualizado_em: new Date().toISOString() });
+  raLog('ACAO','config','SALVAR_CONFIG',chave,valor);
+  alert('Salvo!');
+};
+
+window.raCfgSalvarTeto = async function(id) {
+  var val = parseFloat(document.getElementById('ra-teto-' + id).value) || 0;
+  await raPatch('prt_teto_produto', 'id=eq.' + id, { valor_maximo: val });
+  raLog('ACAO','config','SALVAR_TETO',String(id),null,{valor:val});
+  alert('Teto atualizado!');
+};
+
+// helper raCfgCarregar — agora é sub-modal dentro de servicos
 var _raCfgCategorias = [];
 
 window.raCfgCarregar = async function() {
@@ -1022,4 +1219,5 @@ function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
     body: JSON.stringify(payload)
   }).catch(function(e) { console.error('Log falhou:', e); });
 }
+
 
