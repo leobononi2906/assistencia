@@ -288,15 +288,26 @@ window.raEditarServicoOS = async function(osId) {
   var o = _raOS.find(function(x) { return x.id === osId; });
   if (!o) return;
   var linhaDb = {Geladeira:'geladeira','Ar Condicionado':'ar_condicionado',Gerador:'gerador',Outros:'outros'}[o.produto_linha] || o.produto_linha || '';
+  // buscar categorias da nova tabela
+  var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=ordem.asc&select=*' + (linhaDb ? '&linha_produto=eq.' + linhaDb : ''));
+  if (!Array.isArray(categorias)) categorias = [];
+  var catMap = {};
+  categorias.forEach(function(c) { catMap[c.id] = c; });
   var servicos = await raFetch('prt_tabela_servicos?ativo=eq.true&order=codigo.asc&select=*' + (linhaDb ? '&linha_produto=eq.' + linhaDb : ''));
   if (!Array.isArray(servicos)) servicos = [];
-  var catNomes = {eletrica:'Intervenções Elétricas',frigorifico:'Frigorífico / Recuperação',outros:'Outras Intervenções',outros_servicos:'Outros Serviços'};
-  var cats = {};
-  servicos.forEach(function(s) { if (!cats[s.categoria]) cats[s.categoria] = []; cats[s.categoria].push(s); });
+  // agrupar por categoria_id
+  var porCat = {};
+  servicos.forEach(function(s) {
+    var cid = s.categoria_id || 0;
+    if (!porCat[cid]) porCat[cid] = [];
+    porCat[cid].push(s);
+  });
   var html = '<p style="margin-bottom:12px;font-size:13px">Serviço atual: <strong>' + (o.codigo_servico || 'nenhum') + '</strong> — ' + raFmt(o.valor_servico) + '</p>';
-  Object.keys(cats).forEach(function(cat) {
-    html += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">' + (catNomes[cat] || cat) + '</div>';
-    cats[cat].forEach(function(s) {
+  categorias.forEach(function(cat) {
+    var items = porCat[cat.id] || [];
+    if (!items.length) return;
+    html += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">' + cat.nome + ' <span style="font-weight:400">(teto: ' + raFmt(cat.valor_teto) + ')</span></div>';
+    items.forEach(function(s) {
       var sel = o.codigo_servico === s.codigo;
       html += '<div style="padding:6px 10px;border-radius:6px;cursor:pointer;margin:2px 0;display:flex;justify-content:space-between;align-items:center;' + (sel ? 'background:var(--blue-pale);border:1px solid var(--blue-mid)' : 'background:var(--surface2);border:1px solid var(--border)') + '" onclick="raConfirmarServicoOS(' + osId + ',\'' + s.codigo + '\',' + s.valor + ')"><div><span style="font-weight:600">' + s.codigo + '</span> ' + s.descricao + '</div><span style="font-weight:700;color:var(--blue-mid)">' + raFmt(s.valor) + '</span></div>';
     });
@@ -907,7 +918,7 @@ window.raCfgNovaCategoria = function(cat) {
     '</div>' +
     '<div class="field"><label>Nome da categoria</label><input id="ra-cfg-nome" class="search-input" style="width:100%" placeholder="Ex: Intervenções Elétricas" value="' + (cat.nome || '') + '"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Prefixo do código <span style="font-weight:400;color:var(--text-muted)">(2 letras, ex: GE)</span></label><input id="ra-cfg-prefixo" class="search-input" style="width:100%;text-transform:uppercase" maxlength="3" placeholder="GE" value="' + (cat.prefixo_codigo || '') + '"' + (cat.id ? ' readonly style="width:100%;background:var(--surface2);cursor:not-allowed;text-transform:uppercase"' : '') + '></div>' +
+      '<div class="field"><label>Prefixo do código <span style="font-weight:400;color:var(--text-muted)">(2 letras, ex: GE)</span></label><input id="ra-cfg-prefixo" class="search-input" maxlength="3" placeholder="GE" value="' + (cat.prefixo_codigo || '') + '"' + (cat.id ? ' readonly style="width:100%;background:var(--surface2);cursor:not-allowed;text-transform:uppercase"' : ' style="width:100%;text-transform:uppercase"') + '></div>' +
       '<div class="field"><label>Teto (R$)</label><input id="ra-cfg-teto" class="search-input" style="width:100%" type="number" step="0.01" value="' + (cat.valor_teto || '') + '"></div>' +
     '</div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
