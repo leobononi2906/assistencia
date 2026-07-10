@@ -3108,11 +3108,15 @@ window.astParceiros = {
     if (!p) return;
     this._drawerAberto = id;
 
-    // Buscar followups e docs
-    const [{ data: fups }, { data: docs }] = await Promise.all([
+    // Buscar followups, docs e dados de login
+    const [{ data: fups }, { data: docs }, credLogin] = await Promise.all([
       window.sb.from('assist_parceiro_followups').select('*').eq('parceiro_id', id).order('criado_em', {ascending: false}).range(0, 50),
       window.sb.from('assist_parceiro_docs').select('*').eq('parceiro_id', id).order('criado_em', {ascending: false}).range(0, 50),
+      fetch('https://vishxwdxqiygbxmtpfoy.supabase.co/rest/v1/prt_usuarios?parceiro_id=eq.' + id + '&select=senha_inicial,perfil,ativo', {
+        headers: {'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA'}
+      }).then(r => r.json()).catch(() => [])
     ]);
+    const loginInfo = Array.isArray(credLogin) && credLogin.length ? credLogin[0] : null;
 
     const statusCor = { ativo: 'var(--green)', teste: 'var(--orange)', suspenso: 'var(--red)', inativo: 'var(--text-muted)' };
     const statusNome = { ativo: 'Ativo', teste: 'Em teste', suspenso: 'Suspenso', inativo: 'Inativo' };
@@ -3231,6 +3235,14 @@ window.astParceiros = {
             ? `<div style="background:var(--green-bg,#e8f5e9);border:1px solid var(--green,#4caf50);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
                 <div style="font-weight:700;color:var(--green,#4caf50);font-size:13px">⭐ Rede Autorizada Stonni</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Credenciada em ${p.data_credenciamento ? new Date(p.data_credenciamento).toLocaleDateString('pt-BR') : '—'}</div>
+                <div style="margin-top:10px;background:var(--surface2,#f5f5f5);border-radius:6px;padding:10px">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px">DADOS DE ACESSO AO PORTAL</div>
+                  <div style="font-size:13px;margin-bottom:4px">📧 <strong>${p.email || '—'}</strong></div>
+                  <div style="font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px">🔑 <strong id="par-senha-${id}" style="font-family:monospace;letter-spacing:1px">${loginInfo?.senha_inicial || '(não registrada)'}</strong>
+                    ${loginInfo?.senha_inicial ? `<button class="ast-btn ast-btn-sm" style="font-size:10px;padding:2px 8px" onclick="navigator.clipboard.writeText('${loginInfo.senha_inicial}');this.textContent='✅ Copiada!'">📋 Copiar</button>` : ''}
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted)">Portal: <a href="https://parceiro-stonni.vercel.app" target="_blank" style="color:var(--blue-mid)">parceiro-stonni.vercel.app</a></div>
+                </div>
                 <button class="ast-btn ast-btn-sm" style="margin-top:8px;background:var(--red-bg);color:var(--red)" onclick="astParceiros.descredenciar(${id})">Remover credenciamento</button>
               </div>`
             : `<div style="background:var(--orange-bg,#fff3e0);border:1px solid var(--orange,#ff9800);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
@@ -3736,16 +3748,17 @@ window.astParceiros = {
     const email = emailEl?.value?.trim();
     if (!email || !email.includes('@')) { alert('Informe um e-mail válido para o login'); return; }
 
-    if (!confirm(`Credenciar este parceiro como Rede Autorizada?\n\nSerá criado login para:\n${email}\n\nUma senha temporária será gerada.`)) return;
+    if (!confirm(`Credenciar este parceiro como Rede Autorizada?\n\nSerá criado login para:\n${email}\n\nUma senha será gerada automaticamente.`)) return;
 
-    // Gerar senha temporária
-    const senha = 'Stonni' + Math.random().toString(36).substring(2, 8) + '!';
+    // Gerar senha legível
+    const palavras = ['Stonni','Solar','Truck','Road','Cool','Frost','Power','Drive','Fleet','Route'];
+    const senha = palavras[Math.floor(Math.random()*palavras.length)] + Math.floor(100 + Math.random()*900) + '!';
 
     try {
-      // 1. Criar usuário no Supabase Auth
       const SB_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
       const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
       
+      // 1. Criar usuário no Supabase Auth
       const authRes = await fetch(SB_URL + '/auth/v1/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
@@ -3757,11 +3770,11 @@ window.astParceiros = {
       const userId = authData.user?.id || authData.id;
       if (!userId) throw new Error('User ID não retornado');
 
-      // 2. Vincular na prt_usuarios
+      // 2. Vincular na prt_usuarios COM senha salva
       await fetch(SB_URL + '/rest/v1/prt_usuarios', {
         method: 'POST',
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, parceiro_id: id, perfil: 'parceiro' })
+        body: JSON.stringify({ user_id: userId, parceiro_id: id, perfil: 'parceiro', senha_inicial: senha })
       });
 
       // 3. Marcar como credenciado
@@ -3770,9 +3783,6 @@ window.astParceiros = {
         data_credenciamento: new Date().toISOString(),
         email: email
       }).eq('id', id);
-
-      // 4. Mostrar senha
-      alert(`✅ Parceiro credenciado!\n\n📧 Login: ${email}\n🔑 Senha: ${senha}\n\nAnote a senha — ela não poderá ser recuperada depois.\nO parceiro pode acessar: parceiro-stonni.vercel.app`);
 
       await this.carregar();
       this.abrirDrawer(id);
