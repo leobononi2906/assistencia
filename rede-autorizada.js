@@ -1403,7 +1403,9 @@ window.raFiltrarParceiros = function() {
       '<td style="font-family:monospace;font-weight:700;letter-spacing:1px">' + senha + ' ' +
         (senha !== '—' ? '<button class="btn-icon" title="Copiar senha" onclick="navigator.clipboard.writeText(\'' + senha + '\');this.textContent=\'✅\'">📋</button>' : '') + '</td>' +
       '<td style="font-size:12px">' + raDate(p.data_credenciamento) + '</td>' +
-      '<td><button class="btn-icon" title="Descredenciar" onclick="raDescredenciar(' + p.id + ',\'' + raEsc(p.nome) + '\')">❌</button></td></tr>';
+      '<td><button class="btn-icon" title="Copiar msg boas-vindas" onclick="raCopiarBoasVindas(\'' + raEsc(p.nome) + '\',\'' + raEsc(p.email) + '\',\'' + raEsc(senha) + '\')">📋</button> ' +
+        (p.whatsapp ? '<button class="btn-icon" title="Enviar WhatsApp" onclick="raEnviarWhatsBoasVindas(\'' + raEsc(p.whatsapp) + '\',\'' + raEsc(p.nome) + '\',\'' + raEsc(p.email) + '\',\'' + raEsc(senha) + '\')">📱</button> ' : '') +
+        '<button class="btn-icon" title="Descredenciar" onclick="raDescredenciar(' + p.id + ',\'' + raEsc(p.nome) + '\')">❌</button></td></tr>';
   }).join('');
 };
 
@@ -1506,6 +1508,19 @@ window.raConfirmarCredenciamento = async function(id) {
       '</div>',
       '<button class="btn btn-primary" onclick="document.getElementById(\'ra-modal\').remove();raCarregarParceiros()">Fechar</button>');
 
+    // Guardar dados pra botões do modal
+    window._ultimoCred = { nome: ((window._raCredTodos||[]).find(function(x){return x.id===id})||{}).nome || '', email: email, senha: senha, whatsapp: ((window._raCredTodos||[]).find(function(x){return x.id===id})||{}).whatsapp || '' };
+
+    // Adicionar botões de mensagem no modal
+    var modalBody = document.querySelector('#ra-modal .modal-body');
+    if (modalBody) {
+      var btnsDiv = document.createElement('div');
+      btnsDiv.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:16px';
+      btnsDiv.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="raCopiarBoasVindas(window._ultimoCred.nome,window._ultimoCred.email,window._ultimoCred.senha)">📋 Copiar msg boas-vindas</button>' +
+        (window._ultimoCred.whatsapp ? '<button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="raEnviarWhatsBoasVindas(window._ultimoCred.whatsapp,window._ultimoCred.nome,window._ultimoCred.email,window._ultimoCred.senha)">📱 Enviar WhatsApp</button>' : '');
+      modalBody.appendChild(btnsDiv);
+    }
+
   } catch(e) {
     console.error('Credenciamento:', e);
     alert('Erro ao credenciar: ' + e.message);
@@ -1518,4 +1533,62 @@ window.raDescredenciar = async function(id, nome) {
   await raPatch('assist_parceiros', 'id=eq.' + id, { credenciado: false });
   raLog('ACAO', 'parceiro', 'DESCREDENCIAR', String(id), nome);
   raCarregarParceiros();
+};
+
+// ═══════════════════════════════════════
+// MENSAGEM DE BOAS-VINDAS WHATSAPP
+// ═══════════════════════════════════════
+window.raGerarMsgBoasVindas = function(nome, email, senha) {
+  var primeiro = (nome || '').split(' ')[0] || 'Parceiro';
+  var msg = 'Olá ' + primeiro + '! 👋\n' +
+    'Seja bem-vindo(a) à *Rede de Assistência Técnica Autorizada Stonni!*\n\n' +
+    'A partir de agora, você faz parte de um grupo seleto de parceiros que atendem nossos clientes em todo o Brasil.\n\n' +
+    'Preparamos um portal exclusivo para facilitar todo o seu trabalho com a Stonni. Veja como funciona:\n\n' +
+    '🔗 *Acesse o portal:*\nparceiro-stonni.vercel.app\n\n' +
+    '👤 *Seu login:*\nE-mail: ' + email + '\nSenha: ' + senha + '\n' +
+    '(Recomendamos trocar a senha no primeiro acesso)\n\n' +
+    '━━━━━━━━━━━━━━━\n' +
+    '📋 *COMO ABRIR UMA OS*\n\n' +
+    '1️⃣ Acesse o portal e clique em *Nova OS*\n' +
+    '2️⃣ Preencha os dados do cliente e do produto (tenha a NF de compra em mãos — vai precisar tirar foto dela)\n' +
+    '3️⃣ Registre o diagnóstico, selecione o serviço realizado e tire fotos do equipamento\n' +
+    '4️⃣ Revise tudo e envie\n\n' +
+    'Nossa equipe analisa e responde em até *3 dias úteis*.\n\n' +
+    '━━━━━━━━━━━━━━━\n' +
+    '🔧 *PEÇAS DE REPOSIÇÃO*\n\n' +
+    'Quando você utilizar uma peça em uma OS de garantia, ao aprovarmos a OS a reposição já é gerada automaticamente. O envio da peça de reposição acontece em até *5 dias úteis* após a aprovação.\n\n' +
+    'Você acompanha tudo pelo portal, na aba *Meu Estoque*.\n\n' +
+    '━━━━━━━━━━━━━━━\n' +
+    '💰 *PAGAMENTOS*\n\n' +
+    'O fechamento é feito *mensalmente*:\n' +
+    '• No início do mês, consolidamos todas as OS aprovadas do mês anterior\n' +
+    '• Enviamos o relatório para você\n' +
+    '• Você emite a NF de serviço com base no valor informado\n' +
+    '• O pagamento é realizado *até o dia 10*\n\n' +
+    'Tudo fica visível na aba *Financeiro* do portal.\n\n' +
+    '━━━━━━━━━━━━━━━\n' +
+    '📚 *MATERIAL TÉCNICO*\n\n' +
+    'No portal você encontra vídeos, manuais e documentos técnicos por linha de produto. Consulte sempre antes de iniciar um atendimento.\n\n' +
+    '━━━━━━━━━━━━━━━\n\n' +
+    'Qualquer dúvida, pode chamar aqui neste número.\n' +
+    'Bem-vindo(a) à Stonni! 💙❄️';
+  return msg;
+};
+
+window.raCopiarBoasVindas = function(nome, email, senha) {
+  var msg = raGerarMsgBoasVindas(nome, email, senha);
+  navigator.clipboard.writeText(msg).then(function() {
+    var btn = event.target;
+    var original = btn.textContent;
+    btn.textContent = '✅ Copiada!';
+    setTimeout(function() { btn.textContent = original; }, 2000);
+  });
+};
+
+window.raEnviarWhatsBoasVindas = function(whatsapp, nome, email, senha) {
+  var msg = raGerarMsgBoasVindas(nome, email, senha);
+  var fone = (whatsapp || '').replace(/\D/g, '');
+  if (!fone) { alert('Parceiro sem WhatsApp cadastrado'); return; }
+  if (fone.length <= 11) fone = '55' + fone;
+  window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
 };
