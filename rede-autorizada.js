@@ -106,6 +106,25 @@ var RA_PAGES = {
   <div class="table-card">
     <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="6" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
   </div>
+</div>`,
+
+'ra-config': `<div class="page-content active" style="padding:20px 24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div class="section-title" style="margin:0">Configurações — Categorias de Serviço</div>
+    <div style="display:flex;gap:8px">
+      <select class="filter-select" id="ra-cfg-linha" onchange="raCfgCarregar()">
+        <option value="">Todas as linhas</option>
+        <option value="geladeira">Geladeira</option>
+        <option value="ar_condicionado">AR Condicionado</option>
+        <option value="gerador">Gerador</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="raCfgNovaCategoria()">+ Nova categoria</button>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-card-header"><span class="table-card-title">Categorias</span><span id="ra-cfg-count" style="font-size:12px;color:var(--text-muted)"></span></div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Ordem</th><th>Nome</th><th>Linha</th><th>Prefixo</th><th>Teto</th><th>Serviços</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-cfg-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+  </div>
 </div>`
 };
 
@@ -122,6 +141,7 @@ window.ModuloRedeAutorizada = {
       case 'ra-envios':     raCarregarEnvios(); break;
       case 'ra-pagamentos': raCarregarPagamentos(); break;
       case 'ra-materiais':  raCarregarMateriais(); break;
+      case 'ra-config':     raCfgCarregar(); break;
     }
   }
 };
@@ -322,57 +342,112 @@ window.raConfirmarRecusa = async function(id) {
 };
 
 // ═══════════════════════════════════════
-// 2. SERVIÇOS — CRUD
+// 2. SERVIÇOS — CRUD (com categorias da nova tabela + código automático)
 // ═══════════════════════════════════════
 var _raServicos = [];
+var _raCategorias = [];
+
 window.raCarregarServicos = async function() {
   var linha = document.getElementById('ra-srv-linha')?.value || '';
+  // carregar categorias
+  var catUrl = 'prt_categorias_servico?order=ordem.asc&select=*';
+  if (linha) catUrl += '&linha_produto=eq.' + linha;
+  _raCategorias = await raFetch(catUrl);
+  if (!Array.isArray(_raCategorias)) _raCategorias = [];
+  // carregar serviços
   var url = 'prt_tabela_servicos?order=codigo.asc&select=*';
   if (linha) url += '&linha_produto=eq.' + linha;
   _raServicos = await raFetch(url);
   if (!Array.isArray(_raServicos)) _raServicos = [];
   var tbody = document.getElementById('ra-srv-tbody');
   var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  // map de categorias por id
+  var catMap = {};
+  _raCategorias.forEach(function(c) { catMap[c.id] = c; });
   if (!_raServicos.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum serviço cadastrado</td></tr>'; return; }
   tbody.innerHTML = _raServicos.map(function(s) {
+    var cat = catMap[s.categoria_id] || {};
     return '<tr>' +
       '<td class="mono" style="font-weight:600">' + s.codigo + '</td>' +
       '<td>' + s.descricao + '</td>' +
       '<td>' + (linhaNomes[s.linha_produto] || s.linha_produto) + '</td>' +
-      '<td><span class="badge badge-blue">' + s.categoria + '</span></td>' +
+      '<td><span class="badge badge-blue">' + (cat.nome || s.categoria) + '</span></td>' +
       '<td class="mono right">' + raFmt(s.valor) + '</td>' +
-      '<td class="mono right">' + raFmt(s.teto_categoria) + '</td>' +
+      '<td class="mono right">' + raFmt(cat.valor_teto || s.teto_categoria) + '</td>' +
       '<td>' + (s.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
       '<td><button class="btn-icon" onclick="raEditarServico(' + s.id + ')">✏️</button> <button class="btn-icon" onclick="raToggleServico(' + s.id + ',' + !s.ativo + ')">' + (s.ativo ? '🚫' : '✅') + '</button></td></tr>';
   }).join('');
 };
 
+// gera próximo código automático: STN-{prefixo}{nn}
+function raGerarCodigo(categoriaId) {
+  var cat = _raCategorias.find(function(c) { return c.id === categoriaId; });
+  if (!cat) return '';
+  var prefixo = 'STN-' + cat.prefixo_codigo;
+  var existentes = _raServicos.filter(function(s) { return s.codigo && s.codigo.indexOf(prefixo) === 0; });
+  var maxNum = 0;
+  existentes.forEach(function(s) {
+    var num = parseInt(s.codigo.replace(prefixo, ''), 10);
+    if (num > maxNum) maxNum = num;
+  });
+  var next = String(maxNum + 1);
+  while (next.length < 2) next = '0' + next;
+  return prefixo + next;
+}
+
 window.raNovoServico = function() {
+  // filtrar categorias ativas
+  var catOpts = _raCategorias.filter(function(c) { return c.ativo; }).map(function(c) {
+    var lnm = {geladeira:'Gel',ar_condicionado:'AR',gerador:'Ger'};
+    return '<option value="' + c.id + '">' + (lnm[c.linha_produto]||c.linha_produto) + ' — ' + c.nome + '</option>';
+  }).join('');
+  if (!catOpts) catOpts = '<option value="">Nenhuma categoria — cadastre primeiro em Configurações</option>';
+
   raModal('Novo Serviço',
-    '<div class="field"><label>Código</label><input id="ra-srv-codigo" class="search-input" style="width:100%" placeholder="STN-XX00"></div>' +
+    '<div class="field"><label>Categoria</label><select id="ra-srv-cat" class="filter-select" style="width:100%" onchange="raPreviewCodigo()">' + catOpts + '</select></div>' +
+    '<div class="field"><label>Código (automático)</label><input id="ra-srv-codigo" class="search-input" style="width:100%;background:var(--surface2);cursor:not-allowed" readonly></div>' +
     '<div class="field"><label>Descrição</label><input id="ra-srv-desc" class="search-input" style="width:100%" placeholder="Descrição do serviço"></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>Linha</label><select id="ra-srv-linha-new" class="filter-select" style="width:100%"><option value="geladeira">Geladeira</option><option value="ar_condicionado">AR Condicionado</option><option value="gerador">Gerador</option></select></div>' +
-      '<div class="field"><label>Categoria</label><select id="ra-srv-cat" class="filter-select" style="width:100%"><option value="eletrica">Elétrica</option><option value="frigorifico">Frigorífico</option><option value="outros">Outros</option><option value="outros_servicos">Outros Serviços</option></select></div>' +
-      '<div class="field"><label>Valor (R$)</label><input id="ra-srv-valor" class="search-input" style="width:100%" type="number" step="0.01"></div>' +
-      '<div class="field"><label>Teto Categoria (R$)</label><input id="ra-srv-teto" class="search-input" style="width:100%" type="number" step="0.01"></div>' +
-    '</div>',
+    '<div class="field"><label>Valor (R$)</label><input id="ra-srv-valor" class="search-input" style="width:100%" type="number" step="0.01"></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarServico()">Salvar</button>');
+  raPreviewCodigo();
+};
+
+window.raPreviewCodigo = function() {
+  var catId = parseInt(document.getElementById('ra-srv-cat').value);
+  var el = document.getElementById('ra-srv-codigo');
+  if (catId) { el.value = raGerarCodigo(catId); }
+  else { el.value = ''; }
 };
 
 window.raSalvarServico = async function(id) {
+  var catId = parseInt(document.getElementById('ra-srv-cat').value);
+  var cat = _raCategorias.find(function(c) { return c.id === catId; });
+  var desc = document.getElementById('ra-srv-desc').value.trim();
+  var valor = parseFloat(document.getElementById('ra-srv-valor').value) || 0;
+  if (!catId || !cat) { alert('Selecione uma categoria'); return; }
+  if (!desc) { alert('Preencha a descrição'); return; }
+
   var d = {
-    codigo: document.getElementById('ra-srv-codigo').value.trim(),
-    descricao: document.getElementById('ra-srv-desc').value.trim(),
-    linha_produto: document.getElementById('ra-srv-linha-new').value,
-    categoria: document.getElementById('ra-srv-cat').value,
-    valor: parseFloat(document.getElementById('ra-srv-valor').value) || 0,
-    teto_categoria: parseFloat(document.getElementById('ra-srv-teto').value) || 0
+    descricao: desc,
+    linha_produto: cat.linha_produto,
+    categoria: cat.slug,
+    categoria_id: cat.id,
+    valor: valor,
+    teto_categoria: cat.valor_teto
   };
-  if (!d.codigo || !d.descricao) { alert('Preencha código e descrição'); return; }
-  if (id) { await raPatch('prt_tabela_servicos', 'id=eq.' + id, d); }
-  else { await raPost('prt_tabela_servicos', d); }
+
+  if (id) {
+    // edição — mantém código existente
+    await raPatch('prt_tabela_servicos', 'id=eq.' + id, d);
+    raLog('ACAO','prt_tabela_servicos','EDITAR_SERVICO',String(id),null,d);
+  } else {
+    // novo — gera código automático
+    d.codigo = document.getElementById('ra-srv-codigo').value;
+    if (!d.codigo) { alert('Erro ao gerar código'); return; }
+    await raPost('prt_tabela_servicos', d);
+    raLog('ACAO','prt_tabela_servicos','CRIAR_SERVICO',null,null,d);
+  }
   document.getElementById('ra-modal')?.remove();
   raCarregarServicos();
 };
@@ -380,21 +455,23 @@ window.raSalvarServico = async function(id) {
 window.raEditarServico = function(id) {
   var s = _raServicos.find(function(x) { return x.id === id; });
   if (!s) return;
-  raNovoServico();
-  document.querySelector('.modal-title').textContent = 'Editar Serviço';
-  document.getElementById('ra-srv-codigo').value = s.codigo;
-  document.getElementById('ra-srv-desc').value = s.descricao;
-  document.getElementById('ra-srv-linha-new').value = s.linha_produto;
-  document.getElementById('ra-srv-cat').value = s.categoria;
-  document.getElementById('ra-srv-valor').value = s.valor;
-  document.getElementById('ra-srv-teto').value = s.teto_categoria;
-  // trocar onclick do botão salvar
-  var btns = document.querySelectorAll('.modal .btn-primary');
-  btns[btns.length - 1].setAttribute('onclick', 'raSalvarServico(' + id + ')');
+  var catOpts = _raCategorias.filter(function(c) { return c.ativo; }).map(function(c) {
+    var lnm = {geladeira:'Gel',ar_condicionado:'AR',gerador:'Ger'};
+    return '<option value="' + c.id + '"' + (c.id === s.categoria_id ? ' selected' : '') + '>' + (lnm[c.linha_produto]||c.linha_produto) + ' — ' + c.nome + '</option>';
+  }).join('');
+
+  raModal('Editar Serviço',
+    '<div class="field"><label>Código</label><input class="search-input" style="width:100%;background:var(--surface2);cursor:not-allowed" readonly value="' + s.codigo + '"></div>' +
+    '<div class="field"><label>Categoria</label><select id="ra-srv-cat" class="filter-select" style="width:100%">' + catOpts + '</select></div>' +
+    '<div class="field"><label>Descrição</label><input id="ra-srv-desc" class="search-input" style="width:100%" value="' + (s.descricao || '') + '"></div>' +
+    '<div class="field"><label>Valor (R$)</label><input id="ra-srv-valor" class="search-input" style="width:100%" type="number" step="0.01" value="' + (s.valor || '') + '"></div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raSalvarServico(' + id + ')">Salvar</button>');
 };
 
 window.raToggleServico = async function(id, ativo) {
   await raPatch('prt_tabela_servicos', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO','prt_tabela_servicos',ativo?'ATIVAR_SERVICO':'DESATIVAR_SERVICO',String(id));
   raCarregarServicos();
 };
 
@@ -776,6 +853,106 @@ window.raToggleMaterial = async function(id, ativo) {
 };
 
 // ═══════════════════════════════════════
+// 7. CONFIGURAÇÕES — CRUD Categorias de Serviço
+// ═══════════════════════════════════════
+var _raCfgCategorias = [];
+
+window.raCfgCarregar = async function() {
+  var linha = document.getElementById('ra-cfg-linha')?.value || '';
+  var url = 'prt_categorias_servico?order=linha_produto.asc,ordem.asc&select=*';
+  if (linha) url += '&linha_produto=eq.' + linha;
+  _raCfgCategorias = await raFetch(url);
+  if (!Array.isArray(_raCfgCategorias)) _raCfgCategorias = [];
+  // contar serviços por categoria
+  var servicos = await raFetch('prt_tabela_servicos?select=categoria_id');
+  if (!Array.isArray(servicos)) servicos = [];
+  var contagem = {};
+  servicos.forEach(function(s) { if (s.categoria_id) contagem[s.categoria_id] = (contagem[s.categoria_id] || 0) + 1; });
+
+  var tbody = document.getElementById('ra-cfg-tbody');
+  var linhaNomes = {geladeira:'Geladeira',ar_condicionado:'AR Condicionado',gerador:'Gerador'};
+  document.getElementById('ra-cfg-count').textContent = _raCfgCategorias.length + ' categorias';
+
+  if (!_raCfgCategorias.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma categoria cadastrada</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _raCfgCategorias.map(function(c) {
+    var qtd = contagem[c.id] || 0;
+    return '<tr>' +
+      '<td style="text-align:center;font-weight:600">' + c.ordem + '</td>' +
+      '<td style="font-weight:600">' + c.nome + '</td>' +
+      '<td>' + (linhaNomes[c.linha_produto] || c.linha_produto) + '</td>' +
+      '<td class="mono">STN-' + c.prefixo_codigo + '</td>' +
+      '<td class="mono right" style="font-weight:700">' + raFmt(c.valor_teto) + '</td>' +
+      '<td style="text-align:center">' + qtd + '</td>' +
+      '<td>' + (c.ativo ? '<span class="badge badge-green">Ativa</span>' : '<span class="badge badge-gray">Inativa</span>') + '</td>' +
+      '<td>' +
+        '<button class="btn-icon" onclick="raCfgEditar(' + c.id + ')">✏️</button> ' +
+        '<button class="btn-icon" onclick="raCfgToggle(' + c.id + ',' + !c.ativo + ')">' + (c.ativo ? '🚫' : '✅') + '</button>' +
+      '</td></tr>';
+  }).join('');
+};
+
+window.raCfgNovaCategoria = function(cat) {
+  cat = cat || {};
+  raModal(cat.id ? 'Editar Categoria' : 'Nova Categoria',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div class="field"><label>Linha</label><select id="ra-cfg-linha-new" class="filter-select" style="width:100%">' +
+        '<option value="geladeira"' + (cat.linha_produto === 'geladeira' ? ' selected' : '') + '>Geladeira</option>' +
+        '<option value="ar_condicionado"' + (cat.linha_produto === 'ar_condicionado' ? ' selected' : '') + '>AR Condicionado</option>' +
+        '<option value="gerador"' + (cat.linha_produto === 'gerador' ? ' selected' : '') + '>Gerador</option>' +
+      '</select></div>' +
+      '<div class="field"><label>Ordem</label><input id="ra-cfg-ordem" class="search-input" style="width:100%" type="number" min="1" value="' + (cat.ordem || _raCfgCategorias.length + 1) + '"></div>' +
+    '</div>' +
+    '<div class="field"><label>Nome da categoria</label><input id="ra-cfg-nome" class="search-input" style="width:100%" placeholder="Ex: Intervenções Elétricas" value="' + (cat.nome || '') + '"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div class="field"><label>Prefixo do código <span style="font-weight:400;color:var(--text-muted)">(2 letras, ex: GE)</span></label><input id="ra-cfg-prefixo" class="search-input" style="width:100%;text-transform:uppercase" maxlength="3" placeholder="GE" value="' + (cat.prefixo_codigo || '') + '"' + (cat.id ? ' readonly style="width:100%;background:var(--surface2);cursor:not-allowed;text-transform:uppercase"' : '') + '></div>' +
+      '<div class="field"><label>Teto (R$)</label><input id="ra-cfg-teto" class="search-input" style="width:100%" type="number" step="0.01" value="' + (cat.valor_teto || '') + '"></div>' +
+    '</div>',
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raCfgSalvar(' + (cat.id || 0) + ')">Salvar</button>');
+};
+
+window.raCfgSalvar = async function(id) {
+  var d = {
+    linha_produto: document.getElementById('ra-cfg-linha-new').value,
+    nome: document.getElementById('ra-cfg-nome').value.trim(),
+    prefixo_codigo: document.getElementById('ra-cfg-prefixo').value.trim().toUpperCase(),
+    valor_teto: parseFloat(document.getElementById('ra-cfg-teto').value) || 0,
+    ordem: parseInt(document.getElementById('ra-cfg-ordem').value) || 1
+  };
+  if (!d.nome) { alert('Preencha o nome da categoria'); return; }
+  if (!d.prefixo_codigo || d.prefixo_codigo.length < 2) { alert('Prefixo precisa ter ao menos 2 letras'); return; }
+  // slug a partir do nome normalizado
+  d.slug = d.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+
+  if (id) {
+    await raPatch('prt_categorias_servico', 'id=eq.' + id, d);
+    // atualizar teto nos serviços vinculados
+    await raPatch('prt_tabela_servicos', 'categoria_id=eq.' + id, { categoria: d.slug, teto_categoria: d.valor_teto });
+    raLog('ACAO','prt_categorias_servico','EDITAR_CATEGORIA',String(id),d.nome,d);
+  } else {
+    await raPost('prt_categorias_servico', d);
+    raLog('ACAO','prt_categorias_servico','CRIAR_CATEGORIA',null,d.nome,d);
+  }
+  document.getElementById('ra-modal')?.remove();
+  raCfgCarregar();
+};
+
+window.raCfgEditar = function(id) {
+  var c = _raCfgCategorias.find(function(x) { return x.id === id; });
+  if (!c) return;
+  raCfgNovaCategoria(c);
+};
+
+window.raCfgToggle = async function(id, ativo) {
+  await raPatch('prt_categorias_servico', 'id=eq.' + id, { ativo: ativo });
+  raLog('ACAO','prt_categorias_servico',ativo?'ATIVAR_CATEGORIA':'DESATIVAR_CATEGORIA',String(id));
+  raCfgCarregar();
+};
+
+// ═══════════════════════════════════════
 // SISTEMA DE LOGS — padrão Bononi
 // ═══════════════════════════════════════
 function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
@@ -792,3 +969,4 @@ function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
     body: JSON.stringify(payload)
   }).catch(function(e) { console.error('Log falhou:', e); });
 }
+
