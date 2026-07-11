@@ -3278,6 +3278,7 @@ window.astParceiros = {
                   <option value="contrato">📝 Contrato</option>
                   <option value="laudo">🔍 Laudo</option>
                   <option value="foto">📷 Foto</option>
+                  <option value="video">🎥 Vídeo</option>
                   <option value="outros">📎 Outros</option>
                 </select>
               </div>
@@ -3285,8 +3286,8 @@ window.astParceiros = {
                 <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px dashed var(--border);border-radius:var(--radius-sm);cursor:pointer;background:var(--surface2);font-size:12px;color:var(--text-muted)" 
                   onmouseover="this.style.borderColor='var(--blue-mid)'" onmouseout="this.style.borderColor='var(--border)'">
                   <span style="font-size:18px">📎</span>
-                  <span id="ast-par-doc-file-label-${id}">Clique para selecionar arquivo (PDF, imagem, Word)</span>
-                  <input type="file" id="ast-par-doc-file-${id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style="display:none"
+                  <span id="ast-par-doc-file-label-${id}">Clique para selecionar arquivo (PDF, imagem, Word, vídeo)</span>
+                  <input type="file" id="ast-par-doc-file-${id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.mp4,.mov,.avi,.webm,.mkv" style="display:none"
                     onchange="document.getElementById('ast-par-doc-file-label-${id}').textContent=this.files[0]?.name||'Nenhum arquivo'">
                 </label>
                 <button class="ast-btn ast-btn-primary ast-btn-sm" onclick="astParceiros.uploadDoc(${id})">📤 Upload</button>
@@ -3460,7 +3461,7 @@ window.astParceiros = {
     });
 
     if (progEl) progEl.style.display = 'none';
-    if (fileInput) { fileInput.value = ''; document.getElementById(`ast-par-doc-file-label-${id}`).textContent = 'Clique para selecionar arquivo'; }
+    if (fileInput) { fileInput.value = ''; document.getElementById(`ast-par-doc-file-label-${id}`).textContent = 'Clique para selecionar arquivo (PDF, imagem, Word, vídeo)'; }
     if (document.getElementById(`ast-par-doc-nome-${id}`)) document.getElementById(`ast-par-doc-nome-${id}`).value = '';
     this.abrirDrawer(id);
   },
