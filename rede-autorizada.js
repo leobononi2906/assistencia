@@ -355,53 +355,250 @@ window.raDetalheOS = async function(id) {
   var o = _raOS.find(function(x) { return x.id === id; });
   if (!o) return;
   var parc = o.assist_parceiros ? o.assist_parceiros.nome : 'Parceiro #' + o.parceiro_id;
+  var parcCidade = o.assist_parceiros ? (o.assist_parceiros.cidade || '') + '/' + (o.assist_parceiros.uf || '') : '';
+  // Carregar serviços detalhados da OS
+  var servicosOS = [];
+  try { servicosOS = await raFetch('prt_os_servicos?os_id=eq.' + id + '&select=*'); if (!Array.isArray(servicosOS)) servicosOS = []; } catch(e) {}
   // Carregar peças da OS
   var pecasOS = [];
   try { pecasOS = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=*'); if (!Array.isArray(pecasOS)) pecasOS = []; } catch(e) {}
-  var body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PROTOCOLO</label><div style="font-weight:700">' + (o.protocolo || '#' + o.id) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PARCEIRO</label><div>' + parc + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CLIENTE</label><div>' + (raEsc(o.cliente_nome) || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">TELEFONE</label><div>' + (raEsc(o.cliente_telefone) || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CIDADE/UF</label><div>' + (o.cliente_cidade || '') + '/' + (o.cliente_uf || '') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">PRODUTO</label><div>' + (o.produto_linha || '') + (o.produto_modelo ? ' — ' + o.produto_modelo : '') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">Nº SÉRIE</label><div>' + (o.numero_serie || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">NF COMPRA</label><div>' + (o.numero_nf || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DATA COMPRA</label><div>' + raDate(o.data_compra) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">CÓD. ERRO</label><div>' + (o.codigo_erro || '-') + '</div></div>' +
-    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DEFEITO</label><div>' + (raEsc(o.defeito_descricao) || '-') + '</div></div>' +
-    '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DIAGNÓSTICO</label><div>' + (raEsc(o.diagnostico) || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SOLUÇÃO</label><div>' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">SERVIÇO</label><div style="font-weight:600;color:var(--blue-mid)">' + (o.codigo_servico || '-') + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">VALOR</label><div style="font-weight:700;color:var(--blue-mid);font-size:16px">' + raFmt(o.valor_servico) + '</div></div>' +
-    '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">DATA SERVIÇO</label><div>' + raDate(o.data_servico) + '</div></div>' +
+  // Carregar teto do produto
+  var tetoProduto = 0;
+  try {
+    var linhaSlug = await raLinhaSlugDe(o.produto_linha) || o.produto_linha || '';
+    if (linhaSlug) {
+      var tp = await raFetch('prt_teto_produto?linha_produto=eq.' + linhaSlug + '&select=valor_maximo');
+      if (Array.isArray(tp) && tp.length) tetoProduto = parseFloat(tp[0].valor_maximo) || 0;
+    }
+  } catch(e) {}
+
+  // ─── CABEÇALHO: Protocolo + Status ───
+  var statusBadge = { enviada: 'badge-blue', aprovada: 'badge-green', recusada: 'badge-red', paga: 'badge-purple', rascunho: 'badge-gray' };
+  var body = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:20px;font-weight:700;color:var(--text)">' + (o.protocolo || '#' + o.id) + '</div><span class="badge ' + (statusBadge[o.status] || 'badge-gray') + '">' + (o.status || '').toUpperCase() + '</span></div>';
+
+  // ─── DADOS DO PARCEIRO ───
+  body += '<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px">' +
+    '<div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">PARCEIRO AUTORIZADO</div>' +
+    '<div style="font-weight:600">' + raEsc(parc) + '</div>' +
+    (parcCidade ? '<div style="color:var(--text-muted);font-size:12px">' + raEsc(parcCidade) + '</div>' : '') + '</div>';
+
+  // ─── DADOS DO CLIENTE ───
+  body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:12px;background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px">' +
+    '<div style="grid-column:span 2;font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase">CLIENTE</div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Nome</span><div style="font-weight:600">' + (raEsc(o.cliente_nome) || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Telefone</span><div>' + (raEsc(o.cliente_telefone) || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Cidade/UF</span><div>' + (o.cliente_cidade || '') + '/' + (o.cliente_uf || '') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">E-mail</span><div>' + (raEsc(o.cliente_email) || '-') + '</div></div>' +
     '</div>';
-  // Peças utilizadas
+
+  // ─── PRODUTO ───
+  body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:12px;background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px">' +
+    '<div style="grid-column:span 2;font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase">PRODUTO</div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Linha</span><div style="font-weight:600">' + raEsc(o.produto_linha || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Modelo</span><div style="font-weight:600">' + raEsc(o.produto_modelo || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Nº Série</span><div>' + (o.numero_serie || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">NF Compra</span><div>' + (o.numero_nf || '-') + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Data Compra</span><div>' + raDate(o.data_compra) + '</div></div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Data Serviço</span><div>' + raDate(o.data_servico) + '</div></div>' +
+    '</div>';
+
+  // ─── DIAGNÓSTICO ───
+  body += '<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px">' +
+    '<div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">DIAGNÓSTICO</div>' +
+    '<div style="margin-bottom:6px"><span style="color:var(--text-muted);font-size:11px">Cód. Erro:</span> <strong>' + (o.codigo_erro || '-') + '</strong></div>' +
+    '<div style="margin-bottom:6px"><span style="color:var(--text-muted);font-size:11px">Defeito:</span> ' + (raEsc(o.defeito_descricao) || '-') + '</div>' +
+    '<div style="margin-bottom:6px"><span style="color:var(--text-muted);font-size:11px">Diagnóstico:</span> ' + (raEsc(o.diagnostico) || '-') + '</div>' +
+    '<div><span style="color:var(--text-muted);font-size:11px">Solução:</span> ' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div>';
+
+  // ─── SERVIÇOS REALIZADOS (detalhados) ───
+  body += '<div style="border:2px solid var(--primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">' +
+    '<div style="font-weight:700;font-size:11px;color:var(--primary);text-transform:uppercase;margin-bottom:8px">SERVIÇOS REALIZADOS</div>';
+  if (servicosOS.length) {
+    // Agrupar por categoria
+    var porCat = {};
+    servicosOS.forEach(function(s) {
+      var cn = s.categoria_nome || 'Serviços';
+      if (!porCat[cn]) porCat[cn] = { items: [], catId: s.categoria_id };
+      porCat[cn].items.push(s);
+    });
+    var somaRaw = 0;
+    for (var catNome in porCat) {
+      var g = porCat[catNome];
+      var somaCat = g.items.reduce(function(s, x) { return s + (parseFloat(x.valor) || 0); }, 0);
+      somaRaw += somaCat;
+      // Buscar teto da categoria
+      var tetoCat = 0;
+      if (g.catId) {
+        try {
+          var catData = await raFetch('prt_categorias_servico?id=eq.' + g.catId + '&select=valor_teto');
+          if (Array.isArray(catData) && catData.length) tetoCat = parseFloat(catData[0].valor_teto) || 0;
+        } catch(e) {}
+      }
+      var catCapado = tetoCat > 0 && somaCat > tetoCat;
+      body += '<div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-top:8px;margin-bottom:4px;display:flex;justify-content:space-between">' +
+        '<span>' + raEsc(catNome) + '</span>' +
+        (tetoCat ? '<span>teto ' + raFmt(tetoCat) + '</span>' : '') + '</div>';
+      g.items.forEach(function(s) {
+        body += '<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:13px;border-bottom:1px solid #f0f0f0;align-items:center">' +
+          '<div><span style="font-family:monospace;font-weight:700;color:var(--primary);font-size:11px;margin-right:8px">' + raEsc(s.codigo) + '</span>' + raEsc(s.descricao) + '</div>' +
+          '<div style="font-weight:600;white-space:nowrap">' + raFmt(s.valor) + '</div></div>';
+      });
+      if (catCapado) {
+        body += '<div style="text-align:right;font-size:12px;padding:2px 8px;color:var(--text-muted)">Soma: <span style="text-decoration:line-through">' + raFmt(somaCat) + '</span> → <strong style="color:var(--primary)">' + raFmt(tetoCat) + '</strong> (teto)</div>';
+      }
+    }
+  } else if (o.codigo_servico) {
+    body += '<div style="padding:4px 0;font-size:13px"><span style="font-weight:700">' + (o.codigo_servico || '-') + '</span></div>';
+  }
+  body += '</div>';
+
+  // ─── VALOR TOTAL A PAGAR ───
+  var valorFinal = parseFloat(o.valor_servico) || 0;
+  body += '<div style="background:var(--primary-bg);border:2px solid var(--primary);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">' +
+    '<div><div style="font-weight:700;font-size:11px;color:var(--primary);text-transform:uppercase">VALOR TOTAL A PAGAR</div>' +
+    (tetoProduto ? '<div style="font-size:11px;color:var(--text-muted)">Teto do produto: ' + raFmt(tetoProduto) + '</div>' : '') + '</div>' +
+    '<div style="font-size:24px;font-weight:800;color:var(--primary)">' + raFmt(valorFinal) + '</div></div>';
+
+  // ─── PEÇAS UTILIZADAS ───
   if (pecasOS.length) {
-    body += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px"><label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PEÇAS UTILIZADAS</label>';
+    body += '<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px">' +
+      '<div style="font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">PEÇAS UTILIZADAS (' + pecasOS.length + ')</div>';
     pecasOS.forEach(function(p) {
-      body += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f0f0f0"><span>' + raEsc(p.referencia) + ' — ' + raEsc(p.nome_peca) + '</span><span style="font-weight:600">x' + p.quantidade + '</span></div>';
+      body += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #e8e8e8"><span><strong>' + raEsc(p.referencia) + '</strong> — ' + raEsc(p.nome_peca) + '</span><span style="font-weight:600">x' + p.quantidade + '</span></div>';
     });
     body += '</div>';
   }
-  // Fotos
+
+  // ─── FOTOS ───
   if (o.foto_nf || o.foto_equipamento) {
-    body += '<div style="display:flex;gap:12px;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">';
+    body += '<div style="display:flex;gap:12px;margin-bottom:12px">';
     if (o.foto_nf) body += '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">FOTO NF</label><br><img src="' + o.foto_nf + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open(\'' + o.foto_nf + '\')"></div>';
     if (o.foto_equipamento) body += '<div><label style="font-size:11px;font-weight:600;color:var(--text-muted)">EQUIPAMENTO</label><br><img src="' + o.foto_equipamento + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open(\'' + o.foto_equipamento + '\')"></div>';
     body += '</div>';
   }
   if (o.motivo_recusa) body += '<div class="alert alert-error" style="margin-top:12px"><strong>Motivo recusa:</strong> ' + raEsc(o.motivo_recusa) + '</div>';
 
-  var footer = '';
+  var footer = '<button class="btn btn-secondary" onclick="raImprimirOS(' + o.id + ')">🖨 Imprimir</button>';
   if (o.status === 'enviada') {
-    footer = '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>' +
+    footer += '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>' +
              '<button class="btn btn-danger" onclick="raRecusarOS(' + o.id + ')">Recusar</button>' +
              '<button class="btn btn-success" onclick="raAprovarOS(' + o.id + ')">✓ Aprovar</button>';
   } else if (o.status === 'aprovada') {
-    footer = '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>';
+    footer += '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>';
   }
   raModal('OS ' + (o.protocolo || '#' + o.id), body, footer);
+};
+
+// ═══ IMPRIMIR OS ═══
+window.raImprimirOS = async function(id) {
+  var o = _raOS.find(function(x) { return x.id === id; });
+  if (!o) return;
+  var parc = o.assist_parceiros ? o.assist_parceiros.nome : '';
+  var parcCidade = o.assist_parceiros ? (o.assist_parceiros.cidade || '') + '/' + (o.assist_parceiros.uf || '') : '';
+  var servicosOS = [];
+  try { servicosOS = await raFetch('prt_os_servicos?os_id=eq.' + id + '&select=*'); if (!Array.isArray(servicosOS)) servicosOS = []; } catch(e) {}
+  var pecasOS = [];
+  try { pecasOS = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=*'); if (!Array.isArray(pecasOS)) pecasOS = []; } catch(e) {}
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OS ' + (o.protocolo || '#' + o.id) + '</title><style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:24px;color:#222;font-size:12px}' +
+    '.header{text-align:center;border-bottom:3px solid #0B1426;padding-bottom:12px;margin-bottom:16px}' +
+    '.header h1{font-size:22px;color:#0B1426;letter-spacing:2px}' +
+    '.header .proto{font-size:16px;font-weight:700;margin-top:6px}' +
+    '.header .status{display:inline-block;padding:2px 12px;border-radius:10px;font-size:11px;font-weight:700;margin-top:4px}' +
+    '.section{margin-bottom:14px;border:1px solid #ddd;border-radius:4px;overflow:hidden}' +
+    '.section-title{background:#0B1426;color:#fff;padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}' +
+    '.section-body{padding:10px 12px}' +
+    '.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}' +
+    '.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 16px}' +
+    '.field .lbl{font-size:9px;text-transform:uppercase;color:#888;font-weight:700}.field .val{font-size:12px}' +
+    '.srv-table{width:100%;border-collapse:collapse}.srv-table th{text-align:left;font-size:9px;color:#888;padding:4px 8px;border-bottom:1px solid #ddd;text-transform:uppercase}' +
+    '.srv-table td{padding:4px 8px;border-bottom:1px solid #eee;font-size:11px}.srv-table .cod{font-family:Consolas,monospace;font-weight:700;font-size:10px}' +
+    '.srv-table .val{text-align:right;font-weight:700}' +
+    '.cat-row{background:#f0f3f7;font-weight:700;font-size:10px}' +
+    '.total-box{border:3px solid #0B1426;border-radius:6px;padding:14px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}' +
+    '.total-box .label{font-size:12px;font-weight:700;text-transform:uppercase;color:#0B1426}.total-box .amount{font-size:28px;font-weight:800;color:#0B1426}' +
+    '.footer{margin-top:20px;text-align:center;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:8px}' +
+    '@media print{body{padding:12px}}' +
+    '</style></head><body>';
+
+  // Header
+  var statusLabel = (o.status || '').toUpperCase();
+  var statusColor = o.status === 'aprovada' ? '#065F46;background:#d1fae5' : o.status === 'recusada' ? '#991b1b;background:#fee2e2' : '#1e40af;background:#dbeafe';
+  html += '<div class="header"><h1>STONNI</h1><div style="font-size:10px;color:#666">Rede de Assistência Técnica Autorizada</div>' +
+    '<div class="proto">' + (o.protocolo || '#' + o.id) + '</div>' +
+    '<span class="status" style="color:' + statusColor + '">' + statusLabel + '</span></div>';
+
+  // Parceiro
+  html += '<div class="section"><div class="section-title">Parceiro Autorizado</div><div class="section-body">' +
+    '<strong>' + raEsc(parc) + '</strong>' + (parcCidade ? ' — ' + raEsc(parcCidade) : '') + '</div></div>';
+
+  // Cliente
+  html += '<div class="section"><div class="section-title">Cliente</div><div class="section-body"><div class="grid">' +
+    '<div class="field"><div class="lbl">Nome</div><div class="val"><strong>' + (raEsc(o.cliente_nome) || '-') + '</strong></div></div>' +
+    '<div class="field"><div class="lbl">Telefone</div><div class="val">' + (raEsc(o.cliente_telefone) || '-') + '</div></div>' +
+    '<div class="field"><div class="lbl">Cidade/UF</div><div class="val">' + (o.cliente_cidade || '') + '/' + (o.cliente_uf || '') + '</div></div>' +
+    '<div class="field"><div class="lbl">E-mail</div><div class="val">' + (raEsc(o.cliente_email) || '-') + '</div></div>' +
+    '</div></div></div>';
+
+  // Produto
+  html += '<div class="section"><div class="section-title">Produto</div><div class="section-body"><div class="grid3">' +
+    '<div class="field"><div class="lbl">Linha</div><div class="val"><strong>' + raEsc(o.produto_linha || '-') + '</strong></div></div>' +
+    '<div class="field"><div class="lbl">Modelo</div><div class="val"><strong>' + raEsc(o.produto_modelo || '-') + '</strong></div></div>' +
+    '<div class="field"><div class="lbl">Nº Série</div><div class="val">' + (o.numero_serie || '-') + '</div></div>' +
+    '<div class="field"><div class="lbl">NF Compra</div><div class="val">' + (o.numero_nf || '-') + '</div></div>' +
+    '<div class="field"><div class="lbl">Data Compra</div><div class="val">' + raDate(o.data_compra) + '</div></div>' +
+    '<div class="field"><div class="lbl">Data Serviço</div><div class="val">' + raDate(o.data_servico) + '</div></div>' +
+    '</div></div></div>';
+
+  // Diagnóstico
+  html += '<div class="section"><div class="section-title">Diagnóstico</div><div class="section-body">' +
+    '<div class="grid" style="margin-bottom:6px">' +
+    '<div class="field"><div class="lbl">Cód. Erro</div><div class="val"><strong>' + (o.codigo_erro || '-') + '</strong></div></div>' +
+    '<div class="field"><div class="lbl">Solução</div><div class="val">' + ((o.solucao_tipo || '').replace(/_/g, ' ')) + '</div></div></div>' +
+    '<div class="field" style="margin-bottom:4px"><div class="lbl">Defeito</div><div class="val">' + (raEsc(o.defeito_descricao) || '-') + '</div></div>' +
+    '<div class="field"><div class="lbl">Diagnóstico</div><div class="val">' + (raEsc(o.diagnostico) || '-') + '</div></div>' +
+    '</div></div>';
+
+  // Serviços
+  html += '<div class="section"><div class="section-title">Serviços Realizados</div><div class="section-body">';
+  if (servicosOS.length) {
+    html += '<table class="srv-table"><thead><tr><th style="width:80px">Código</th><th>Descrição</th><th>Categoria</th><th style="width:90px;text-align:right">Valor</th></tr></thead><tbody>';
+    var somaRaw = 0;
+    servicosOS.forEach(function(s) {
+      somaRaw += parseFloat(s.valor) || 0;
+      html += '<tr><td class="cod">' + raEsc(s.codigo) + '</td><td>' + raEsc(s.descricao) + '</td><td style="font-size:10px;color:#666">' + raEsc(s.categoria_nome || '') + '</td><td class="val">R$ ' + (parseFloat(s.valor) || 0).toFixed(2).replace('.', ',') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    if (somaRaw !== (parseFloat(o.valor_servico) || 0)) {
+      html += '<div style="text-align:right;font-size:11px;margin-top:4px;color:#666">Soma bruta: R$ ' + somaRaw.toFixed(2).replace('.', ',') + ' → Valor efetivo (com tetos): <strong>R$ ' + (parseFloat(o.valor_servico) || 0).toFixed(2).replace('.', ',') + '</strong></div>';
+    }
+  } else {
+    html += '<div>' + (o.codigo_servico || '-') + '</div>';
+  }
+  html += '</div></div>';
+
+  // Peças
+  if (pecasOS.length) {
+    html += '<div class="section"><div class="section-title">Peças Utilizadas (' + pecasOS.length + ')</div><div class="section-body">';
+    html += '<table class="srv-table"><thead><tr><th>Referência</th><th>Peça</th><th style="width:60px;text-align:right">Qtd</th></tr></thead><tbody>';
+    pecasOS.forEach(function(p) {
+      html += '<tr><td class="cod">' + raEsc(p.referencia) + '</td><td>' + raEsc(p.nome_peca) + '</td><td class="val">' + p.quantidade + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  // Total
+  html += '<div class="total-box"><div class="label">Valor Total a Pagar</div><div class="amount">R$ ' + (parseFloat(o.valor_servico) || 0).toFixed(2).replace('.', ',') + '</div></div>';
+
+  html += '<div class="footer">Stonni — Rede de Assistência Técnica Autorizada — Emitido em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
+  html += '</body></html>';
+
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function() { w.print(); }, 600);
+  raLog('ACAO', 'os', 'IMPRIMIR_OS', String(id));
 };
 
 window.raEditarServicoOS = async function(osId) {
