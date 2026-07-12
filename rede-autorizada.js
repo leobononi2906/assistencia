@@ -1303,13 +1303,29 @@ async function raPecEstoque(box) {
 async function raPecCompras(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Pedidos de compra dos parceiros</span></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Parceiro</th><th>Itens</th><th>Total</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-cpr-tbody"></tbody></table></div></div>';
-  var compras = await raFetch('prt_compras_pecas?order=criado_em.desc&select=*,assist_parceiros(nome)');
-  if (!Array.isArray(compras)) compras = [];
+  var compras = [];
+  try {
+    compras = await raFetch('prt_compras_pecas?order=criado_em.desc&select=*,assist_parceiros(nome)');
+    if (!Array.isArray(compras)) {
+      compras = await raFetch('prt_compras_pecas?order=criado_em.desc&select=*');
+      if (!Array.isArray(compras)) compras = [];
+    }
+  } catch(e) { console.error('Fetch compras falhou:', e); compras = []; }
+  // Lookup parceiros se join falhou
+  var parcMap = {};
+  var temJoin = compras.length > 0 && compras[0].assist_parceiros;
+  if (!temJoin && compras.length) {
+    var parcIds = [];
+    compras.forEach(function(c) { if (c.parceiro_id && parcIds.indexOf(c.parceiro_id) < 0) parcIds.push(c.parceiro_id); });
+    if (parcIds.length) {
+      try { var pp = await raFetch('assist_parceiros?id=in.(' + parcIds.join(',') + ')&select=id,nome'); if (Array.isArray(pp)) pp.forEach(function(p) { parcMap[p.id] = p.nome; }); } catch(e) {}
+    }
+  }
   var tbody = document.getElementById('ra-cpr-tbody');
   if (!compras.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pedido de compra</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',aprovado:'badge-green',faturado:'badge-purple',cancelado:'badge-gray'};
   tbody.innerHTML = compras.map(function(c) {
-    var parcNome = c.assist_parceiros ? c.assist_parceiros.nome : '—';
+    var parcNome = c.assist_parceiros ? c.assist_parceiros.nome : (parcMap[c.parceiro_id] || '—');
     return '<tr><td class="mono" style="font-weight:600">' + (c.codigo || '#' + c.id) + '</td><td>' + raEsc(parcNome) + '</td><td style="text-align:center">—</td><td class="mono right">' + raFmt(c.valor_final) + '</td><td><span class="badge ' + (statusBadge[c.status] || '') + '">' + c.status + '</span></td><td>' + raDate(c.criado_em) + '</td><td>' +
       (c.status === 'pendente' ? '<button class="btn-icon" onclick="raAprovarCompra(' + c.id + ')">✓</button>' : '') + '</td></tr>';
   }).join('');
