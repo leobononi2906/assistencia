@@ -868,7 +868,7 @@ window.raCarregarPecas = async function() {
       '<td>' + p.nome + '</td>' +
       '<td>' + raLinhaNome(p.linha_produto) + '</td>' +
       '<td style="font-size:12px">' + (aplic || '<span style="color:var(--text-muted)">não definida</span>') + '</td>' +
-      '<td class="mono right">' + raFmt(p.custo_unitario) + '</td>' +
+      '<td class="mono right">' + raFmt(p.preco_venda || p.custo_unitario) + '</td>' +
       '<td>' + (p.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
       '<td><button class="btn-icon" onclick="raEditarPeca(' + p.id + ')">✏️</button> <button class="btn-icon" onclick="raTogglePeca(' + p.id + ',' + !p.ativo + ')">' + (p.ativo ? '🚫' : '✅') + '</button></td></tr>';
   }).join('');
@@ -887,9 +887,10 @@ window.raNovaPeca = async function(prefill) {
     '<hr style="border:0;border-top:1px solid var(--border);margin:8px 0">' +
     '<div class="field"><label>Referência</label><input id="ra-pec-ref" class="search-input" style="width:100%" value="' + (p.referencia || '') + '" placeholder="Código ERP"></div>' +
     '<div class="field"><label>Nome (editável)</label><input id="ra-pec-nome" class="search-input" style="width:100%" value="' + (p.nome || '') + '" placeholder="Nome da peça"></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
       '<div class="field"><label>Linha</label><select id="ra-pec-linha-new" class="filter-select" style="width:100%" onchange="raAtualizarCheckboxesModelo(\'pec\')">' + linhaOpts + '</select></div>' +
-      '<div class="field"><label>Custo (R$)</label><input id="ra-pec-custo" class="search-input" style="width:100%" type="number" step="0.01" value="' + (p.custo_unitario || '') + '"></div>' +
+      '<div class="field"><label>Preço venda (R$)</label><input id="ra-pec-custo" class="search-input" style="width:100%" type="number" step="0.01" value="' + (p.preco_venda || p.custo_unitario || '') + '" placeholder="Bononi SC"></div>' +
+      '<div class="field"><label>IPI (%)</label><input id="ra-pec-ipi" class="search-input" style="width:100%" type="number" step="0.01" value="' + (p.ipi_perc || '') + '" placeholder="0"></div>' +
     '</div>' +
     '<div class="field"><label>Aplicação — selecione os modelos</label><div id="ra-pec-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>',
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
@@ -905,18 +906,28 @@ window.raBuscarPecaERP = async function() {
   var box = document.getElementById('ra-pec-erp-results');
   box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Buscando...</div>';
   var qe = encodeURIComponent(q);
-  var results = await raFetch('geral_pecas_preco_bononi_sc?or=(referencia.ilike.*' + qe + '*,nome.ilike.*' + qe + '*)&order=nome.asc&limit=15&select=referencia,nome,preco_venda,ipi_saida,subgrupo');
+  var results = await raFetch('comp_produtos_consolidado?or=(referencia.ilike.*' + qe + '*,nome.ilike.*' + qe + '*)&subgrupo=in.(REPARO AR STONNI,RP. GELADEIRA,REPOSICAO GERADOR)&order=nome.asc&limit=15&select=referencia,nome,subgrupo,estoque_total,preco_compra');
   if (!Array.isArray(results) || !results.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px">Nenhuma peça encontrada</div>'; return; }
+  // Buscar preço Bononi SC para cada resultado
+  var refs = results.map(function(r) { return r.referencia; });
+  var precoMap = {};
+  try {
+    var pr = await raFetch('geral_pecas_preco_bononi_sc?referencia=in.(' + refs.join(',') + ')&select=referencia,preco_venda,ipi_saida');
+    if (Array.isArray(pr)) pr.forEach(function(p) { precoMap[p.referencia] = { preco: p.preco_venda || 0, ipi: p.ipi_saida || 0 }; });
+  } catch(e) {}
   box.innerHTML = results.map(function(r) {
-    return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + (r.preco_venda || 0) + ',' + (r.ipi_saida || 0) + ')"><span><strong>' + r.referencia + '</strong> — ' + r.nome + '</span><span>' + raFmt(r.preco_venda) + (r.ipi_saida ? ' +IPI ' + r.ipi_saida + '%' : '') + '</span></div>';
+    var bp = precoMap[r.referencia] || { preco: 0, ipi: 0 };
+    return '<div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px;display:flex;justify-content:space-between" onmouseover="this.style.background=\'var(--blue-pale)\'" onmouseout="this.style.background=\'\'" onclick="raSelecionarPecaERP(\'' + (r.referencia || '').replace(/'/g, "\\'") + '\',\'' + (r.nome || '').replace(/'/g, "\\'") + '\',' + bp.preco + ',' + bp.ipi + ',' + (r.estoque_total || 0) + ')"><div><strong>' + r.referencia + '</strong> — ' + r.nome + '<div style="font-size:10px;color:var(--text-muted)">' + (r.subgrupo || '') + ' · Estoque: ' + (r.estoque_total || 0) + '</div></div><span>' + (bp.preco ? raFmt(bp.preco) + (bp.ipi ? ' +IPI ' + bp.ipi + '%' : '') : '<em style="color:var(--text-muted)">sem preço SC</em>') + '</span></div>';
   }).join('');
 };
 
-window.raSelecionarPecaERP = function(ref, nome, custo, ipi) {
+window.raSelecionarPecaERP = function(ref, nome, preco, ipi, estoque) {
   document.getElementById('ra-pec-ref').value = ref;
   document.getElementById('ra-pec-nome').value = nome;
-  document.getElementById('ra-pec-custo').value = custo || '';
-  document.getElementById('ra-pec-erp-results').innerHTML = '<div style="padding:6px;color:var(--green);font-size:12px">✅ Produto selecionado: ' + ref + '</div>';
+  document.getElementById('ra-pec-custo').value = preco || '';
+  var ipiEl = document.getElementById('ra-pec-ipi');
+  if (ipiEl) ipiEl.value = ipi || '';
+  document.getElementById('ra-pec-erp-results').innerHTML = '<div style="padding:6px;color:var(--green);font-size:12px">✅ ' + ref + ' — ' + (preco ? raFmt(preco) : 'sem preço SC') + (estoque !== undefined ? ' · Estoque geral: ' + estoque : '') + '</div>';
 };
 
 window.raAtualizarCheckboxesModelo = async function(prefix) {
@@ -946,11 +957,15 @@ window.raToggleModeloCheck = function(prefix, cb) {
 };
 
 window.raSalvarPeca = async function(id) {
+  var precoVal = parseFloat(document.getElementById('ra-pec-custo').value) || 0;
+  var ipiVal = parseFloat((document.getElementById('ra-pec-ipi') || {}).value) || 0;
   var d = {
     referencia: document.getElementById('ra-pec-ref').value.trim(),
     nome: document.getElementById('ra-pec-nome').value.trim(),
     linha_produto: document.getElementById('ra-pec-linha-new').value,
-    custo_unitario: parseFloat(document.getElementById('ra-pec-custo').value) || null,
+    custo_unitario: precoVal || null,
+    preco_venda: precoVal || null,
+    ipi_perc: ipiVal || null,
     aplicacao: window._pecaAplic || []
   };
   if (!d.referencia || !d.nome) { alert('Preencha referência e nome'); return; }
