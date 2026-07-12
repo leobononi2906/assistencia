@@ -56,21 +56,6 @@ var RA_PAGES = {
   <div id="ra-pec-content"></div>
 </div>`,
 
-'ra-materiais': `<div class="page-content active" style="padding:20px 24px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-    <div class="section-title" style="margin:0">Materiais Técnicos</div>
-    <div style="display:flex;gap:8px">
-      <select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()">
-        <option value="">Todas as linhas</option>
-      </select>
-      <button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button>
-    </div>
-  </div>
-  <div class="table-card">
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="5" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
-  </div>
-</div>`,
-
 'ra-pagamentos': `<div class="page-content active" style="padding:20px 24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div class="section-title" style="margin:0">Pagamentos — Fechamento Mensal</div>
@@ -92,12 +77,10 @@ var RA_PAGES = {
   <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-cfg-tab-servicos" onclick="raCfgTab('servicos')">🔧 Serviços</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-garantia" onclick="raCfgTab('garantia')">🛡 Garantia</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-precos" onclick="raCfgTab('precos')">💰 Preços parceiro</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-materiais" onclick="raCfgTab('materiais')">📚 Materiais</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-linhas" onclick="raCfgTab('linhas')">📦 Linhas e Modelos</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-financeiro" onclick="raCfgTab('financeiro')">💰 Financeiro</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-empresa" onclick="raCfgTab('empresa')">🏢 Empresa</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-prazos" onclick="raCfgTab('prazos')">⏱ Textos e Prazos</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-boasvindas" onclick="raCfgTab('boasvindas')">💬 Boas-vindas</button>
   </div>
   <div id="ra-cfg-content"></div>
 </div>`,
@@ -128,7 +111,6 @@ window.ModuloRedeAutorizada = {
       case 'ra-aprovar':    raCarregarOS(); break;
       case 'ra-pecas':      raPecTab('reposicao'); break;
       case 'ra-pagamentos': raCarregarPagamentos(); break;
-      case 'ra-materiais':  raCarregarMateriais(); break;
       case 'ra-config':     raCfgTab('servicos'); break;
       case 'ra-parceiros':  raCarregarParceiros(); break;
     }
@@ -1165,6 +1147,17 @@ window.raMarcarPago = async function(id) {
 // 6. MATERIAIS TÉCNICOS — CRUD
 // ═══════════════════════════════════════
 var _raMateriais = [];
+// ═══ MATERIAIS (agora dentro de Configurações) ═══
+function raCfgMateriais(box) {
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+    '<div style="font-weight:600">Materiais Técnicos</div>' +
+    '<div style="display:flex;gap:8px">' +
+    '<select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()"><option value="">Todas as linhas</option></select>' +
+    '<button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button></div></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="5" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div></div>';
+  raCarregarMateriais();
+}
+
 window.raCarregarMateriais = async function() {
   await raPopularSelectLinhas('ra-mat-linha', 'Todas as linhas');
   var linha = document.getElementById('ra-mat-linha')?.value || '';
@@ -1375,7 +1368,7 @@ var _raCfgSubTab = 'servicos';
 
 window.raCfgTab = function(tab) {
   _raCfgSubTab = tab;
-  ['servicos','pecas','garantia','precos','linhas','empresa','prazos','boasvindas'].forEach(function(t) {
+  ['servicos','pecas','materiais','linhas','financeiro','empresa'].forEach(function(t) {
     var btn = document.getElementById('ra-cfg-tab-' + t);
     if (btn) { btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface2)'; btn.style.color = t === tab ? '#fff' : ''; }
   });
@@ -1384,12 +1377,10 @@ window.raCfgTab = function(tab) {
   switch(tab) {
     case 'servicos': raCfgServicos(box); break;
     case 'pecas': raCfgPecas(box); break;
-    case 'garantia': raCfgGarantia(box); break;
-    case 'precos': raCfgPrecos(box); break;
+    case 'materiais': raCfgMateriais(box); break;
     case 'linhas': raCfgLinhas(box); break;
-    case 'empresa': raCfgEmpresa(box); break;
-    case 'prazos': raCfgPrazos(box); break;
-    case 'boasvindas': raCfgBoasVindas(box); break;
+    case 'financeiro': raCfgFinanceiro(box); break;
+    case 'empresa': raCfgEmpresaGeral(box); break;
   }
 };
 
@@ -1409,6 +1400,38 @@ function raCfgPecas(box) {
     '<button class="btn btn-primary btn-sm" onclick="raNovaPeca()">+ Nova peça</button></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Referência</th><th>Nome</th><th>Linha</th><th>Aplicação</th><th>Preço</th><th>IPI</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-pec-tbody"></tbody></table></div></div>';
   raCarregarPecas();
+}
+
+// ═══ FINANCEIRO (junta Preços parceiro + Garantia) ═══
+async function raCfgFinanceiro(box) {
+  var cfg = await raFetch('prt_configuracoes?select=*');
+  if (!Array.isArray(cfg)) cfg = [];
+  var cfgMap = {}; cfg.forEach(function(c) { cfgMap[c.chave] = c.valor; });
+  var desconto = cfgMap.desconto_autorizada_perc || '15';
+  var prazoDia = cfgMap.prazo_pagamento_dia || '10';
+  var tetos = await raFetch('prt_teto_produto?order=linha_produto.asc&select=*');
+  if (!Array.isArray(tetos)) tetos = [];
+  var gars = await raFetch('prt_garantia?ativo=eq.true&order=linha_produto.asc,modelo.asc&select=*');
+  if (!Array.isArray(gars)) gars = [];
+  await raGetLinhas();
+
+  box.innerHTML = '<div style="font-weight:700;font-size:15px;margin-bottom:16px">Regras Financeiras e Comerciais</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">' +
+    '<div class="table-card" style="padding:16px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Desconto compra peças (%)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="ra-cfg-desconto" class="search-input" type="number" style="width:100px" value="' + desconto + '"><button class="btn btn-primary btn-sm" onclick="raCfgSalvarConfig(\'desconto_autorizada_perc\',document.getElementById(\'ra-cfg-desconto\').value)">Salvar</button></div></div>' +
+    '<div class="table-card" style="padding:16px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Dia pagamento (mês seguinte)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="ra-cfg-prazo" class="search-input" type="number" style="width:100px" value="' + prazoDia + '"><button class="btn btn-primary btn-sm" onclick="raCfgSalvarConfig(\'prazo_pagamento_dia\',document.getElementById(\'ra-cfg-prazo\').value)">Salvar</button></div></div></div>' +
+    '<div style="font-weight:600;margin-bottom:12px">Teto de serviço por linha de produto</div>' +
+    '<div class="table-card" style="margin-bottom:24px"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Valor máximo</th><th></th></tr></thead><tbody>' +
+    tetos.map(function(t) {
+      return '<tr><td>' + raLinhaNome(t.linha_produto) + '</td><td><input class="search-input" type="number" step="0.01" style="width:120px" value="' + (t.valor_maximo || 0) + '" id="ra-teto-' + t.id + '"></td><td><button class="btn btn-primary btn-sm" onclick="raCfgSalvarTeto(' + t.id + ')">Salvar</button></td></tr>';
+    }).join('') + '</tbody></table></div></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Prazo de garantia por linha / modelo</span><button class="btn btn-primary btn-sm" onclick="raCfgNovaGarantia()">+ Adicionar</button></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Linha</th><th>Modelo</th><th>Prazo (meses)</th><th>Descrição</th><th></th></tr></thead><tbody id="ra-gar-tbody"></tbody></table></div></div>';
+
+  var tbody = document.getElementById('ra-gar-tbody');
+  if (!gars.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma configuração</td></tr>'; return; }
+  tbody.innerHTML = gars.map(function(g) {
+    return '<tr><td>' + raLinhaNome(g.linha_produto) + '</td><td>' + (g.modelo || '<em>Toda a linha</em>') + '</td><td style="text-align:center;font-weight:600">' + g.prazo_meses + '</td><td>' + raEsc(g.descricao || '') + '</td><td><button class="btn-icon" onclick="raCfgEditarGarantia(' + g.id + ')">✏️</button></td></tr>';
+  }).join('');
 }
 
 async function raCfgGarantia(box) {
@@ -1457,7 +1480,7 @@ window.raCfgSalvarGarantia = async function(id) {
   var d = { linha_produto: document.getElementById('ra-gar-linha').value, modelo: document.getElementById('ra-gar-modelo').value || null, prazo_meses: parseInt(document.getElementById('ra-gar-prazo').value) || 12, descricao: document.getElementById('ra-gar-desc').value.trim() || null };
   if (id) { await raPatch('prt_garantia', 'id=eq.' + id, d); } else { await raPost('prt_garantia', d); }
   document.getElementById('ra-modal')?.remove();
-  raCfgTab('garantia');
+  raCfgTab('financeiro');
 };
 window.raCfgEditarGarantia = async function(id) {
   var gars = await raFetch('prt_garantia?id=eq.' + id); var g = Array.isArray(gars) && gars[0] ? gars[0] : {};
@@ -2034,6 +2057,68 @@ window.raDescredenciar = async function(id, nome) {
 // ═══════════════════════════════════════
 // CONFIG: DADOS DA EMPRESA
 // ═══════════════════════════════════════
+// ═══ EMPRESA GERAL (junta Dados Empresa + Textos/Prazos + Boas-vindas) ═══
+async function raCfgEmpresaGeral(box) {
+  box.innerHTML = '<div class="loading-full"><span class="spinner"></span> Carregando...</div>';
+  // Buscar todas as configs de uma vez
+  var cfgs = {};
+  try {
+    var r = await raFetch('prt_configuracoes?select=chave,valor');
+    if (Array.isArray(r)) r.forEach(function(c) { cfgs[c.chave] = c.valor || ''; });
+  } catch(e) {}
+  var template = cfgs.msg_boas_vindas || _raBoasVindasDefault;
+
+  var html = '<div style="font-weight:700;font-size:15px;margin-bottom:16px">Configurações Gerais</div>';
+
+  // ── Seção 1: Dados da Empresa ──
+  html += '<div class="card" style="max-width:700px;margin-bottom:24px">' +
+    '<div style="font-weight:600;margin-bottom:12px">🏢 Dados da Empresa</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Usados nos PDFs, relatórios e comunicações.</p>' +
+    '<div class="field"><label>Razão Social</label><input type="text" id="ra-emp-razao" class="search-input" value="' + raEsc(cfgs.empresa_razao_social || '') + '" placeholder="Ex: Bononi Acessórios Ltda"></div>' +
+    '<div class="field"><label>Nome Fantasia</label><input type="text" id="ra-emp-fantasia" class="search-input" value="' + raEsc(cfgs.empresa_nome_fantasia || '') + '" placeholder="Ex: Stonni"></div>' +
+    '<div class="field"><label>CNPJ</label><input type="text" id="ra-emp-cnpj" class="search-input" value="' + raEsc(cfgs.empresa_cnpj || '') + '" placeholder="00.000.000/0000-00"></div>' +
+    '<div class="field"><label>Endereço</label><input type="text" id="ra-emp-endereco" class="search-input" value="' + raEsc(cfgs.empresa_endereco || '') + '" placeholder="Rua, nº, cidade/UF, CEP"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div class="field"><label>Telefone</label><input type="text" id="ra-emp-telefone" class="search-input" value="' + raEsc(cfgs.empresa_telefone || '') + '" placeholder="(44) 3333-0000"></div>' +
+    '<div class="field"><label>E-mail</label><input type="text" id="ra-emp-email" class="search-input" value="' + raEsc(cfgs.empresa_email || '') + '" placeholder="contato@stonni.com.br"></div></div>' +
+    '<div class="field"><label>Site</label><input type="text" id="ra-emp-site" class="search-input" value="' + raEsc(cfgs.empresa_site || '') + '" placeholder="www.stonni.com.br"></div>' +
+    '<button class="btn btn-primary" onclick="raSalvarEmpresa()">Salvar dados da empresa</button></div>';
+
+  // ── Seção 2: Textos e Prazos ──
+  html += '<div class="card" style="max-width:700px;margin-bottom:24px">' +
+    '<div style="font-weight:600;margin-bottom:12px">⏱ Textos e Prazos Operacionais</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Estes valores aparecem no portal do parceiro e na mensagem de boas-vindas. Use <code style="background:var(--surface2);padding:1px 4px;border-radius:3px;font-size:11px">{chave}</code> para variáveis dinâmicas.</p>';
+  _raPrazosConfig.forEach(function(p) {
+    var val = cfgs[p.chave] || '';
+    if (p.tipo === 'number') {
+      html += '<div class="field"><label>' + p.label + '</label><input type="number" id="ra-prazo-' + p.chave + '" class="search-input" value="' + raEsc(val) + '" placeholder="' + p.placeholder + '" style="width:120px" min="1"></div>';
+    } else {
+      html += '<div class="field"><label>' + p.label + '</label><input type="text" id="ra-prazo-' + p.chave + '" class="search-input" value="' + raEsc(val) + '" placeholder="' + p.placeholder + '"></div>';
+    }
+  });
+  html += '<button class="btn btn-primary" onclick="raSalvarPrazos()">Salvar textos e prazos</button></div>';
+
+  // ── Seção 3: Boas-vindas ──
+  html += '<div class="card" style="max-width:700px">' +
+    '<div style="font-weight:600;margin-bottom:12px">💬 Mensagem de Boas-Vindas (WhatsApp)</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Enviada ao parceiro quando credenciado. Edite à vontade.</p>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="Primeiro nome">{primeiro_nome}</code>' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="E-mail">{email}</code>' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="Senha">{senha}</code>' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="Prazo OS">{prazo_resposta_os_dias}</code>' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="Prazo peça">{prazo_envio_peca_dias}</code>' +
+    '<code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:10px;cursor:help" title="Dia pagamento">{prazo_pagamento_dia}</code></div>' +
+    '<textarea id="ra-bv-template" style="width:100%;height:400px;font-family:monospace;font-size:11px;line-height:1.4;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);resize:vertical">' + raEsc(template) + '</textarea>' +
+    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+    '<button class="btn btn-primary" onclick="raSalvarBoasVindas()">Salvar mensagem</button>' +
+    '<button class="btn btn-secondary" onclick="raPreviewBoasVindas()">👁 Preview</button>' +
+    '<button class="btn btn-secondary" style="color:var(--text-muted)" onclick="raResetBoasVindas()">↺ Restaurar padrão</button></div></div>' +
+    '<div id="ra-bv-preview" style="margin-top:16px;display:none"></div>';
+
+  box.innerHTML = html;
+}
+
 async function raCfgEmpresa(box) {
   box.innerHTML = '<div class="loading-full"><span class="spinner"></span> Carregando...</div>';
   var chaves = ['empresa_razao_social','empresa_nome_fantasia','empresa_cnpj','empresa_endereco','empresa_telefone','empresa_email','empresa_site'];
