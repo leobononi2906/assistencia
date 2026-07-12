@@ -1314,17 +1314,29 @@ async function raPecReposicao(box) {
   try {
     reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
     if (!Array.isArray(reps)) {
-      // join pode falhar se FK não existir — tenta sem join
       reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*');
       if (!Array.isArray(reps)) reps = [];
     }
   } catch(e) { console.error('Fetch reposição falhou:', e); reps = []; }
+  // Se os joins falharam, buscar nomes de parceiros e protocolos separadamente
+  var parcMap = {}, osMap = {};
+  var temJoin = reps.length > 0 && reps[0].assist_parceiros;
+  if (!temJoin && reps.length) {
+    var parcIds = [], osIds = [];
+    reps.forEach(function(r) { if (r.parceiro_id && parcIds.indexOf(r.parceiro_id) < 0) parcIds.push(r.parceiro_id); if (r.os_id && osIds.indexOf(r.os_id) < 0) osIds.push(r.os_id); });
+    if (parcIds.length) {
+      try { var pp = await raFetch('assist_parceiros?id=in.(' + parcIds.join(',') + ')&select=id,nome'); if (Array.isArray(pp)) pp.forEach(function(p) { parcMap[p.id] = p.nome; }); } catch(e) {}
+    }
+    if (osIds.length) {
+      try { var oo = await raFetch('prt_ordens_servico?id=in.(' + osIds.join(',') + ')&select=id,protocolo'); if (Array.isArray(oo)) oo.forEach(function(o) { osMap[o.id] = o.protocolo; }); } catch(e) {}
+    }
+  }
   var tbody = document.getElementById('ra-rep-tbody');
   if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
   tbody.innerHTML = reps.map(function(r) {
-    var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : '—';
-    var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : '—';
+    var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : (parcMap[r.parceiro_id] || '—');
+    var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : (osMap[r.os_id] || '—');
     return '<tr><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
       (r.status === 'pendente' ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
   }).join('');
