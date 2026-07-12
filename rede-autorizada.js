@@ -67,7 +67,7 @@ var RA_PAGES = {
     </div>
   </div>
   <div class="table-card">
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="6" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="5" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
   </div>
 </div>`,
 
@@ -1159,7 +1159,7 @@ window.raCarregarMateriais = async function() {
   if (!Array.isArray(_raMateriais)) _raMateriais = [];
   var tbody = document.getElementById('ra-mat-tbody');
   var tipoIcon = {video:'🎥',pdf:'📄',imagem:'🖼️',link:'🔗'};
-  if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
+  if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
   tbody.innerHTML = _raMateriais.map(function(m) {
     var modelos = m.modelo || 'Todos';
     return '<tr>' +
@@ -1167,8 +1167,7 @@ window.raCarregarMateriais = async function() {
       '<td>' + (tipoIcon[m.tipo] || '') + ' ' + m.tipo + '</td>' +
       '<td>' + (m.linha_produto ? raLinhaNome(m.linha_produto) : 'Geral') + '</td>' +
       '<td style="font-size:12px">' + modelos + '</td>' +
-      '<td>' + (m.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-gray">Inativo</span>') + '</td>' +
-      '<td><button class="btn-icon" onclick="raEditarMaterial(' + m.id + ')">✏️</button> <button class="btn-icon" onclick="raToggleMaterial(' + m.id + ',' + !m.ativo + ')">' + (m.ativo ? '🚫' : '✅') + '</button></td></tr>';
+      '<td><button class="btn-icon" onclick="raEditarMaterial(' + m.id + ')">✏️</button> <button class="btn-icon" title="Excluir" onclick="raExcluirMaterial(' + m.id + ',\'' + raEsc(m.titulo).replace(/'/g, "\\'") + '\')">🗑️</button></td></tr>';
   }).join('');
 };
 
@@ -1256,9 +1255,13 @@ window.raEditarMaterial = async function(id) {
   btns[btns.length - 1].setAttribute('onclick', 'raSalvarMaterial(' + id + ')');
 };
 
-window.raToggleMaterial = async function(id, ativo) {
-  await raPatch('prt_materiais', 'id=eq.' + id, { ativo: ativo });
-  raLog('ACAO', 'material', ativo ? 'ATIVAR_MATERIAL' : 'DESATIVAR_MATERIAL', String(id));
+window.raExcluirMaterial = async function(id, titulo) {
+  if (!confirm('Excluir o material "' + titulo + '"?\nEssa ação não pode ser desfeita.')) return;
+  await fetch(SB_URL + '/rest/v1/prt_materiais?id=eq.' + id, {
+    method: 'DELETE',
+    headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY}
+  });
+  raLog('ACAO', 'material', 'EXCLUIR_MATERIAL', String(id), titulo);
   raCarregarMateriais();
 };
 
