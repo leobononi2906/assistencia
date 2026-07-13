@@ -1450,7 +1450,22 @@ function raCfgServicos(box) {
   raCarregarServicos();
 }
 
-window.raCfgCarregarCategorias = function() { raCfgCarregar(); };
+window.raCfgCarregarCategorias = async function() {
+  var linhaOpts = await raLinhaOptionsHtml('', 'Todas as linhas');
+  raModal('Categorias de Serviço',
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+      '<span id="ra-cfg-count" style="font-size:13px;color:var(--text-muted)">Carregando...</span>' +
+      '<div style="display:flex;gap:8px">' +
+        '<select class="filter-select" id="ra-cfg-linha" onchange="raCfgCarregar()" style="min-width:140px">' + linhaOpts + '</select>' +
+        '<button class="btn btn-primary btn-sm" onclick="raCfgNovaCategoria()">+ Nova categoria</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="overflow-x:auto;max-height:60vh;overflow-y:auto"><table class="data-table"><thead><tr>' +
+      '<th style="width:50px">Ordem</th><th>Nome</th><th>Linha</th><th>Prefixo</th><th>Teto</th><th>Serviços</th><th>Status</th><th></th>' +
+    '</tr></thead><tbody id="ra-cfg-tbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</td></tr></tbody></table></div>',
+    '');
+  raCfgCarregar();
+};
 
 function raCfgPecas(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
