@@ -175,7 +175,7 @@ setInterval(raAtualizarBadgesPecas, 60000);
 setTimeout(raAtualizarBadgesPecas, 2000);
 
 function raFetch(path) {
-  return fetch(SB_URL + '/rest/v1/' + path, { headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY} }).then(function(r) { return r.json(); });
+  return fetch(SB_URL + '/rest/v1/' + path, { headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Range-Unit': 'items', 'Range': '0-9999'} }).then(function(r) { return r.json(); });
 }
 function raPost(table, data) {
   return fetch(SB_URL + '/rest/v1/' + table, { method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'}, body: JSON.stringify(data) }).then(function(r) { return r.json(); });
@@ -382,6 +382,7 @@ window.raDetalheOS = async function(id) {
     '<div><span style="color:var(--text-muted);font-size:11px">NF Compra</span><div>' + (o.numero_nf || '-') + '</div></div>' +
     '<div><span style="color:var(--text-muted);font-size:11px">Data Compra</span><div>' + raDate(o.data_compra) + '</div></div>' +
     '<div><span style="color:var(--text-muted);font-size:11px">Data Serviço</span><div>' + raDate(o.data_servico) + '</div></div>' +
+    '<div style="grid-column:span 2" id="ra-garantia-badge"></div>' +
     '</div>';
 
   // ─── DIAGNÓSTICO ───
@@ -469,6 +470,24 @@ window.raDetalheOS = async function(id) {
     footer += '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>';
   }
   raModal('OS ' + (o.protocolo || '#' + o.id), body, footer);
+  // Badge de garantia: prt_garantia (regra de modelo específico vence a da linha), comparando com a data do serviço
+  (async function() {
+    var el = document.getElementById('ra-garantia-badge');
+    if (!el || !o.data_compra) return;
+    try {
+      var regras = await raFetch('prt_garantia?ativo=eq.true&linha_produto=eq.' + encodeURIComponent(o.produto_linha || '') + '&select=modelo,prazo_meses');
+      if (!Array.isArray(regras) || !regras.length) return;
+      var g = regras.find(function(x) { return x.modelo && o.produto_modelo && x.modelo === o.produto_modelo; }) || regras.find(function(x) { return !x.modelo; }) || regras[0];
+      if (!g || !g.prazo_meses) return;
+      var dc = String(o.data_compra).substring(0, 10).split('-').map(Number);
+      var limite = new Date(dc[0], dc[1] - 1 + g.prazo_meses, dc[2]);
+      var ref;
+      if (o.data_servico) { var ds = String(o.data_servico).substring(0, 10).split('-').map(Number); ref = new Date(ds[0], ds[1] - 1, ds[2]); } else ref = new Date();
+      el.innerHTML = ref <= limite
+        ? '<span style="background:#E8F8F3;color:#0F9D6E;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">✅ DENTRO DA GARANTIA (' + g.prazo_meses + ' meses)</span>'
+        : '<span style="background:#FEF0EF;color:#D93025;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">⚠️ FORA DA GARANTIA — expirou em ' + limite.toLocaleDateString('pt-BR') + '</span>';
+    } catch (e) { console.error('garantia badge', e); }
+  })();
 };
 
 // ═══ IMPRIMIR OS ═══
@@ -617,8 +636,8 @@ window.raEditarServicoOS = async function(osId) {
 };
 
 window.raConfirmarServicoOS = async function(osId, codigo, valor) {
-  if (!confirm('Alterar serviço para ' + codigo + ' (' + raFmt(valor) + ')?')) return;
-  var s = (await raFetch('prt_tabela_servicos?codigo=eq.' + codigo + '&select=*'));
+  if (!confirm('Alterar serviço para ' + codigo + ' (' + raFmt(valor) + ')? Isso substitui TODOS os serviços da OS por este.')) return;
+  var s = (await raFetch('prt_tabela_servicos?codigo=eq.' + encodeURIComponent(codigo) + '&select=*'));
   var serv = Array.isArray(s) && s.length ? s[0] : null;
   await raPatch('prt_ordens_servico', 'id=eq.' + osId, {
     codigo_servico: codigo,
@@ -626,6 +645,14 @@ window.raConfirmarServicoOS = async function(osId, codigo, valor) {
     categoria_servico: serv ? serv.categoria : null,
     atualizado_em: new Date().toISOString()
   });
+  // sincronizar prt_os_servicos — sem isso o detalhe/impressão mostram serviços antigos
+  var catNome = null;
+  if (serv && serv.categoria_id) {
+    var cats = await raFetch('prt_categorias_servico?id=eq.' + serv.categoria_id + '&select=nome');
+    if (Array.isArray(cats) && cats.length) catNome = cats[0].nome;
+  }
+  await raDelete('prt_os_servicos', 'os_id=eq.' + osId);
+  await raPost('prt_os_servicos', { os_id: osId, codigo: codigo, descricao: serv ? serv.descricao : codigo, valor: valor, categoria_id: serv ? serv.categoria_id : null, categoria_nome: catNome || (serv ? serv.categoria : null) });
   document.getElementById('ra-modal')?.remove();
   raLog('ACAO','os','ALTERAR_SERVICO_OS',String(osId),null,{codigo:codigo,valor:valor});
   raCarregarOS();
@@ -1037,7 +1064,8 @@ window.raSalvarEnvio = async function() {
     nf_envio: document.getElementById('ra-env-nf').value.trim() || null,
     rastreio: document.getElementById('ra-env-rastreio').value.trim() || null
   };
-  await raPost('prt_envios_pecas', d);
+  var envioRes = await raPost('prt_envios_pecas', d);
+  var envioRow = Array.isArray(envioRes) ? envioRes[0] : envioRes;
   // atualizar estoque do parceiro
   var estoque = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + d.parceiro_id + '&referencia=eq.' + encodeURIComponent(d.referencia));
   if (Array.isArray(estoque) && estoque.length) {
@@ -1049,7 +1077,7 @@ window.raSalvarEnvio = async function() {
   // Se veio de reposição, marcar como enviada
   var repIdEl = document.getElementById('ra-env-rep-id');
   if (repIdEl && repIdEl.value) {
-    await raPatch('prt_reposicao_pecas', 'id=eq.' + repIdEl.value, { status: 'enviada', atualizado_em: new Date().toISOString() });
+    await raPatch('prt_reposicao_pecas', 'id=eq.' + repIdEl.value, { status: 'enviada', envio_id: (envioRow && envioRow.id) || null, atualizado_em: new Date().toISOString() });
   }
   raCarregarEnvios();raAtualizarBadgesPecas();
 };
@@ -1119,11 +1147,25 @@ window.raGerarFechamento = async function() {
   });
   for (var pid in porParceiro) {
     var pp = porParceiro[pid];
-    var novo = await raPost('prt_pagamentos', {
-      parceiro_id: parseInt(pid), mes_referencia: mes, qtd_os: pp.qtd,
-      valor_servicos: pp.valor, valor_pecas: 0, valor_total: pp.valor, status: 'pendente'
-    });
-    var pagRow = Array.isArray(novo) ? novo[0] : novo;
+    // Se já existe fechamento PENDENTE do parceiro neste mês, soma nele — evita 2 fechamentos do mesmo mês
+    // (acontece quando OS são aprovadas depois do primeiro fechamento)
+    var existentes = await raFetch('prt_pagamentos?parceiro_id=eq.' + pid + '&mes_referencia=eq.' + mes + '&status=eq.pendente&select=id,qtd_os,valor_servicos,valor_total');
+    var pagRow = null;
+    if (Array.isArray(existentes) && existentes.length) {
+      var ex = existentes[0];
+      await raPatch('prt_pagamentos', 'id=eq.' + ex.id, {
+        qtd_os: (ex.qtd_os || 0) + pp.qtd,
+        valor_servicos: (parseFloat(ex.valor_servicos) || 0) + pp.valor,
+        valor_total: (parseFloat(ex.valor_total) || 0) + pp.valor
+      });
+      pagRow = ex;
+    } else {
+      var novo = await raPost('prt_pagamentos', {
+        parceiro_id: parseInt(pid), mes_referencia: mes, qtd_os: pp.qtd,
+        valor_servicos: pp.valor, valor_pecas: 0, valor_total: pp.valor, status: 'pendente'
+      });
+      pagRow = Array.isArray(novo) ? novo[0] : novo;
+    }
     if (pagRow && pagRow.id) {
       // vincula as OS ao fechamento (status continua 'aprovada' até o pagamento real)
       await raPatch('prt_ordens_servico', 'id=in.(' + pp.ids.join(',') + ')', { pagamento_id: pagRow.id });
@@ -2169,7 +2211,7 @@ window.raSalvarEmpresa = async function() {
   };
   try {
     for (var chave in campos) {
-      var existe = await raFetch('prt_configuracoes?chave=eq.' + chave + '&select=id');
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + chave + '&select=chave');
       if (Array.isArray(existe) && existe.length) {
         await raPatch('prt_configuracoes', 'chave=eq.' + chave, { valor: campos[chave] });
       } else {
@@ -2223,7 +2265,7 @@ window.raSalvarPrazos = async function() {
       var el = document.getElementById('ra-prazo-' + p.chave);
       if (!el) continue;
       var val = el.value.trim();
-      var existe = await raFetch('prt_configuracoes?chave=eq.' + p.chave + '&select=id');
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + p.chave + '&select=chave');
       if (Array.isArray(existe) && existe.length) {
         await raPatch('prt_configuracoes', 'chave=eq.' + p.chave, { valor: val });
       } else {
@@ -2301,7 +2343,7 @@ window.raSalvarBoasVindas = async function() {
   var template = document.getElementById('ra-bv-template').value;
   if (!template.trim()) { alert('A mensagem não pode ficar vazia'); return; }
   try {
-    var existe = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=id');
+    var existe = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=chave');
     if (Array.isArray(existe) && existe.length) {
       await raPatch('prt_configuracoes', 'chave=eq.msg_boas_vindas', { valor: template });
     } else {
