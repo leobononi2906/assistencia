@@ -1613,7 +1613,7 @@ window.raCfgTab = function(tab) {
 function raCfgServicos(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
     '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option></select></div>' +
-    '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
+    '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raGerarPdfServicos()">📄 Gerar PDF</button><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor</th><th>Teto</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
   raCarregarServicos();
 }
@@ -1788,7 +1788,7 @@ window.raCfgCarregar = async function() {
     var qtd = contagem[c.id] || 0;
     return '<tr>' +
       '<td style="text-align:center;font-weight:600">' + c.ordem + '</td>' +
-      '<td style="font-weight:600">' + c.nome + '</td>' +
+      '<td style="font-weight:600;cursor:pointer" onclick="raCfgEditar(' + c.id + ')" title="Clique para editar">' + c.nome + ' <span style="font-size:11px;color:var(--text-muted)">✏️</span></td>' +
       '<td>' + raLinhaNome(c.linha_produto) + '</td>' +
       '<td class="mono">STN-' + c.prefixo_codigo + '</td>' +
       '<td class="mono right" style="font-weight:700">' + raFmt(c.valor_teto) + '</td>' +
