@@ -35,7 +35,7 @@ var RA_PAGES = {
       <select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()">
         <option value="">Todas as linhas</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="raGerarPdfServicos()">📄 Gerar PDF</button>
+      <button class="btn btn-secondary btn-sm" onclick="raAbrirModalPdfServicos()">📄 Gerar PDF</button>
       <button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button>
     </div>
   </div>
@@ -175,7 +175,7 @@ setInterval(raAtualizarBadgesPecas, 60000);
 setTimeout(raAtualizarBadgesPecas, 2000);
 
 function raFetch(path) {
-  return fetch(SB_URL + '/rest/v1/' + path, { headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Range-Unit': 'items', 'Range': '0-9999'} }).then(function(r) { return r.json(); });
+  return fetch(SB_URL + '/rest/v1/' + path, { headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY} }).then(function(r) { return r.json(); });
 }
 function raPost(table, data) {
   return fetch(SB_URL + '/rest/v1/' + table, { method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'}, body: JSON.stringify(data) }).then(function(r) { return r.json(); });
@@ -382,7 +382,6 @@ window.raDetalheOS = async function(id) {
     '<div><span style="color:var(--text-muted);font-size:11px">NF Compra</span><div>' + (o.numero_nf || '-') + '</div></div>' +
     '<div><span style="color:var(--text-muted);font-size:11px">Data Compra</span><div>' + raDate(o.data_compra) + '</div></div>' +
     '<div><span style="color:var(--text-muted);font-size:11px">Data Serviço</span><div>' + raDate(o.data_servico) + '</div></div>' +
-    '<div style="grid-column:span 2" id="ra-garantia-badge"></div>' +
     '</div>';
 
   // ─── DIAGNÓSTICO ───
@@ -470,24 +469,6 @@ window.raDetalheOS = async function(id) {
     footer += '<button class="btn btn-secondary" onclick="raEditarServicoOS(' + o.id + ')">✏️ Alterar serviço</button>';
   }
   raModal('OS ' + (o.protocolo || '#' + o.id), body, footer);
-  // Badge de garantia: prt_garantia (regra de modelo específico vence a da linha), comparando com a data do serviço
-  (async function() {
-    var el = document.getElementById('ra-garantia-badge');
-    if (!el || !o.data_compra) return;
-    try {
-      var regras = await raFetch('prt_garantia?ativo=eq.true&linha_produto=eq.' + encodeURIComponent(o.produto_linha || '') + '&select=modelo,prazo_meses');
-      if (!Array.isArray(regras) || !regras.length) return;
-      var g = regras.find(function(x) { return x.modelo && o.produto_modelo && x.modelo === o.produto_modelo; }) || regras.find(function(x) { return !x.modelo; }) || regras[0];
-      if (!g || !g.prazo_meses) return;
-      var dc = String(o.data_compra).substring(0, 10).split('-').map(Number);
-      var limite = new Date(dc[0], dc[1] - 1 + g.prazo_meses, dc[2]);
-      var ref;
-      if (o.data_servico) { var ds = String(o.data_servico).substring(0, 10).split('-').map(Number); ref = new Date(ds[0], ds[1] - 1, ds[2]); } else ref = new Date();
-      el.innerHTML = ref <= limite
-        ? '<span style="background:#E8F8F3;color:#0F9D6E;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">✅ DENTRO DA GARANTIA (' + g.prazo_meses + ' meses)</span>'
-        : '<span style="background:#FEF0EF;color:#D93025;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">⚠️ FORA DA GARANTIA — expirou em ' + limite.toLocaleDateString('pt-BR') + '</span>';
-    } catch (e) { console.error('garantia badge', e); }
-  })();
 };
 
 // ═══ IMPRIMIR OS ═══
@@ -636,8 +617,8 @@ window.raEditarServicoOS = async function(osId) {
 };
 
 window.raConfirmarServicoOS = async function(osId, codigo, valor) {
-  if (!confirm('Alterar serviço para ' + codigo + ' (' + raFmt(valor) + ')? Isso substitui TODOS os serviços da OS por este.')) return;
-  var s = (await raFetch('prt_tabela_servicos?codigo=eq.' + encodeURIComponent(codigo) + '&select=*'));
+  if (!confirm('Alterar serviço para ' + codigo + ' (' + raFmt(valor) + ')?')) return;
+  var s = (await raFetch('prt_tabela_servicos?codigo=eq.' + codigo + '&select=*'));
   var serv = Array.isArray(s) && s.length ? s[0] : null;
   await raPatch('prt_ordens_servico', 'id=eq.' + osId, {
     codigo_servico: codigo,
@@ -645,14 +626,6 @@ window.raConfirmarServicoOS = async function(osId, codigo, valor) {
     categoria_servico: serv ? serv.categoria : null,
     atualizado_em: new Date().toISOString()
   });
-  // sincronizar prt_os_servicos — sem isso o detalhe/impressão mostram serviços antigos
-  var catNome = null;
-  if (serv && serv.categoria_id) {
-    var cats = await raFetch('prt_categorias_servico?id=eq.' + serv.categoria_id + '&select=nome');
-    if (Array.isArray(cats) && cats.length) catNome = cats[0].nome;
-  }
-  await raDelete('prt_os_servicos', 'os_id=eq.' + osId);
-  await raPost('prt_os_servicos', { os_id: osId, codigo: codigo, descricao: serv ? serv.descricao : codigo, valor: valor, categoria_id: serv ? serv.categoria_id : null, categoria_nome: catNome || (serv ? serv.categoria : null) });
   document.getElementById('ra-modal')?.remove();
   raLog('ACAO','os','ALTERAR_SERVICO_OS',String(osId),null,{codigo:codigo,valor:valor});
   raCarregarOS();
@@ -1006,13 +979,6 @@ window.raTogglePeca = async function(id, ativo) {
 window.raCarregarEnvios = async function() {
   var envios = await raFetch('prt_envios_pecas?order=criado_em.desc&select=*,assist_parceiros(nome)');
   if (!Array.isArray(envios)) envios = [];
-  var todosItens = await raFetch('prt_envio_itens?order=envio_id.desc,id.asc&select=*');
-  if (!Array.isArray(todosItens)) todosItens = [];
-  var itensPorEnvio = {};
-  todosItens.forEach(function(it) {
-    if (!itensPorEnvio[it.envio_id]) itensPorEnvio[it.envio_id] = [];
-    itensPorEnvio[it.envio_id].push(it);
-  });
   var kpis = document.getElementById('ra-env-kpis');
   var env = envios.filter(function(e) { return e.status === 'enviado'; }).length;
   var rec = envios.filter(function(e) { return e.status === 'recebido'; }).length;
@@ -1024,29 +990,11 @@ window.raCarregarEnvios = async function() {
   var tbody = document.getElementById('ra-env-tbody');
   if (!envios.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum envio registrado</td></tr>'; return; }
   var statusBadge = function(s) { return s === 'recebido' ? '<span class="badge badge-green">Recebido</span>' : s === 'devolvido' ? '<span class="badge badge-red">Devolvido</span>' : '<span class="badge badge-orange">Enviado</span>'; };
-  var html = '';
-  envios.forEach(function(e) {
+  tbody.innerHTML = envios.map(function(e) {
     var parc = e.assist_parceiros ? e.assist_parceiros.nome : '#' + e.parceiro_id;
-    var itens = itensPorEnvio[e.id] || [];
-    var temItens = itens.length > 0;
-    var pecaDisplay = temItens ? itens.length + ' peça' + (itens.length > 1 ? 's' : '') : e.nome_peca;
-    html += '<tr><td>' + parc + '</td><td>' + (temItens ? '<button class="btn-icon" onclick="raToggleItensEnvio(' + e.id + ')" title="Ver itens" style="margin-right:4px">▶</button>' : '') + pecaDisplay + '</td><td class="mono right">' + e.quantidade + '</td><td>' + (e.nf_envio || '—') + '</td><td>' + (e.rastreio || '—') + '</td><td>' + statusBadge(e.status) + '</td><td>' + raDate(e.data_envio) + '</td><td>' + (e.status === 'enviado' ? '<button class="btn-icon" title="Marcar recebido" onclick="raMarcarRecebido(' + e.id + ')">✅</button>' : '') + '</td></tr>';
-    if (temItens) {
-      html += '<tr id="ra-env-itens-' + e.id + '" style="display:none"><td colspan="8" style="padding:0 16px 12px 40px;background:var(--surface2)"><table style="width:100%;font-size:12px;margin-top:4px"><thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase"><th>Referência</th><th>Peça</th><th style="text-align:center">Qtd</th><th style="text-align:right">Custo</th></tr></thead><tbody>' +
-        itens.map(function(it) { return '<tr><td class="mono">' + raEsc(it.referencia) + '</td><td>' + raEsc(it.nome_peca) + '</td><td style="text-align:center">' + it.quantidade + '</td><td class="mono" style="text-align:right">' + raFmt(it.custo_unitario) + '</td></tr>'; }).join('') +
-        '</tbody></table></td></tr>';
-    }
-  });
-  tbody.innerHTML = html;
-};
-
-window.raToggleItensEnvio = function(envioId) {
-  var row = document.getElementById('ra-env-itens-' + envioId);
-  if (!row) return;
-  var visible = row.style.display !== 'none';
-  row.style.display = visible ? 'none' : '';
-  var btn = row.previousElementSibling.querySelector('.btn-icon');
-  if (btn) btn.textContent = visible ? '▶' : '▼';
+    return '<tr><td>' + parc + '</td><td>' + e.nome_peca + '</td><td class="mono right">' + e.quantidade + '</td><td>' + (e.nf_envio || '—') + '</td><td>' + (e.rastreio || '—') + '</td><td>' + statusBadge(e.status) + '</td><td>' + raDate(e.data_envio) + '</td>' +
+      '<td>' + (e.status === 'enviado' ? '<button class="btn-icon" title="Marcar recebido" onclick="raMarcarRecebido(' + e.id + ')">✅</button>' : '') + '</td></tr>';
+  }).join('');
 };
 
 window.raMarcarRecebido = async function(id) {
@@ -1054,158 +1002,57 @@ window.raMarcarRecebido = async function(id) {
   raCarregarEnvios();
 };
 
-// Variável global para itens do envio
-var _raEnvioItens = [];
-var _raEnvioPecasCatalogo = [];
-
 window.raNovoEnvio = async function(preParc, preRef, preNome, preQtd, repId) {
   var parceiros = await raFetch('assist_parceiros?credenciado=eq.true&order=nome.asc&select=id,nome');
   if (!Array.isArray(parceiros)) parceiros = [];
-  _raEnvioPecasCatalogo = await raFetch('prt_pecas_catalogo?ativo=eq.true&order=nome.asc&select=id,referencia,nome,custo_unitario');
-  if (!Array.isArray(_raEnvioPecasCatalogo)) _raEnvioPecasCatalogo = [];
-  _raEnvioItens = [];
-  if (preRef) {
-    var pecaCat = _raEnvioPecasCatalogo.find(function(p) { return p.referencia === preRef; });
-    _raEnvioItens.push({
-      referencia: preRef,
-      nome_peca: preNome || (pecaCat ? pecaCat.nome : preRef),
-      quantidade: preQtd || 1,
-      custo_unitario: pecaCat ? (pecaCat.custo_unitario || 0) : 0,
-      reposicao_id: repId || null
-    });
-  }
+  var pecas = await raFetch('prt_pecas_catalogo?ativo=eq.true&order=nome.asc&select=id,referencia,nome,custo_unitario');
+  if (!Array.isArray(pecas)) pecas = [];
   raModal('Novo Envio de Peças',
     '<div class="field"><label>Parceiro</label><select id="ra-env-parc" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
       parceiros.map(function(p) { return '<option value="' + p.id + '"' + (preParc && p.id == preParc ? ' selected' : '') + '>' + p.nome + '</option>'; }).join('') + '</select></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div class="field"><label>Peça</label><select id="ra-env-peca" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
+      pecas.map(function(p) { return '<option value="' + p.id + '" data-ref="' + p.referencia + '" data-nome="' + p.nome + '" data-custo="' + (p.custo_unitario || 0) + '"' + (preRef && p.referencia === preRef ? ' selected' : '') + '>' + p.referencia + ' — ' + p.nome + '</option>'; }).join('') + '</select></div>' +
+    (preRef && !pecas.find(function(p){return p.referencia===preRef}) ? '<p style="font-size:11px;color:var(--text-muted);margin:-8px 0 8px">Peça ' + raEsc(preRef) + ' (' + raEsc(preNome) + ') não está no catálogo — adicione primeiro em Configurações → Peças</p>' : '') +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
+      '<div class="field"><label>Quantidade</label><input id="ra-env-qtd" class="search-input" style="width:100%" type="number" value="' + (preQtd || 1) + '" min="1"></div>' +
       '<div class="field"><label>NF Envio</label><input id="ra-env-nf" class="search-input" style="width:100%" placeholder="Número NF"></div>' +
       '<div class="field"><label>Rastreio</label><input id="ra-env-rastreio" class="search-input" style="width:100%" placeholder="Código rastreio"></div>' +
     '</div>' +
-    '<div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><label style="font-weight:600;font-size:13px">Peças do envio</label>' +
-        '<button class="btn btn-secondary btn-sm" onclick="raEnvioAdicionarPeca()">+ Adicionar peça</button></div>' +
-      '<div id="ra-env-itens-container"></div>' +
-    '</div>',
+    (repId ? '<input type="hidden" id="ra-env-rep-id" value="' + repId + '">' : ''),
     '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="raSalvarEnvio()">Registrar envio</button>');
-  raEnvioRenderItens();
-};
-
-window.raEnvioRenderItens = function() {
-  var container = document.getElementById('ra-env-itens-container');
-  if (!container) return;
-  if (!_raEnvioItens.length) {
-    container.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px">Nenhuma peça adicionada. Clique em "+ Adicionar peça" acima.</p>';
-    return;
-  }
-  var html = '<table class="data-table" style="font-size:12px"><thead><tr><th>Referência</th><th>Peça</th><th>Qtd</th><th>Custo unit.</th><th></th></tr></thead><tbody>';
-  _raEnvioItens.forEach(function(item, idx) {
-    html += '<tr><td class="mono">' + raEsc(item.referencia) + '</td><td>' + raEsc(item.nome_peca) + '</td>' +
-      '<td style="text-align:center"><input type="number" class="search-input" style="width:60px;text-align:center" value="' + item.quantidade + '" min="1" onchange="raEnvioAtualizarQtd(' + idx + ',this.value)"></td>' +
-      '<td class="mono right">' + raFmt(item.custo_unitario) + '</td>' +
-      '<td><button class="btn-icon" style="color:var(--destructive)" onclick="raEnvioRemoverItem(' + idx + ')">✕</button></td></tr>';
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-};
-
-window.raEnvioAdicionarPeca = function() {
-  var pecaOpts = _raEnvioPecasCatalogo.map(function(p) {
-    return '<option value="' + p.id + '" data-ref="' + raEsc(p.referencia) + '" data-nome="' + raEsc(p.nome) + '" data-custo="' + (p.custo_unitario || 0) + '">' + raEsc(p.referencia) + ' — ' + raEsc(p.nome) + '</option>';
-  }).join('');
-  var addHtml = document.createElement('div');
-  addHtml.id = 'ra-env-add-peca';
-  addHtml.style.cssText = 'background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap';
-  addHtml.innerHTML =
-    '<div style="flex:1;min-width:200px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Peça</label><select id="ra-env-add-sel" class="filter-select" style="width:100%"><option value="">Selecione...</option>' + pecaOpts + '</select></div>' +
-    '<div style="width:70px"><label style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-muted)">Qtd</label><input id="ra-env-add-qtd" class="search-input" style="width:100%" type="number" value="1" min="1"></div>' +
-    '<button class="btn btn-primary btn-sm" onclick="raEnvioConfirmarAdicao()">Adicionar</button>' +
-    '<button class="btn-icon" onclick="document.getElementById(\'ra-env-add-peca\').remove()">✕</button>';
-  var container = document.getElementById('ra-env-itens-container');
-  container.insertBefore(addHtml, container.firstChild);
-};
-
-window.raEnvioConfirmarAdicao = function() {
-  var sel = document.getElementById('ra-env-add-sel');
-  var opt = sel.options[sel.selectedIndex];
-  if (!sel.value) { alert('Selecione uma peça'); return; }
-  var ref = opt.getAttribute('data-ref');
-  var existente = _raEnvioItens.find(function(i) { return i.referencia === ref; });
-  if (existente) {
-    existente.quantidade += parseInt(document.getElementById('ra-env-add-qtd').value) || 1;
-  } else {
-    _raEnvioItens.push({
-      referencia: ref,
-      nome_peca: opt.getAttribute('data-nome'),
-      quantidade: parseInt(document.getElementById('ra-env-add-qtd').value) || 1,
-      custo_unitario: parseFloat(opt.getAttribute('data-custo')) || 0,
-      reposicao_id: null
-    });
-  }
-  document.getElementById('ra-env-add-peca')?.remove();
-  raEnvioRenderItens();
-};
-
-window.raEnvioAtualizarQtd = function(idx, val) {
-  if (_raEnvioItens[idx]) _raEnvioItens[idx].quantidade = parseInt(val) || 1;
-};
-
-window.raEnvioRemoverItem = function(idx) {
-  _raEnvioItens.splice(idx, 1);
-  raEnvioRenderItens();
 };
 
 window.raSalvarEnvio = async function() {
   var parcId = document.getElementById('ra-env-parc').value;
-  if (!parcId) { alert('Selecione o parceiro'); return; }
-  if (!_raEnvioItens.length) { alert('Adicione ao menos uma peça ao envio'); return; }
-  var nf = document.getElementById('ra-env-nf').value.trim() || null;
-  var rastreio = document.getElementById('ra-env-rastreio').value.trim() || null;
-  var primeiro = _raEnvioItens[0];
-  var qtdTotal = _raEnvioItens.reduce(function(s, i) { return s + i.quantidade; }, 0);
-  var envioData = {
+  var pecaSel = document.getElementById('ra-env-peca');
+  var opt = pecaSel.options[pecaSel.selectedIndex];
+  if (!parcId || !pecaSel.value) { alert('Selecione parceiro e peça'); return; }
+  var d = {
     parceiro_id: parseInt(parcId),
-    referencia: _raEnvioItens.length === 1 ? primeiro.referencia : 'MULTI',
-    nome_peca: _raEnvioItens.length === 1 ? primeiro.nome_peca : _raEnvioItens.length + ' peças',
-    quantidade: qtdTotal,
-    custo_unitario: primeiro.custo_unitario,
-    nf_envio: nf,
-    rastreio: rastreio,
-    enviado_por: (window.getUsuario ? window.getUsuario() : {}).nome || 'gestor'
+    referencia: opt.getAttribute('data-ref'),
+    nome_peca: opt.getAttribute('data-nome'),
+    quantidade: parseInt(document.getElementById('ra-env-qtd').value) || 1,
+    custo_unitario: parseFloat(opt.getAttribute('data-custo')) || null,
+    nf_envio: document.getElementById('ra-env-nf').value.trim() || null,
+    rastreio: document.getElementById('ra-env-rastreio').value.trim() || null
   };
-  var envioResp = await raPost('prt_envios_pecas', envioData);
-  var envioId = null;
-  if (Array.isArray(envioResp) && envioResp[0]) envioId = envioResp[0].id;
-  if (!envioId) {
-    var ultEnvio = await raFetch('prt_envios_pecas?parceiro_id=eq.' + parcId + '&order=id.desc&limit=1&select=id');
-    if (Array.isArray(ultEnvio) && ultEnvio[0]) envioId = ultEnvio[0].id;
-  }
-  if (envioId) {
-    var itensParaLog = _raEnvioItens.length;
-    for (var i = 0; i < _raEnvioItens.length; i++) {
-      var item = _raEnvioItens[i];
-      await raPost('prt_envio_itens', {
-        envio_id: envioId, referencia: item.referencia, nome_peca: item.nome_peca,
-        quantidade: item.quantidade, custo_unitario: item.custo_unitario, reposicao_id: item.reposicao_id
-      });
-      var estoque = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + parcId + '&referencia=eq.' + encodeURIComponent(item.referencia));
-      if (Array.isArray(estoque) && estoque.length) {
-        await raPatch('prt_estoque_parceiro', 'id=eq.' + estoque[0].id, { quantidade_enviada: (estoque[0].quantidade_enviada || 0) + item.quantidade, ultimo_envio: new Date().toISOString().substring(0, 10) });
-      } else {
-        await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(parcId), referencia: item.referencia, nome_peca: item.nome_peca, quantidade_enviada: item.quantidade, custo_unitario: item.custo_unitario, ultimo_envio: new Date().toISOString().substring(0, 10) });
-      }
-      if (item.reposicao_id) {
-        await raPatch('prt_reposicao_pecas', 'id=eq.' + item.reposicao_id, { status: 'enviada', envio_id: envioId, atualizado_em: new Date().toISOString() });
-      }
-    }
-    raLog('ACAO', 'envio', 'CRIAR_ENVIO', String(envioId), nf, { itens: itensParaLog, rastreio: rastreio });
+  await raPost('prt_envios_pecas', d);
+  // atualizar estoque do parceiro
+  var estoque = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + d.parceiro_id + '&referencia=eq.' + encodeURIComponent(d.referencia));
+  if (Array.isArray(estoque) && estoque.length) {
+    await raPatch('prt_estoque_parceiro', 'id=eq.' + estoque[0].id, { quantidade_enviada: (estoque[0].quantidade_enviada || 0) + d.quantidade, ultimo_envio: new Date().toISOString().substring(0, 10) });
+  } else {
+    await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(parcId), referencia: d.referencia, nome_peca: d.nome_peca, quantidade_enviada: d.quantidade, custo_unitario: d.custo_unitario, ultimo_envio: new Date().toISOString().substring(0, 10) });
   }
   document.getElementById('ra-modal')?.remove();
-  _raEnvioItens = [];
-  raCarregarEnvios();
+  // Se veio de reposição, marcar como enviada
+  var repIdEl = document.getElementById('ra-env-rep-id');
+  if (repIdEl && repIdEl.value) {
+    await raPatch('prt_reposicao_pecas', 'id=eq.' + repIdEl.value, { status: 'enviada', atualizado_em: new Date().toISOString() });
+  }
+  raCarregarEnvios();raAtualizarBadgesPecas();
 };
-
-
 
 // ═══════════════════════════════════════
 // 5. PAGAMENTOS
@@ -1272,25 +1119,11 @@ window.raGerarFechamento = async function() {
   });
   for (var pid in porParceiro) {
     var pp = porParceiro[pid];
-    // Se já existe fechamento PENDENTE do parceiro neste mês, soma nele — evita 2 fechamentos do mesmo mês
-    // (acontece quando OS são aprovadas depois do primeiro fechamento)
-    var existentes = await raFetch('prt_pagamentos?parceiro_id=eq.' + pid + '&mes_referencia=eq.' + mes + '&status=eq.pendente&select=id,qtd_os,valor_servicos,valor_total');
-    var pagRow = null;
-    if (Array.isArray(existentes) && existentes.length) {
-      var ex = existentes[0];
-      await raPatch('prt_pagamentos', 'id=eq.' + ex.id, {
-        qtd_os: (ex.qtd_os || 0) + pp.qtd,
-        valor_servicos: (parseFloat(ex.valor_servicos) || 0) + pp.valor,
-        valor_total: (parseFloat(ex.valor_total) || 0) + pp.valor
-      });
-      pagRow = ex;
-    } else {
-      var novo = await raPost('prt_pagamentos', {
-        parceiro_id: parseInt(pid), mes_referencia: mes, qtd_os: pp.qtd,
-        valor_servicos: pp.valor, valor_pecas: 0, valor_total: pp.valor, status: 'pendente'
-      });
-      pagRow = Array.isArray(novo) ? novo[0] : novo;
-    }
+    var novo = await raPost('prt_pagamentos', {
+      parceiro_id: parseInt(pid), mes_referencia: mes, qtd_os: pp.qtd,
+      valor_servicos: pp.valor, valor_pecas: 0, valor_total: pp.valor, status: 'pendente'
+    });
+    var pagRow = Array.isArray(novo) ? novo[0] : novo;
     if (pagRow && pagRow.id) {
       // vincula as OS ao fechamento (status continua 'aprovada' até o pagamento real)
       await raPatch('prt_ordens_servico', 'id=in.(' + pp.ids.join(',') + ')', { pagamento_id: pagRow.id });
@@ -1499,88 +1332,45 @@ async function raPecCompras(box) {
 }
 
 async function raPecReposicao(box) {
-  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-    '<span style="font-weight:600">Reposição de peças de garantia</span>' +
-    '<button class="btn btn-primary btn-sm" id="ra-rep-enviar-sel" style="display:none" onclick="raEnviarReposicoesSelecionadas()">📦 Enviar selecionados (<span id="ra-rep-sel-count">0</span>)</button>' +
-  '</div>' +
-  '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th style="width:32px"><input type="checkbox" id="ra-rep-check-all" onchange="raRepToggleAll(this.checked)"></th><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
-  var reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
-  if (!Array.isArray(reps)) reps = [];
-  window._raReposicoes = reps;
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Reposição de peças de garantia</span></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
+  var reps = [];
+  try {
+    reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
+    if (!Array.isArray(reps)) {
+      reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*');
+      if (!Array.isArray(reps)) reps = [];
+    }
+  } catch(e) { console.error('Fetch reposição falhou:', e); reps = []; }
+  // Se os joins falharam, buscar nomes de parceiros e protocolos separadamente
+  var parcMap = {}, osMap = {};
+  var temJoin = reps.length > 0 && reps[0].assist_parceiros;
+  if (!temJoin && reps.length) {
+    var parcIds = [], osIds = [];
+    reps.forEach(function(r) { if (r.parceiro_id && parcIds.indexOf(r.parceiro_id) < 0) parcIds.push(r.parceiro_id); if (r.os_id && osIds.indexOf(r.os_id) < 0) osIds.push(r.os_id); });
+    if (parcIds.length) {
+      try { var pp = await raFetch('assist_parceiros?id=in.(' + parcIds.join(',') + ')&select=id,nome'); if (Array.isArray(pp)) pp.forEach(function(p) { parcMap[p.id] = p.nome; }); } catch(e) {}
+    }
+    if (osIds.length) {
+      try { var oo = await raFetch('prt_ordens_servico?id=in.(' + osIds.join(',') + ')&select=id,protocolo'); if (Array.isArray(oo)) oo.forEach(function(o) { osMap[o.id] = o.protocolo; }); } catch(e) {}
+    }
+  }
   var tbody = document.getElementById('ra-rep-tbody');
-  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
+  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
   tbody.innerHTML = reps.map(function(r) {
-    var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : '—';
-    var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : '—';
-    var isPendente = r.status === 'pendente';
-    return '<tr><td style="text-align:center">' + (isPendente ? '<input type="checkbox" class="ra-rep-check" data-id="' + r.id + '" data-parceiro="' + r.parceiro_id + '" data-ref="' + raEsc(r.referencia) + '" data-nome="' + raEsc(r.nome_peca) + '" data-qtd="' + r.quantidade + '" onchange="raRepAtualizarSelecao()">' : '') + '</td>' +
-      '<td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
-      (isPendente ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
+    var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : (parcMap[r.parceiro_id] || '—');
+    var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : (osMap[r.os_id] || '—');
+    return '<tr><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
+      (r.status === 'pendente' ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
   }).join('');
 }
 
-window.raRepToggleAll = function(checked) {
-  document.querySelectorAll('.ra-rep-check').forEach(function(cb) { cb.checked = checked; });
-  raRepAtualizarSelecao();
-};
-
-window.raRepAtualizarSelecao = function() {
-  var checks = document.querySelectorAll('.ra-rep-check:checked');
-  var btn = document.getElementById('ra-rep-enviar-sel');
-  var countEl = document.getElementById('ra-rep-sel-count');
-  if (btn) btn.style.display = checks.length > 0 ? '' : 'none';
-  if (countEl) countEl.textContent = checks.length;
-};
-
-window.raEnviarReposicoesSelecionadas = async function() {
-  var checks = document.querySelectorAll('.ra-rep-check:checked');
-  if (!checks.length) return;
-  var parceiros = new Set();
-  var itens = [];
-  checks.forEach(function(cb) {
-    parceiros.add(cb.getAttribute('data-parceiro'));
-    itens.push({
-      reposicao_id: parseInt(cb.getAttribute('data-id')),
-      parceiro_id: parseInt(cb.getAttribute('data-parceiro')),
-      referencia: cb.getAttribute('data-ref'),
-      nome_peca: cb.getAttribute('data-nome'),
-      quantidade: parseInt(cb.getAttribute('data-qtd')) || 1
-    });
-  });
-  if (parceiros.size > 1) {
-    alert('Selecione peças do mesmo parceiro para enviar juntas.\nVocê selecionou peças de ' + parceiros.size + ' parceiros diferentes.');
-    return;
-  }
-  var parceiroId = itens[0].parceiro_id;
-  _raEnvioItens = [];
-  var pecasCat = await raFetch('prt_pecas_catalogo?ativo=eq.true&order=nome.asc&select=id,referencia,nome,custo_unitario');
-  if (!Array.isArray(pecasCat)) pecasCat = [];
-  _raEnvioPecasCatalogo = pecasCat;
-  itens.forEach(function(item) {
-    var pecaCat = pecasCat.find(function(p) { return p.referencia === item.referencia; });
-    _raEnvioItens.push({
-      referencia: item.referencia, nome_peca: item.nome_peca, quantidade: item.quantidade,
-      custo_unitario: pecaCat ? (pecaCat.custo_unitario || 0) : 0, reposicao_id: item.reposicao_id
-    });
-  });
-  var parcList = await raFetch('assist_parceiros?credenciado=eq.true&order=nome.asc&select=id,nome');
-  if (!Array.isArray(parcList)) parcList = [];
-  raModal('Enviar Peças Selecionadas (' + _raEnvioItens.length + ' itens)',
-    '<div class="field"><label>Parceiro</label><select id="ra-env-parc" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
-      parcList.map(function(p) { return '<option value="' + p.id + '"' + (p.id == parceiroId ? ' selected' : '') + '>' + p.nome + '</option>'; }).join('') + '</select></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      '<div class="field"><label>NF Envio</label><input id="ra-env-nf" class="search-input" style="width:100%" placeholder="Número NF"></div>' +
-      '<div class="field"><label>Rastreio</label><input id="ra-env-rastreio" class="search-input" style="width:100%" placeholder="Código rastreio"></div>' +
-    '</div>' +
-    '<div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><label style="font-weight:600;font-size:13px">Peças do envio</label>' +
-        '<button class="btn btn-secondary btn-sm" onclick="raEnvioAdicionarPeca()">+ Adicionar peça</button></div>' +
-      '<div id="ra-env-itens-container"></div>' +
-    '</div>',
-    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
-    '<button class="btn btn-primary" onclick="raSalvarEnvio()">Registrar envio</button>');
-  raEnvioRenderItens();
+window.raAprovarCompra = async function(id) {
+  if (!confirm('Aprovar pedido de compra?')) return;
+  await raPatch('prt_compras_pecas', 'id=eq.' + id, { status: 'aprovado', aprovado_por: (window.getUsuario() || {}).nome || 'gestor', data_aprovacao: new Date().toISOString() });
+  raLog('ACAO','compra_peca','APROVAR_COMPRA',String(id));
+  raPecTab('compras');raAtualizarBadgesPecas();
 };
 
 window.raEnviarReposicao = async function(repId, parceiroId, ref, nome, qtd) {
@@ -1613,27 +1403,12 @@ window.raCfgTab = function(tab) {
 function raCfgServicos(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
     '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option></select></div>' +
-    '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raGerarPdfServicos()">📄 Gerar PDF</button><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
+    '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
     '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor</th><th>Teto</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
   raCarregarServicos();
 }
 
-window.raCfgCarregarCategorias = async function() {
-  var linhaOpts = await raLinhaOptionsHtml('', 'Todas as linhas');
-  raModal('Categorias de Serviço',
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-      '<span id="ra-cfg-count" style="font-size:13px;color:var(--text-muted)">Carregando...</span>' +
-      '<div style="display:flex;gap:8px">' +
-        '<select class="filter-select" id="ra-cfg-linha" onchange="raCfgCarregar()" style="min-width:140px">' + linhaOpts + '</select>' +
-        '<button class="btn btn-primary btn-sm" onclick="raCfgNovaCategoria()">+ Nova categoria</button>' +
-      '</div>' +
-    '</div>' +
-    '<div style="overflow-x:auto;max-height:60vh;overflow-y:auto"><table class="data-table"><thead><tr>' +
-      '<th style="width:50px">Ordem</th><th>Nome</th><th>Linha</th><th>Prefixo</th><th>Teto</th><th>Serviços</th><th>Status</th><th></th>' +
-    '</tr></thead><tbody id="ra-cfg-tbody"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</td></tr></tbody></table></div>',
-    '');
-  raCfgCarregar();
-};
+window.raCfgCarregarCategorias = function() { raCfgCarregar(); };
 
 function raCfgPecas(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
@@ -1788,7 +1563,7 @@ window.raCfgCarregar = async function() {
     var qtd = contagem[c.id] || 0;
     return '<tr>' +
       '<td style="text-align:center;font-weight:600">' + c.ordem + '</td>' +
-      '<td style="font-weight:600;cursor:pointer" onclick="raCfgEditar(' + c.id + ')" title="Clique para editar">' + c.nome + ' <span style="font-size:11px;color:var(--text-muted)">✏️</span></td>' +
+      '<td style="font-weight:600">' + c.nome + '</td>' +
       '<td>' + raLinhaNome(c.linha_produto) + '</td>' +
       '<td class="mono">STN-' + c.prefixo_codigo + '</td>' +
       '<td class="mono right" style="font-weight:700">' + raFmt(c.valor_teto) + '</td>' +
@@ -2019,19 +1794,73 @@ function raLog(tipo, entidade, acao, idEntidade, nomeEntidade, extra) {
 
 
 // ===== PDF DA TABELA DE SERVIÇOS =====
+window.raAbrirModalPdfServicos = async function() {
+  await raGetLinhas();
+  var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=linha_produto.asc,ordem.asc&select=*');
+  if (!Array.isArray(categorias) || !categorias.length) { alert('Nenhuma categoria cadastrada'); return; }
+  var tetos = await raFetch('prt_teto_produto?ativo=eq.true&select=*');
+  if (!Array.isArray(tetos)) tetos = [];
+  var tetoMap = {}; tetos.forEach(function(t) { tetoMap[t.linha_produto] = t.valor_maximo; });
+
+  // Agrupar categorias por linha
+  var porLinha = {};
+  categorias.forEach(function(c) {
+    if (!porLinha[c.linha_produto]) porLinha[c.linha_produto] = [];
+    porLinha[c.linha_produto].push(c);
+  });
+
+  var html = '<div style="margin-bottom:16px;font-size:13px;color:var(--text-muted)">Selecione as categorias que deseja incluir no PDF:</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll(\'.ra-pdf-cat-check\').forEach(function(c){c.checked=true})">Selecionar tudo</button><button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll(\'.ra-pdf-cat-check\').forEach(function(c){c.checked=false})">Desmarcar tudo</button></div>';
+
+  for (var linha in porLinha) {
+    var cats = porLinha[linha];
+    var tetoLinha = tetoMap[linha] || 0;
+    html += '<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--primary);color:#fff;border-radius:var(--radius-sm);margin-bottom:6px">';
+    html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13px"><input type="checkbox" class="ra-pdf-linha-check" data-linha="' + linha + '" checked onchange="raToggleLinhaPdf(this,\'' + linha + '\')"> ' + raLinhaNome(linha) + '</label>';
+    html += (tetoLinha ? '<span style="font-size:11px;opacity:.8">Teto produto: ' + raFmt(tetoLinha) + '</span>' : '') + '</div>';
+    cats.forEach(function(c) {
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 24px;cursor:pointer;font-size:13px"><input type="checkbox" class="ra-pdf-cat-check" data-cat-id="' + c.id + '" data-linha="' + c.linha_produto + '" checked> ' + c.nome + ' <span style="color:var(--text-muted);font-size:11px">(teto ' + raFmt(c.valor_teto) + ')</span></label>';
+    });
+    html += '</div>';
+  }
+
+  raModal('Gerar PDF — Tabela de Serviços', html,
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raGerarPdfServicos()">📄 Gerar PDF</button>'
+  );
+};
+
+window.raToggleLinhaPdf = function(el, linha) {
+  var checks = document.querySelectorAll('.ra-pdf-cat-check[data-linha="' + linha + '"]');
+  checks.forEach(function(c) { c.checked = el.checked; });
+};
+
 window.raGerarPdfServicos = async function() {
-  var linhaFiltro = document.getElementById('ra-srv-linha')?.value || '';
+  // Pegar categorias selecionadas do modal
+  var catChecks = document.querySelectorAll('.ra-pdf-cat-check:checked');
+  var catIdsSelecionados = [];
+  catChecks.forEach(function(c) { catIdsSelecionados.push(parseInt(c.dataset.catId)); });
+
+  if (!catIdsSelecionados.length) { alert('Selecione pelo menos uma categoria'); return; }
+
+  document.getElementById('ra-modal')?.remove();
+
   await raGetLinhas();
   var todasLinhas = (_raLinhas || []).filter(function(x) { return x.ativo; });
-  var linhas = linhaFiltro ? [linhaFiltro] : todasLinhas.map(function(l) { return l.slug; });
 
-  // Buscar categorias e serviços
   var categorias = await raFetch('prt_categorias_servico?ativo=eq.true&order=ordem.asc&select=*');
   if (!Array.isArray(categorias)) categorias = [];
+  // Filtrar só as selecionadas
+  categorias = categorias.filter(function(c) { return catIdsSelecionados.indexOf(c.id) >= 0; });
+
   var servicos = await raFetch('prt_tabela_servicos?ativo=eq.true&order=codigo.asc&select=*');
   if (!Array.isArray(servicos)) servicos = [];
 
-  // Agrupar por linha → categoria
+  // Linhas que têm pelo menos uma categoria selecionada
+  var linhasUsadas = {};
+  categorias.forEach(function(c) { linhasUsadas[c.linha_produto] = true; });
+  var linhas = todasLinhas.filter(function(l) { return linhasUsadas[l.slug]; }).map(function(l) { return l.slug; });
+
   var porLinha = {};
   linhas.forEach(function(l) { porLinha[l] = []; });
   categorias.forEach(function(c) {
@@ -2042,7 +1871,8 @@ window.raGerarPdfServicos = async function() {
     if (items.length) porLinha[c.linha_produto].push({ cat: c, items: items });
   });
 
-  var titulo = linhaFiltro ? raLinhaNome(linhaFiltro) : 'Todas as Linhas';
+  var totalCats = categorias.length;
+  var titulo = totalCats === 1 ? categorias[0].nome : (linhas.length === 1 ? raLinhaNome(linhas[0]) : 'Seleção Personalizada');
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tabela de Serviços Stonni — ' + titulo + '</title><style>' +
     '*{margin:0;padding:0;box-sizing:border-box}' +
     'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#222;padding:20px 25px}' +
@@ -2394,7 +2224,7 @@ window.raSalvarEmpresa = async function() {
   };
   try {
     for (var chave in campos) {
-      var existe = await raFetch('prt_configuracoes?chave=eq.' + chave + '&select=chave');
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + chave + '&select=id');
       if (Array.isArray(existe) && existe.length) {
         await raPatch('prt_configuracoes', 'chave=eq.' + chave, { valor: campos[chave] });
       } else {
@@ -2448,7 +2278,7 @@ window.raSalvarPrazos = async function() {
       var el = document.getElementById('ra-prazo-' + p.chave);
       if (!el) continue;
       var val = el.value.trim();
-      var existe = await raFetch('prt_configuracoes?chave=eq.' + p.chave + '&select=chave');
+      var existe = await raFetch('prt_configuracoes?chave=eq.' + p.chave + '&select=id');
       if (Array.isArray(existe) && existe.length) {
         await raPatch('prt_configuracoes', 'chave=eq.' + p.chave, { valor: val });
       } else {
@@ -2526,7 +2356,7 @@ window.raSalvarBoasVindas = async function() {
   var template = document.getElementById('ra-bv-template').value;
   if (!template.trim()) { alert('A mensagem não pode ficar vazia'); return; }
   try {
-    var existe = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=chave');
+    var existe = await raFetch('prt_configuracoes?chave=eq.msg_boas_vindas&select=id');
     if (Array.isArray(existe) && existe.length) {
       await raPatch('prt_configuracoes', 'chave=eq.msg_boas_vindas', { valor: template });
     } else {
