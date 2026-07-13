@@ -1332,8 +1332,9 @@ async function raPecCompras(box) {
 }
 
 async function raPecReposicao(box) {
-  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:600">Reposição de peças de garantia</span></div>' +
-    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="font-weight:600">Reposição de peças de garantia</span>' +
+    '<button class="btn btn-primary btn-sm" id="ra-rep-enviar-lote" style="display:none" onclick="raEnviarReposicaoLote()">📦 Enviar selecionados (<span id="ra-rep-sel-count">0</span>)</button></div>' +
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th style="width:36px"><input type="checkbox" id="ra-rep-check-all" onchange="raToggleAllReposicao(this.checked)"></th><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
   var reps = [];
   try {
     reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
@@ -1356,15 +1357,99 @@ async function raPecReposicao(box) {
     }
   }
   var tbody = document.getElementById('ra-rep-tbody');
-  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
+  window._raReposicoes = reps;
+  window._raRepParcMap = parcMap;
+  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
   tbody.innerHTML = reps.map(function(r) {
     var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : (parcMap[r.parceiro_id] || '—');
     var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : (osMap[r.os_id] || '—');
-    return '<tr><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
-      (r.status === 'pendente' ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
+    var isPend = r.status === 'pendente';
+    return '<tr><td>' + (isPend ? '<input type="checkbox" class="ra-rep-check" data-id="' + r.id + '" data-parceiro="' + r.parceiro_id + '" data-ref="' + raEsc(r.referencia) + '" data-nome="' + raEsc(r.nome_peca) + '" data-qtd="' + r.quantidade + '" onchange="raAtualizarSelReposicao()">' : '') + '</td><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
+      (isPend ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
   }).join('');
 }
+
+window.raToggleAllReposicao = function(checked) {
+  document.querySelectorAll('.ra-rep-check').forEach(function(c) { c.checked = checked; });
+  raAtualizarSelReposicao();
+};
+
+window.raAtualizarSelReposicao = function() {
+  var sel = document.querySelectorAll('.ra-rep-check:checked');
+  var btn = document.getElementById('ra-rep-enviar-lote');
+  var cnt = document.getElementById('ra-rep-sel-count');
+  if (btn) btn.style.display = sel.length > 0 ? '' : 'none';
+  if (cnt) cnt.textContent = sel.length;
+};
+
+window.raEnviarReposicaoLote = function() {
+  var checks = document.querySelectorAll('.ra-rep-check:checked');
+  if (!checks.length) return;
+  var porParceiro = {};
+  checks.forEach(function(c) {
+    var pid = c.dataset.parceiro;
+    if (!porParceiro[pid]) porParceiro[pid] = [];
+    porParceiro[pid].push({ id: parseInt(c.dataset.id), ref: c.dataset.ref, nome: c.dataset.nome, qtd: parseInt(c.dataset.qtd) });
+  });
+  var parceiros = Object.keys(porParceiro);
+  var parcNomes = {};
+  (window._raReposicoes || []).forEach(function(r) {
+    var n = r.assist_parceiros ? r.assist_parceiros.nome : (window._raRepParcMap || {})[r.parceiro_id] || 'Parceiro #' + r.parceiro_id;
+    parcNomes[r.parceiro_id] = n;
+  });
+  var resumo = '';
+  parceiros.forEach(function(pid) {
+    var itens = porParceiro[pid];
+    resumo += '<div style="margin-bottom:12px"><div style="font-weight:600;font-size:13px;margin-bottom:4px">' + raEsc(parcNomes[pid] || 'Parceiro #' + pid) + ' (' + itens.length + ' peça' + (itens.length > 1 ? 's' : '') + ')</div>';
+    itens.forEach(function(it) {
+      resumo += '<div style="font-size:12px;padding:2px 0;color:var(--text-muted)">• ' + it.ref + ' — ' + it.nome + ' (x' + it.qtd + ')</div>';
+    });
+    resumo += '</div>';
+  });
+  if (parceiros.length > 1) resumo = '<div style="background:var(--orange-bg);padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:12px;color:#92400E">⚠ Peças de ' + parceiros.length + ' parceiros — será criado um envio para cada.</div>' + resumo;
+  var html = '<div style="margin-bottom:16px">' + resumo + '</div>' +
+    '<div class="field"><label>NF de envio</label><input type="text" id="ra-lote-nf" class="search-input" placeholder="Número da NF"></div>' +
+    '<div class="field"><label>Código de rastreio</label><input type="text" id="ra-lote-rastreio" class="search-input" placeholder="Opcional"></div>';
+  window._raLoteEnvio = porParceiro;
+  raModal('📦 Envio em lote — ' + checks.length + ' peça(s)', html,
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="raConfirmarEnvioLote()">Confirmar envio</button>'
+  );
+};
+
+window.raConfirmarEnvioLote = async function() {
+  var nf = document.getElementById('ra-lote-nf').value.trim();
+  var rastreio = document.getElementById('ra-lote-rastreio').value.trim();
+  if (!nf) { alert('Informe o número da NF'); return; }
+  var porParceiro = window._raLoteEnvio;
+  if (!porParceiro) return;
+  var totalEnviados = 0;
+  for (var pid in porParceiro) {
+    var itens = porParceiro[pid];
+    for (var i = 0; i < itens.length; i++) {
+      var it = itens[i];
+      var envResp = await fetch(SB_URL + '/rest/v1/prt_envios_pecas', {
+        method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+        body: JSON.stringify({ parceiro_id: parseInt(pid), referencia: it.ref, nome_peca: it.nome, quantidade: it.qtd, nf_envio: nf, rastreio: rastreio || null, status: 'enviado', data_envio: new Date().toISOString(), enviado_por: (window.getUsuario() || {}).nome || 'gestor' })
+      });
+      var envData = await envResp.json();
+      var envioId = Array.isArray(envData) && envData.length ? envData[0].id : (envData && envData.id ? envData.id : null);
+      await raPatch('prt_reposicao_pecas', 'id=eq.' + it.id, { status: 'enviada', envio_id: envioId, atualizado_em: new Date().toISOString() });
+      var est = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + pid + '&referencia=eq.' + encodeURIComponent(it.ref));
+      if (Array.isArray(est) && est.length) {
+        await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_enviada: (est[0].quantidade_enviada || 0) + it.qtd, ultimo_envio: new Date().toISOString(), atualizado_em: new Date().toISOString() });
+      } else {
+        await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(pid), referencia: it.ref, nome_peca: it.nome, quantidade_enviada: it.qtd, quantidade_usada: 0, custo_unitario: 0, ultimo_envio: new Date().toISOString() });
+      }
+      totalEnviados++;
+    }
+    raLog('ACAO', 'envio', 'ENVIO_LOTE', pid, nf, { itens: itens.length, rastreio: rastreio });
+  }
+  document.getElementById('ra-modal')?.remove();
+  raToast(totalEnviados + ' peça(s) enviada(s) com sucesso!');
+  raPecTab('reposicao'); raAtualizarBadgesPecas();
+};
 
 window.raAprovarCompra = async function(id) {
   if (!confirm('Aprovar pedido de compra?')) return;
