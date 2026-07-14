@@ -640,6 +640,9 @@ window.raAprovarOS = async function(id) {
   // + criar reposição automática na fila
   try {
     var pecas = await raFetch('prt_os_pecas?os_id=eq.' + id + '&select=referencia,nome_peca,quantidade');
+    // peças já enviadas antecipadamente (antes do serviço) — não gerar reposição de novo
+    var repAntecip = await raFetch('prt_reposicao_pecas?os_id=eq.' + id + '&tipo=eq.antecipada&select=referencia');
+    var refsAntecip = Array.isArray(repAntecip) ? repAntecip.map(function(r) { return r.referencia; }) : [];
     if (Array.isArray(pecas) && pecas.length && o.parceiro_id) {
       var reposCriadas = 0;
       for (var i = 0; i < pecas.length; i++) {
@@ -649,14 +652,16 @@ window.raAprovarOS = async function(id) {
         if (Array.isArray(est) && est.length) {
           await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_usada: (est[0].quantidade_usada || 0) + (pe.quantidade || 1), atualizado_em: new Date().toISOString() });
         }
-        // criar reposição automática — com verificação de resposta
+        // peça já enviada antecipada para esta OS → não repor de novo (evita envio em dobro)
+        if (refsAntecip.indexOf(pe.referencia) !== -1) continue;
+        // criar reposição automática (garantia) — com verificação de resposta
         var repResp = await fetch(SB_URL + '/rest/v1/prt_reposicao_pecas', {
           method: 'POST',
           headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
           body: JSON.stringify({
             parceiro_id: o.parceiro_id, os_id: id,
             referencia: pe.referencia, nome_peca: pe.nome_peca || pe.referencia,
-            quantidade: pe.quantidade || 1, status: 'pendente'
+            quantidade: pe.quantidade || 1, status: 'pendente', tipo: 'garantia'
           })
         });
         if (repResp.ok) { reposCriadas++; }
@@ -1044,8 +1049,9 @@ window.raNovoEnvio = async function(preParc, preRef, preNome, preQtd, repId) {
   raModal('Novo Envio de Peças',
     '<div class="field"><label>Parceiro</label><select id="ra-env-parc" class="filter-select" style="width:100%"><option value="">Selecione...</option>' +
       parceiros.map(function(p) { return '<option value="' + p.id + '"' + (preParc && p.id == preParc ? ' selected' : '') + '>' + p.nome + '</option>'; }).join('') + '</select></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
       '<div class="field"><label>NF Envio</label><input id="ra-env-nf" class="search-input" style="width:100%" placeholder="Número NF"></div>' +
+      '<div class="field"><label>Transportadora</label><input id="ra-env-transp" class="search-input" style="width:100%" placeholder="Ex: Jadlog, Correios"></div>' +
       '<div class="field"><label>Rastreio</label><input id="ra-env-rastreio" class="search-input" style="width:100%" placeholder="Código rastreio"></div>' +
     '</div>' +
     '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><label style="font-weight:600">Peças do envio</label><button class="btn btn-secondary btn-sm" onclick="raEnvioAdicionarPeca()">+ Adicionar peça</button></div>' +
@@ -1103,6 +1109,7 @@ window.raSalvarEnvio = async function() {
   if (!parcId) { alert('Selecione o parceiro'); return; }
   if (!_raEnvioItens.length) { alert('Adicione pelo menos uma peça'); return; }
   var nf = document.getElementById('ra-env-nf').value.trim();
+  var transp = (document.getElementById('ra-env-transp') ? document.getElementById('ra-env-transp').value.trim() : '');
   var rastreio = document.getElementById('ra-env-rastreio').value.trim();
   var qtdTotal = _raEnvioItens.reduce(function(s,x){return s+x.qtd},0);
   // Header do envio
@@ -1113,6 +1120,7 @@ window.raSalvarEnvio = async function() {
     quantidade: qtdTotal,
     custo_unitario: _raEnvioItens.length === 1 ? _raEnvioItens[0].custo : null,
     nf_envio: nf || null,
+    transportadora: transp || null,
     rastreio: rastreio || null,
     status: 'enviado',
     data_envio: new Date().toISOString(),
@@ -1427,7 +1435,7 @@ async function raPecCompras(box) {
 async function raPecReposicao(box) {
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="font-weight:600">Reposição de peças de garantia</span>' +
     '<button class="btn btn-primary btn-sm" id="ra-rep-enviar-lote" style="display:none" onclick="raEnviarReposicaoLote()">📦 Enviar selecionados (<span id="ra-rep-sel-count">0</span>)</button></div>' +
-    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th style="width:36px"><input type="checkbox" id="ra-rep-check-all" onchange="raToggleAllReposicao(this.checked)"></th><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th style="width:36px"><input type="checkbox" id="ra-rep-check-all" onchange="raToggleAllReposicao(this.checked)"></th><th>Parceiro</th><th>OS</th><th>Peça</th><th>Qtd</th><th>Tipo</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="ra-rep-tbody"></tbody></table></div></div>';
   var reps = [];
   try {
     reps = await raFetch('prt_reposicao_pecas?order=criado_em.desc&select=*,assist_parceiros(nome),prt_ordens_servico(protocolo)');
@@ -1452,13 +1460,14 @@ async function raPecReposicao(box) {
   var tbody = document.getElementById('ra-rep-tbody');
   window._raReposicoes = reps;
   window._raRepParcMap = parcMap;
-  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
+  if (!reps.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma reposição pendente</td></tr>'; return; }
   var statusBadge = {pendente:'badge-blue',enviada:'badge-green',recebida:'badge-purple'};
   tbody.innerHTML = reps.map(function(r) {
     var parcNome = r.assist_parceiros ? r.assist_parceiros.nome : (parcMap[r.parceiro_id] || '—');
     var proto = r.prt_ordens_servico ? r.prt_ordens_servico.protocolo : (osMap[r.os_id] || '—');
     var isPend = r.status === 'pendente';
-    return '<tr><td>' + (isPend ? '<input type="checkbox" class="ra-rep-check" data-id="' + r.id + '" data-parceiro="' + r.parceiro_id + '" data-ref="' + raEsc(r.referencia) + '" data-nome="' + raEsc(r.nome_peca) + '" data-qtd="' + r.quantidade + '" onchange="raAtualizarSelReposicao()">' : '') + '</td><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
+    var tipoBadge = r.tipo === 'antecipada' ? '<span class="badge badge-orange">Antecipada</span>' : '<span class="badge badge-gray">Garantia</span>';
+    return '<tr><td>' + (isPend ? '<input type="checkbox" class="ra-rep-check" data-id="' + r.id + '" data-parceiro="' + r.parceiro_id + '" data-ref="' + raEsc(r.referencia) + '" data-nome="' + raEsc(r.nome_peca) + '" data-qtd="' + r.quantidade + '" onchange="raAtualizarSelReposicao()">' : '') + '</td><td>' + raEsc(parcNome) + '</td><td class="mono">' + proto + '</td><td>' + raEsc(r.referencia) + ' — ' + raEsc(r.nome_peca) + '</td><td style="text-align:center">' + r.quantidade + '</td><td>' + tipoBadge + '</td><td><span class="badge ' + (statusBadge[r.status] || '') + '">' + r.status + '</span></td><td>' + raDate(r.criado_em) + '</td><td>' +
       (isPend ? '<button class="btn btn-secondary btn-sm" onclick="raEnviarReposicao(' + r.id + ',' + r.parceiro_id + ',\'' + raEsc(r.referencia) + '\',\'' + raEsc(r.nome_peca) + '\',' + r.quantidade + ')">Enviar</button>' : '') + '</td></tr>';
   }).join('');
 }
