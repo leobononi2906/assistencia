@@ -191,12 +191,13 @@ function raFmt(v) { return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', 
 function raEsc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function raDate(d) { if (!d) return '—'; var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d); if (m) return m[3] + '/' + m[2] + '/' + m[1]; return new Date(d).toLocaleDateString('pt-BR'); }
 function raToast(msg) { alert(msg); } // simplificado — usa o toast do index se existir
-function raModal(title, bodyHtml, footerHtml) {
+function raModal(title, bodyHtml, footerHtml, size) {
   var el = document.createElement('div');
   el.className = 'modal-overlay';
   el.id = 'ra-modal';
   el.onclick = function(e) { if (e.target === el) el.remove(); };
-  el.innerHTML = '<div class="modal"><div class="modal-header"><span class="modal-title">' + title + '</span><button class="btn-icon" onclick="document.getElementById(\'ra-modal\').remove()">✕</button></div><div class="modal-body">' + bodyHtml + '</div>' + (footerHtml ? '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">' + footerHtml + '</div>' : '') + '</div>';
+  var modalW = size === 'lg' ? 'max-width:900px' : '';
+  el.innerHTML = '<div class="modal" style="' + modalW + '"><div class="modal-header"><span class="modal-title">' + title + '</span><button class="btn-icon" onclick="document.getElementById(\'ra-modal\').remove()">✕</button></div><div class="modal-body">' + bodyHtml + '</div>' + (footerHtml ? '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">' + footerHtml + '</div>' : '') + '</div>';
   document.body.appendChild(el);
 }
 
@@ -1503,65 +1504,6 @@ window.raEnviarReposicaoLote = async function() {
     if (catP) it.custo = parseFloat(catP.custo_unitario || catP.preco_venda) || 0;
   });
   raNovoEnvio(parseInt(pid));
-  return;
-  // Código legado abaixo não executa mais
-  var parceiros2 = Object.keys(porParceiro);
-  var parcNomes = {};
-  (window._raReposicoes || []).forEach(function(r) {
-    var n = r.assist_parceiros ? r.assist_parceiros.nome : (window._raRepParcMap || {})[r.parceiro_id] || 'Parceiro #' + r.parceiro_id;
-    parcNomes[r.parceiro_id] = n;
-  });
-  var resumo = '';
-  parceiros.forEach(function(pid) {
-    var itens = porParceiro[pid];
-    resumo += '<div style="margin-bottom:12px"><div style="font-weight:600;font-size:13px;margin-bottom:4px">' + raEsc(parcNomes[pid] || 'Parceiro #' + pid) + ' (' + itens.length + ' peça' + (itens.length > 1 ? 's' : '') + ')</div>';
-    itens.forEach(function(it) {
-      resumo += '<div style="font-size:12px;padding:2px 0;color:var(--text-muted)">• ' + it.ref + ' — ' + it.nome + ' (x' + it.qtd + ')</div>';
-    });
-    resumo += '</div>';
-  });
-  if (parceiros.length > 1) resumo = '<div style="background:var(--orange-bg);padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:12px;color:#92400E">⚠ Peças de ' + parceiros.length + ' parceiros — será criado um envio para cada.</div>' + resumo;
-  var html = '<div style="margin-bottom:16px">' + resumo + '</div>' +
-    '<div class="field"><label>NF de envio</label><input type="text" id="ra-lote-nf" class="search-input" placeholder="Número da NF"></div>' +
-    '<div class="field"><label>Código de rastreio</label><input type="text" id="ra-lote-rastreio" class="search-input" placeholder="Opcional"></div>';
-  window._raLoteEnvio = porParceiro;
-  raModal('📦 Envio em lote — ' + checks.length + ' peça(s)', html,
-    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Cancelar</button>' +
-    '<button class="btn btn-primary" onclick="raConfirmarEnvioLote()">Confirmar envio</button>'
-  );
-};
-
-window.raConfirmarEnvioLote = async function() {
-  var nf = document.getElementById('ra-lote-nf').value.trim();
-  var rastreio = document.getElementById('ra-lote-rastreio').value.trim();
-  if (!nf) { alert('Informe o número da NF'); return; }
-  var porParceiro = window._raLoteEnvio;
-  if (!porParceiro) return;
-  var totalEnviados = 0;
-  for (var pid in porParceiro) {
-    var itens = porParceiro[pid];
-    for (var i = 0; i < itens.length; i++) {
-      var it = itens[i];
-      var envResp = await fetch(SB_URL + '/rest/v1/prt_envios_pecas', {
-        method: 'POST', headers: {'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
-        body: JSON.stringify({ parceiro_id: parseInt(pid), referencia: it.ref, nome_peca: it.nome, quantidade: it.qtd, nf_envio: nf, rastreio: rastreio || null, status: 'enviado', data_envio: new Date().toISOString(), enviado_por: (window.getUsuario() || {}).nome || 'gestor' })
-      });
-      var envData = await envResp.json();
-      var envioId = Array.isArray(envData) && envData.length ? envData[0].id : (envData && envData.id ? envData.id : null);
-      await raPatch('prt_reposicao_pecas', 'id=eq.' + it.id, { status: 'enviada', envio_id: envioId, atualizado_em: new Date().toISOString() });
-      var est = await raFetch('prt_estoque_parceiro?parceiro_id=eq.' + pid + '&referencia=eq.' + encodeURIComponent(it.ref));
-      if (Array.isArray(est) && est.length) {
-        await raPatch('prt_estoque_parceiro', 'id=eq.' + est[0].id, { quantidade_enviada: (est[0].quantidade_enviada || 0) + it.qtd, ultimo_envio: new Date().toISOString(), atualizado_em: new Date().toISOString() });
-      } else {
-        await raPost('prt_estoque_parceiro', { parceiro_id: parseInt(pid), referencia: it.ref, nome_peca: it.nome, quantidade_enviada: it.qtd, quantidade_usada: 0, custo_unitario: 0, ultimo_envio: new Date().toISOString() });
-      }
-      totalEnviados++;
-    }
-    raLog('ACAO', 'envio', 'ENVIO_LOTE', pid, nf, { itens: itens.length, rastreio: rastreio });
-  }
-  document.getElementById('ra-modal')?.remove();
-  raToast(totalEnviados + ' peça(s) enviada(s) com sucesso!');
-  raPecTab('reposicao'); raAtualizarBadgesPecas();
 };
 
 window.raAprovarCompra = async function(id) {
