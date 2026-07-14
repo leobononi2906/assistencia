@@ -2221,15 +2221,15 @@ window.raConfirmarCredenciamento = async function(id) {
   var senha = palavras[Math.floor(Math.random()*palavras.length)] + Math.floor(100 + Math.random()*900) + '!';
 
   try {
-    // 1. Criar usuário no Supabase Auth
-    var authRes = await fetch(SB_URL + '/auth/v1/signup', {
+    // 1. Criar usuário no Supabase Auth via Edge Function (admin, sem envio de e-mail)
+    var authRes = await fetch(SB_URL + '/functions/v1/credenciar-parceiro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
       body: JSON.stringify({ email: email, password: senha })
     });
     var authData = await authRes.json();
-    if (!authRes.ok || authData.error) throw new Error(authData.error?.message || authData.msg || 'Erro ao criar usuário');
-    var userId = authData.user?.id || authData.id;
+    if (!authRes.ok || authData.error) throw new Error(authData.error || 'Erro ao criar usuário');
+    var userId = authData.user_id;
     if (!userId) throw new Error('User ID não retornado');
 
     // 2. Vincular na prt_usuarios com senha salva
