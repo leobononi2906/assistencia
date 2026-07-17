@@ -2222,9 +2222,15 @@ window.raConfirmarCredenciamento = async function(id) {
 
   try {
     // 1. Criar usuário no Supabase Auth via Edge Function (admin, sem envio de e-mail)
+    // Manda o token da SESSÃO do usuário logado (não a anon key) — a function só
+    // credencia se quem chamou for admin ou tiver o módulo 'assistencia'.
+    var _sess = await sb.auth.getSession();
+    var _tk = _sess && _sess.data && _sess.data.session && _sess.data.session.access_token;
+    if (!_tk) throw new Error('Sessão expirada — saia e entre de novo na Gestão');
+
     var authRes = await fetch(SB_URL + '/functions/v1/credenciar-parceiro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _tk },
       body: JSON.stringify({ email: email, password: senha })
     });
     var authData = await authRes.json();
