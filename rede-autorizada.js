@@ -96,7 +96,7 @@ var RA_PAGES = {
   <div class="cards-grid cards-grid-3" id="ra-parc-kpis"></div>
   <div class="table-card">
     <div class="table-card-header"><span class="table-card-title">Autorizadas ativas</span><span id="ra-parc-count" style="font-size:12px;color:var(--text-muted)"></span></div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>Cidade/UF</th><th>Responsável</th><th>WhatsApp</th><th>Login</th><th>Senha</th><th>Credenciado em</th><th></th></tr></thead><tbody id="ra-parc-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Parceiro</th><th>Cidade/UF</th><th>Linhas</th><th>Responsável</th><th>WhatsApp</th><th>Login</th><th>Senha</th><th>Credenciado em</th><th></th></tr></thead><tbody id="ra-parc-tbody"><tr><td colspan="8" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div>
   </div>
 </div>`
 };
@@ -2097,6 +2097,17 @@ window.raGerarPdfServicos = async function() {
 var _raParceiros = [];
 var _raParceirosLogin = {};
 
+// Chip visual de linha com ícone
+function raLinhaChip(tag) {
+  var map = {
+    'Ar Condicionado': { icon: '❄️', bg: '#E8F4FD', color: '#1976D2', border: '#90CAF9', short: 'Ar' },
+    'Geladeira':       { icon: '🧊', bg: '#E8F5E9', color: '#388E3C', border: '#A5D6A7', short: 'Geladeira' },
+    'Gerador':         { icon: '⚡', bg: '#FFF8E1', color: '#F57F17', border: '#FFE082', short: 'Gerador' }
+  };
+  var m = map[tag] || { icon: '🔹', bg: 'var(--surface2)', color: 'var(--text-muted)', border: 'var(--border)', short: tag };
+  return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + m.bg + ';color:' + m.color + ';border:1px solid ' + m.border + ';white-space:nowrap">' + m.icon + ' ' + m.short + '</span>';
+}
+
 // Abre o drawer completo do parceiro (mesmo da aba Assistência > Parceiros)
 window.raAbrirDrawerParceiro = async function(id) {
   if (!window.astParceiros) { raToast('Módulo de parceiros não carregado', 'erro'); return; }
@@ -2146,13 +2157,14 @@ window.raFiltrarParceiros = function() {
   var count = document.getElementById('ra-parc-count');
   if (count) count.textContent = lista.length + ' parceiros';
   var tbody = document.getElementById('ra-parc-tbody');
-  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro autorizado ainda. Use "Credenciar novo" para começar.</td></tr>'; return; }
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum parceiro autorizado ainda. Use "Credenciar novo" para começar.</td></tr>'; return; }
   tbody.innerHTML = lista.map(function(p) {
     var login = _raParceirosLogin[p.id];
     var senha = login ? login.senha_inicial : '—';
     return '<tr>' +
       '<td style="font-weight:600;cursor:pointer" title="Ver detalhes do parceiro" onclick="raAbrirDrawerParceiro(' + p.id + ')">⭐ ' + p.nome + '</td>' +
       '<td>' + (p.cidade||'') + '/' + (p.uf||'') + '</td>' +
+      '<td style="white-space:nowrap">' + (p.tags && p.tags.length ? p.tags.map(raLinhaChip).join(' ') : '<span style="color:var(--text-muted);font-size:11px">—</span>') + '</td>' +
       '<td>' + (p.responsavel||'—') + '</td>' +
       '<td>' + (p.whatsapp ? '<a href="https://wa.me/' + (p.whatsapp||'').replace(/\D/g,'') + '" target="_blank" style="color:var(--green)">' + p.whatsapp + '</a>' : (p.telefone||'—')) + '</td>' +
       '<td style="font-size:12px">' + (p.email||'—') + '</td>' +
