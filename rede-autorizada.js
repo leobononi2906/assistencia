@@ -2080,20 +2080,6 @@ window.raGerarPdfServicos = async function() {
     });
   });
 
-  // Resumo
-  html += '<div class="resumo"><h3>Resumo — Valores Máximos por Categoria</h3>';
-  linhas.forEach(function(linha) {
-    var grupos = porLinha[linha];
-    if (!grupos || !grupos.length) return;
-    html += '<p style="font-weight:700;margin:8px 0 4px;font-size:11px">' + raLinhaNome(linha) + ':</p><div class="resumo-grid">';
-    grupos.forEach(function(g) {
-      var teto = parseFloat(g.cat.valor_teto) || 0;
-      html += '<div class="resumo-item"><div class="label">' + g.cat.nome + '</div><div class="value">R$ ' + teto.toFixed(2).replace('.', ',') + '</div></div>';
-    });
-    html += '</div>';
-  });
-  html += '</div>';
-
   html += '<div class="confidencial">DOCUMENTO CONFIDENCIAL — USO EXCLUSIVO DA REDE AUTORIZADA STONNI</div>';
   html += '<div class="footer">Stonni — Grupo Bononi Acessórios — ' + totalServicos + ' serviços — Emitido em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
   html += '</body></html>';
@@ -2110,6 +2096,27 @@ window.raGerarPdfServicos = async function() {
 // ═══════════════════════════════════════
 var _raParceiros = [];
 var _raParceirosLogin = {};
+
+// Abre o drawer completo do parceiro (mesmo da aba Assistência > Parceiros)
+window.raAbrirDrawerParceiro = async function(id) {
+  if (!window.astParceiros) { raToast('Módulo de parceiros não carregado', 'erro'); return; }
+  if (!Array.isArray(astParceiros._dados) || !astParceiros._dados.length) {
+    var results = await Promise.all([
+      raFetch('assist_parceiros?order=nome.asc&select=*&limit=10000'),
+      raFetch('assist_parceiro_tags?ativo=eq.true&order=nome.asc&select=*'),
+      raFetch('assist_parceiro_produtos?select=*&limit=10000')
+    ]);
+    var parceiros = Array.isArray(results[0]) ? results[0] : [];
+    var tags = Array.isArray(results[1]) ? results[1] : [];
+    var prods = Array.isArray(results[2]) ? results[2] : [];
+    astParceiros._dados = parceiros.map(function(p) {
+      p.tags = prods.filter(function(pr) { return pr.parceiro_id === p.id; }).map(function(pr) { return pr.produto_tag; });
+      return p;
+    });
+    astParceiros._tagsList = tags;
+  }
+  astParceiros.abrirDrawer(id);
+};
 
 window.raCarregarParceiros = async function() {
   var parceiros = await raFetch('assist_parceiros?credenciado=eq.true&order=nome.asc&select=id,nome,responsavel,cidade,uf,telefone,whatsapp,email,data_credenciamento,credenciado');
@@ -2144,7 +2151,7 @@ window.raFiltrarParceiros = function() {
     var login = _raParceirosLogin[p.id];
     var senha = login ? login.senha_inicial : '—';
     return '<tr>' +
-      '<td style="font-weight:600">⭐ ' + p.nome + '</td>' +
+      '<td style="font-weight:600;cursor:pointer" title="Ver detalhes do parceiro" onclick="raAbrirDrawerParceiro(' + p.id + ')">⭐ ' + p.nome + '</td>' +
       '<td>' + (p.cidade||'') + '/' + (p.uf||'') + '</td>' +
       '<td>' + (p.responsavel||'—') + '</td>' +
       '<td>' + (p.whatsapp ? '<a href="https://wa.me/' + (p.whatsapp||'').replace(/\D/g,'') + '" target="_blank" style="color:var(--green)">' + p.whatsapp + '</a>' : (p.telefone||'—')) + '</td>' +
