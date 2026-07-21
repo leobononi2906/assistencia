@@ -2966,6 +2966,17 @@ function astHorasUteis(dataInicio, dataFim) {
 // ══════════════════════════════════════════
 // REDE DE PARCEIROS — ast-parceiros
 // ══════════════════════════════════════════
+// Chip visual de linha com ícone (parceiros)
+function astLinhaChip(tag) {
+  var map = {
+    'Ar Condicionado': { icon: '❄️', bg: '#E8F4FD', color: '#1976D2', border: '#90CAF9', short: 'Ar' },
+    'Geladeira':       { icon: '🧊', bg: '#E8F5E9', color: '#388E3C', border: '#A5D6A7', short: 'Geladeira' },
+    'Gerador':         { icon: '⚡', bg: '#FFF8E1', color: '#F57F17', border: '#FFE082', short: 'Gerador' }
+  };
+  var m = map[tag] || { icon: '🔹', bg: 'var(--surface2)', color: 'var(--text-muted)', border: 'var(--border)', short: tag };
+  return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + m.bg + ';color:' + m.color + ';border:1px solid ' + m.border + ';white-space:nowrap">' + m.icon + ' ' + m.short + '</span>';
+}
+
 window.astParceiros = {
   _dados: [],
   _filtrados: [],
@@ -3099,7 +3110,7 @@ window.astParceiros = {
       <td style="font-size:12px;font-weight:700;color:var(--blue-mid)">${p.uf||'—'}</td>
       <td style="white-space:nowrap">${[1,2,3,4,5].map(n=>`<span style="font-size:14px;color:${(p.avaliacao||0)>=n?'#E07B00':'#D1D9E8'}">★</span>`).join('')}</td>
       <td><span style="font-size:11px;font-weight:600;color:${statusCor[p.status]||'var(--text-muted)'}">${statusNome[p.status]||p.status}</span></td>
-      <td style="font-size:11px">${p.tags.map(t=>`<span class="ast-par-tag">${t}</span>`).join('')||'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${p.tags.length ? p.tags.map(astLinhaChip).join(' ') : '—'}</td>
     </tr>`).join('');
   },
 
