@@ -2171,7 +2171,7 @@ window.astVerificarTelefone = async function() {
   const[{data:bloq},{data:hist},{data:clientes}]=await Promise.all([
     window.sb.from('assist_numeros_bloqueados').select('id,motivo,bloqueado_por').eq('telefone_norm',tel).eq('ativo',true).maybeSingle(),
     window.sb.from('assist_kanban').select('id,status_nome,produto_nome,data_abertura').eq('telefone_normalizado',tel).order('data_abertura',{ascending:false}).range(0,4),
-    window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente').or(`telefone_norm1.eq.${tel},telefone_norm2.eq.${tel},telefone_norm3.eq.${tel}`).limit(1),
+    window.sb.rpc('erp_cliente_por_telefone',{p_tel:tel}),
   ]);
   if(bloq){_novoBloqId=bloq.id;if(avisoB){avisoB.style.display='';document.getElementById('novo-bloq-motivo').textContent=`${bloq.motivo||'Não-Garantia'} · por ${bloq.bloqueado_por||'—'}`;}if(btn)btn.disabled=true;}
   else{if(avisoB)avisoB.style.display='none';if(btn)btn.disabled=false;}
@@ -2228,7 +2228,7 @@ window.astSalvarNovo=async function(){
     const prodId=v('novo-prod-id');
     let prodNome=v('novo-prod-busca')||null, prodCod=null, prodIdErp=null;
     if(prodId){const{data:pd}=await window.sb.from('assist_produtos').select('nome,referencia,id_produto_erp').eq('id',parseInt(prodId)).single();if(pd){prodNome=pd.nome;prodCod=pd.referencia;prodIdErp=pd.id_produto_erp;}}
-    const{data:lk}=await window.sb.from('assist_clientes_telefone_lookup').select('id_cliente,nome_cliente').or(`telefone_norm1.eq.${telNum},telefone_norm2.eq.${telNum},telefone_norm3.eq.${telNum}`).limit(1);
+    const{data:lk}=await window.sb.rpc('erp_cliente_por_telefone',{p_tel:telNum});
     const cli=lk?.[0];
     const statusObj=_statusList.find(s=>s.id==v('novo-status'));
     const usuario=window.getUsuario?.();
