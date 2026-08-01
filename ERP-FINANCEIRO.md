@@ -111,6 +111,17 @@ Migração versionada em
 4. **Caixa** — abertura/fechamento (`caixas_sessoes` + `caixas_movimentos`).
 5. **Cobrança** (backlog obrigatório — seção 6) sobre `vw_contas_receber`.
 
+## 5b. Front do ERP (entregue — pasta `erp/`)
+
+App HTML/JS puro (padrão Bononi) consumindo `public.erp_*`:
+- **Configurações** — CRUD genérico de **todas as tabelas** registradas
+  (adicionar/editar/excluir), formulário automático a partir das colunas.
+- **Contas a Receber / a Pagar** — lista com saldo real + baixa.
+- **Caixa** — abrir / movimento / fechar.
+- **Cobrança** — inadimplência por cliente com régua e registro de ações.
+- Backend do admin: `erp_admin_tabelas` (whitelist) + `erp_list/colunas/upsert/delete`,
+  `erp_login`, e wrappers `erp_*` das funções financeiras. Login teste: Leonardo / bononi123.
+
 ## 6. BACKLOG — NÃO ESQUECER
 
 > ⭐ **Tela de Cobrança** (obrigatória) — pedido do Leo em 2026-08-01.
