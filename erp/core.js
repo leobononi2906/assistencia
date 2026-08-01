@@ -70,6 +70,10 @@ const MENU=[
     {id:'caixa',label:'Caixa'},
     {id:'cobranca',label:'Cobrança'},
   ]},
+  {grupo:'Estoque',itens:[
+    {id:'solicitacoes',label:'Solicitações'},
+    {id:'gondola',label:'Gôndola'},
+  ]},
   {grupo:'Sistema',itens:[{id:'config',label:'Configurações'}]},
 ];
 function buildMenu(){
@@ -82,6 +86,8 @@ const SCREENS={
   cp:{title:'Contas a Pagar',load:()=>loadCP()},
   caixa:{title:'Caixa',load:()=>loadCaixa()},
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
+  solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
+  gondola:{title:'Gôndola',load:()=>loadGondola()},
   config:{title:'Configurações',load:()=>loadConfig()},
 };
 function nav(id){
