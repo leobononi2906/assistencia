@@ -67,6 +67,7 @@ const MENU=[
   {grupo:'Comercial',itens:[
     {id:'clientes',label:'Clientes'},
     {id:'produtos',label:'Produtos'},
+    {id:'orcamentos',label:'Orçamentos'},
     {id:'vendas',label:'Vendas'},
     {id:'os',label:'Ordens de Serviço'},
   ]},
@@ -95,6 +96,7 @@ const SCREENS={
   dashboard:{title:'Dashboard',load:loadDashboard},
   clientes:{title:'Clientes',load:()=>loadClientes()},
   produtos:{title:'Produtos',load:()=>loadProdutos()},
+  orcamentos:{title:'Orçamentos de Venda',load:()=>loadOrcamentos()},
   vendas:{title:'Vendas',load:()=>loadVendas()},
   os:{title:'Ordens de Serviço',load:()=>loadOS()},
   cr:{title:'Contas a Receber',load:()=>loadCR()},
