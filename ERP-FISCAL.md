@@ -27,3 +27,24 @@ na mão. O ERP monta os dados; a Edge Function chama o provedor.
 1. Cadastrar certificado e o grupo tributário/natureza corretos.
 2. `deploy` da função + `secrets` do provedor.
 3. Na venda/OS faturada → Fiscal → Gerar NF-e → Emitir.
+
+---
+
+## Config por empresa vs global (definido em 2026-08-01)
+Regra: `configuracoes.id_empresa` preenchido = valor daquela empresa; nulo = padrão global.
+Resolver **`fn_config(chave, id_empresa)`** = específico da empresa ↘ fallback global.
+
+**Por empresa:** fiscal do produto (`produtos_fiscal_empresa`: grupo tributário/NCM/CEST/CST/origem),
+preço (`produtos_precos`), estoque (por centro), grupos tributários, taxas, certificado,
+série e ambiente de NF-e (config por empresa).
+
+**Global (compartilhado):** identidade do produto (nome/ref/EAN/grupo/unidade/marca/aplicação/
+equivalentes/composição), catálogo de formas/condições, unidades, cores.
+
+A `fn_gerar_nfe` resolve grupo tributário, NCM, série e ambiente **pela empresa da nota**
+(com fallback global). Testado: NCM e ambiente saem por empresa.
+
+## Comercial (Venda/OS) — telas
+`erp/vendas.js`: telas de **Vendas** e **Ordens de Serviço** (listar, abrir detalhe,
+solicitar produto, **Finalizar** = financeiro, **Gerar NF-e** = acessório independente).
+Backend: `vw_vendas`/`vw_os`, `erp_criar_venda`/`erp_criar_os`, `erp_venda_detalhe`/`erp_os_detalhe`.

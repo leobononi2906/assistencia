@@ -64,6 +64,10 @@ function entrarApp(){
 /* ---------- menu / navegação ---------- */
 const MENU=[
   {grupo:'Principal',itens:[{id:'dashboard',label:'Dashboard'}]},
+  {grupo:'Comercial',itens:[
+    {id:'vendas',label:'Vendas'},
+    {id:'os',label:'Ordens de Serviço'},
+  ]},
   {grupo:'Financeiro',itens:[
     {id:'cr',label:'Contas a Receber'},
     {id:'cp',label:'Contas a Pagar'},
@@ -83,6 +87,8 @@ function buildMenu(){
 }
 const SCREENS={
   dashboard:{title:'Dashboard',load:loadDashboard},
+  vendas:{title:'Vendas',load:()=>loadVendas()},
+  os:{title:'Ordens de Serviço',load:()=>loadOS()},
   cr:{title:'Contas a Receber',load:()=>loadCR()},
   cp:{title:'Contas a Pagar',load:()=>loadCP()},
   caixa:{title:'Caixa',load:()=>loadCaixa()},
