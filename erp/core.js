@@ -74,6 +74,7 @@ const MENU=[
     {id:'solicitacoes',label:'Solicitações'},
     {id:'gondola',label:'Gôndola'},
   ]},
+  {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e'}]},
   {grupo:'Sistema',itens:[{id:'config',label:'Configurações'}]},
 ];
 function buildMenu(){
@@ -88,6 +89,7 @@ const SCREENS={
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
   gondola:{title:'Gôndola',load:()=>loadGondola()},
+  nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
   config:{title:'Configurações',load:()=>loadConfig()},
 };
 function nav(id){
