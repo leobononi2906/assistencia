@@ -85,17 +85,31 @@ Comportamento validado (todos com rollback — nada gravado):
 Migração versionada em
 `supabase/migrations/20260801_financeiro_permite_prazo_e_gerar_titulos.sql`.
 
+## 4b. Contas a Receber (entregue)
+
+- **View `vw_contas_receber`** — lista de títulos CR com nome do cliente/empresa,
+  saldo real (`valor_saldo`), `vencido` e `dias_atraso`. A tela consome direto.
+- **`fn_baixar_titulo(...)`** — baixa total ou parcial: grava `titulos_baixas`,
+  atualiza `titulos` (status `PAGO`/`PAGO_PARCIAL`), lança `contas_movimentos`
+  (`C`/`D`) e atualiza `contas_financeiras.saldo_atual`.
+  - Principal amortizado = pago + desconto − juros − multa.
+  - Validado (rollback): baixa total→PAGO, parcial→PAGO_PARCIAL, saldo da conta
+    somando os pagamentos, movimentos gerados.
+- **`taxas_forma_pagamento`** — espelha `TBL_TAXA_FORMA_PAG` (taxa por
+  empresa×condição×forma, percentual ou valor).
+
 ## 5. Próximos passos sugeridos (na ordem)
 
-1. **Wire da função nas telas** de faturamento de Venda e OS (chamar a RPC ao
-   confirmar o faturamento).
-2. **Tela Contas a Receber** — lista com saldo real (`valor_saldo`), filtro por
-   empresa/vencimento, e **baixa** (`titulos_baixas`) que gera
-   `contas_movimentos`.
-3. **Tela de cliente** — expor o toggle `permite_prazo` e, na venda, filtrar as
-   formas a prazo por ele + limite disponível.
-4. **Contas a Pagar** — gerar títulos `CP` a partir de `compras_recebimento`.
-5. **Caixa** — abertura/fechamento (`caixas_sessoes` + `caixas_movimentos`).
+1. **Wire nas telas (React)** — faturamento de Venda/OS chama `fn_gerar_titulos_receber`;
+   tela Contas a Receber consome `vw_contas_receber` e chama `fn_baixar_titulo`;
+   cadastro de cliente expõe `permite_prazo` + liberação de condições; venda usa
+   `fn_condicoes_liberadas_cliente`.
+2. **Estorno de baixa** — `fn_estornar_baixa` (reverter `titulos_baixas` +
+   `contas_movimentos`, campos `estornado` já existem nas tabelas).
+3. **Contas a Pagar** — gerar títulos `CP` a partir de `compras_recebimento`
+   (mesma `fn_baixar_titulo` já atende CP → débito na conta).
+4. **Caixa** — abertura/fechamento (`caixas_sessoes` + `caixas_movimentos`).
+5. **Cobrança** (backlog obrigatório — seção 6) sobre `vw_contas_receber`.
 
 ## 6. BACKLOG — NÃO ESQUECER
 
