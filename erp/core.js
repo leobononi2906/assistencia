@@ -16,7 +16,12 @@ function toast(msg,tipo){ const t=document.createElement('div'); t.className='to
 function skeletonTable(){ return '<div class="tbl-wrap card-pad"><div class="skel" style="width:40%;margin-bottom:14px"></div>'+
   Array.from({length:6}).map(()=>'<div class="skel" style="width:100%;height:30px;margin-bottom:8px"></div>').join('')+'</div>'; }
 function errBox(msg,det){ return '<div class="err">'+esc(msg)+(det?'<div style="font-size:11px;font-weight:400;margin-top:4px">'+esc(det)+'</div>':'')+'</div>'; }
-async function bononiLog(){ /* placeholder — tabela de logs do ERP ainda não criada */ }
+async function bononiLog(tipo, acao, detalhes, modulo, tabela, registro, mensagem){
+  try{ await sb.rpc('erp_log',{p_id_usuario:(window.usuarioAtual&&window.usuarioAtual.id)||null,
+    p_tipo:tipo||'INFO', p_modulo:modulo||null, p_acao:acao||null, p_tabela:tabela||null,
+    p_registro:registro||null, p_mensagem:mensagem||null, p_detalhes:detalhes||null}); }catch(e){}
+}
+window.bononiLog=bononiLog;
 window.onerror=(m,s,l,c,e)=>bononiLog('ERRO','ERRO_JS',{erro:e&&e.message});
 window.onunhandledrejection=(e)=>bononiLog('ERRO','ERRO_PROMISE',{erro:e&&e.reason});
 
@@ -44,14 +49,27 @@ async function doLogin(ev){
     if(error) throw error;
     if(!data||!data.ok){ $('#li-err').textContent=(data&&data.erro)||'Falha no login'; $('#li-err').classList.remove('hidden'); return false; }
     window.usuarioAtual=data.usuario;
+    window.perm=data.permissoes||null;
     sessionStorage.setItem('erp_user',JSON.stringify(data.usuario));
+    sessionStorage.setItem('erp_perm',JSON.stringify(window.perm));
     entrarApp();
   }catch(e){ $('#li-err').textContent='Erro: '+(e.message||e); $('#li-err').classList.remove('hidden'); }
   return false;
 }
 window.doLogin=doLogin;
-function logout(){ sessionStorage.removeItem('erp_user'); location.reload(); }
+function logout(){ sessionStorage.removeItem('erp_user'); sessionStorage.removeItem('erp_perm'); location.reload(); }
 window.logout=logout;
+
+/* ---------- permissões ---------- */
+window.perm=null;
+function can(codigo, acao){
+  const p=window.perm;
+  if(!p) return true;                 // sem info => não bloqueia (fallback)
+  if(p.is_admin || p.sem_grupo) return true;
+  const m=p.modulos&&p.modulos[codigo];
+  return !!(m && m[acao||'ver']);
+}
+window.can=can;
 
 function entrarApp(){
   $('#login-screen').classList.add('hidden');
@@ -63,35 +81,45 @@ function entrarApp(){
 
 /* ---------- menu / navegação ---------- */
 const MENU=[
-  {grupo:'Principal',itens:[{id:'dashboard',label:'Dashboard'}]},
+  {grupo:'Principal',itens:[{id:'dashboard',label:'Dashboard',mod:'DASHBOARD'}]},
   {grupo:'Comercial',itens:[
-    {id:'clientes',label:'Clientes'},
-    {id:'produtos',label:'Produtos'},
-    {id:'orcamentos',label:'Orçamentos'},
-    {id:'vendas',label:'Vendas'},
-    {id:'os',label:'Ordens de Serviço'},
+    {id:'clientes',label:'Clientes',mod:'CLIENTES'},
+    {id:'produtos',label:'Produtos',mod:'PRODUTOS'},
+    {id:'orcamentos',label:'Orçamentos',mod:'ORCAMENTOS'},
+    {id:'vendas',label:'Vendas',mod:'VENDAS'},
+    {id:'os',label:'Ordens de Serviço',mod:'OS'},
   ]},
   {grupo:'Financeiro',itens:[
-    {id:'cr',label:'Contas a Receber'},
-    {id:'cp',label:'Contas a Pagar'},
-    {id:'caixa',label:'Caixa'},
-    {id:'cobranca',label:'Cobrança'},
+    {id:'cr',label:'Contas a Receber',mod:'FINANCEIRO_CR'},
+    {id:'cp',label:'Contas a Pagar',mod:'FINANCEIRO_CP'},
+    {id:'caixa',label:'Caixa',mod:'CAIXA'},
+    {id:'cobranca',label:'Cobrança',mod:'FINANCEIRO_CR'},
   ]},
   {grupo:'Compras',itens:[
-    {id:'pedidos_compra',label:'Pedidos de Compra'},
-    {id:'recebimentos',label:'Recebimentos (Entradas)'},
+    {id:'pedidos_compra',label:'Pedidos de Compra',mod:'COMPRAS'},
+    {id:'recebimentos',label:'Recebimentos (Entradas)',mod:'COMPRAS'},
   ]},
   {grupo:'Estoque',itens:[
-    {id:'solicitacoes',label:'Solicitações'},
-    {id:'gondola',label:'Gôndola'},
+    {id:'solicitacoes',label:'Solicitações',mod:'ESTOQUE'},
+    {id:'gondola',label:'Gôndola',mod:'ESTOQUE'},
   ]},
-  {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e'}]},
-  {grupo:'Sistema',itens:[{id:'config',label:'Configurações'}]},
+  {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e',mod:'FISCAL'}]},
+  {grupo:'Sistema',itens:[
+    {id:'usuarios',label:'Usuários',mod:'USUARIOS'},
+    {id:'permissoes',label:'Permissões',mod:'USUARIOS'},
+    {id:'logs',label:'Logs / Auditoria',mod:'CONFIG'},
+    {id:'config',label:'Configurações',mod:'CONFIG'},
+  ]},
 ];
 function buildMenu(){
-  $('#menu').innerHTML=MENU.map(g=>'<div class="grp">'+esc(g.grupo)+'</div>'+
-    g.itens.map(i=>'<a data-nav="'+i.id+'" onclick="nav(\''+i.id+'\')"><span>'+esc(i.label)+'</span></a>').join('')).join('');
+  $('#menu').innerHTML=MENU.map(g=>{
+    const itens=g.itens.filter(i=>can(i.mod,'ver'));
+    if(itens.length===0) return '';
+    return '<div class="grp">'+esc(g.grupo)+'</div>'+
+      itens.map(i=>'<a data-nav="'+i.id+'" onclick="nav(\''+i.id+'\')"><span>'+esc(i.label)+'</span></a>').join('');
+  }).join('');
 }
+function modDaTela(id){ for(const g of MENU){ const it=g.itens.find(x=>x.id===id); if(it) return it.mod; } return null; }
 const SCREENS={
   dashboard:{title:'Dashboard',load:loadDashboard},
   clientes:{title:'Clientes',load:()=>loadClientes()},
@@ -108,10 +136,19 @@ const SCREENS={
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
   gondola:{title:'Gôndola',load:()=>loadGondola()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
+  usuarios:{title:'Usuários',load:()=>loadUsuarios()},
+  permissoes:{title:'Permissões por Grupo',load:()=>loadPermissoes()},
+  logs:{title:'Logs / Auditoria',load:()=>loadLogs()},
   config:{title:'Configurações',load:()=>loadConfig()},
 };
 function nav(id){
   const s=SCREENS[id]; if(!s) return;
+  const mod=modDaTela(id);
+  if(mod && !can(mod,'ver')){
+    $('#page-title').textContent='Acesso negado';
+    $('#screen').innerHTML=errBox('Você não tem permissão para acessar esta tela.','Fale com um administrador para liberar o módulo '+mod+'.');
+    return;
+  }
   document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('active',a.dataset.nav===id));
   $('#page-title').textContent=s.title;
   $('#screen').innerHTML=skeletonTable();
@@ -146,4 +183,8 @@ async function loadDashboard(){
 }
 
 /* restaura sessão */
-(function(){ const u=sessionStorage.getItem('erp_user'); if(u){ try{ window.usuarioAtual=JSON.parse(u); entrarApp(); }catch(e){} } })();
+(function(){ const u=sessionStorage.getItem('erp_user'); if(u){ try{
+  window.usuarioAtual=JSON.parse(u);
+  const pp=sessionStorage.getItem('erp_perm'); if(pp) window.perm=JSON.parse(pp);
+  entrarApp();
+}catch(e){} } })();
