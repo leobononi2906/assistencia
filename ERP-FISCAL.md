@@ -44,6 +44,29 @@ equivalentes/composição), catálogo de formas/condições, unidades, cores.
 A `fn_gerar_nfe` resolve grupo tributário, NCM, série e ambiente **pela empresa da nota**
 (com fallback global). Testado: NCM e ambiente saem por empresa.
 
+## Reforma Tributária — IBS / CBS / IS (definido em 2026-08-01)
+Modelo preparado para a transição da LC 214/2025, convivendo com ICMS/ST/IPI/PIS/COFINS:
+- **IBS** = IBS-UF + IBS-Município (substitui ICMS/ISS); **CBS** (substitui PIS/COFINS); **IS** (Imposto Seletivo).
+- Alíquotas e reduções por **grupo tributário**: `aliq_ibs_uf`, `aliq_ibs_mun`, `aliq_cbs`, `red_ibs`,
+  `red_cbs`, `aliq_is`, além de `cst_ibscbs`/`cclasstrib`/`cst_is`.
+- **CST IBS/CBS** e **cClassTrib** podem ser definidos **por empresa** em `produtos_fiscal_empresa`
+  (fallback no grupo tributário).
+- `fn_gerar_nfe` calcula IBS-UF, IBS-Município, CBS (com reduções) e IS por item, grava em
+  `nfe_itens` e totaliza em `nfe`; retorna `{ibs, cbs, is}`. **Testado** (rollback): venda de 3 itens,
+  IBS 133,73 / CBS 98,06, CST e cClassTrib resolvidos por empresa.
+- Tabelas de referência editáveis em **Configurações → Fiscal**: CST IBS/CBS (seed dos códigos padrão),
+  cClassTrib e CST do Imposto Seletivo.
+
+## Produtos — tela única (definido em 2026-08-01)
+`erp/produtos.js`: lista + editor único com abas:
+- **Identidade (global)**: nome, referência, EAN, grupo/subgrupo/marca/unidade, NCM e grupo tributário
+  padrão, origem, custo/preço padrão, estoque min/máx, situação.
+- **Preço por empresa**: grade por tabela de preço (Varejo, Ecommerce, Atacado…), FIXO ou por MARGEM.
+- **Fiscal por empresa**: grupo tributário, NCM, CEST, CFOP, CST/CSOSN, alíquota ICMS, origem **e**
+  CST IBS/CBS + cClassTrib da reforma. Mostra o grupo/NCM efetivos (empresa ↘ global).
+Seletor de **empresa** no topo aplica às abas de preço e fiscal. Backend: `erp_produto_full`,
+`erp_produto_salvar`, `erp_preco_empresa_salvar`, `erp_fiscal_empresa_salvar`.
+
 ## Comercial (Venda/OS) — telas
 `erp/vendas.js`: telas de **Vendas** e **Ordens de Serviço** (listar, abrir detalhe,
 solicitar produto, **Finalizar** = financeiro, **Gerar NF-e** = acessório independente).

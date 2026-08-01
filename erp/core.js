@@ -65,6 +65,7 @@ function entrarApp(){
 const MENU=[
   {grupo:'Principal',itens:[{id:'dashboard',label:'Dashboard'}]},
   {grupo:'Comercial',itens:[
+    {id:'produtos',label:'Produtos'},
     {id:'vendas',label:'Vendas'},
     {id:'os',label:'Ordens de Serviço'},
   ]},
@@ -87,6 +88,7 @@ function buildMenu(){
 }
 const SCREENS={
   dashboard:{title:'Dashboard',load:loadDashboard},
+  produtos:{title:'Produtos',load:()=>loadProdutos()},
   vendas:{title:'Vendas',load:()=>loadVendas()},
   os:{title:'Ordens de Serviço',load:()=>loadOS()},
   cr:{title:'Contas a Receber',load:()=>loadCR()},
