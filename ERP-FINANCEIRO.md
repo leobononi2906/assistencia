@@ -72,3 +72,19 @@ Migração versionada em
    formas a prazo por ele + limite disponível.
 4. **Contas a Pagar** — gerar títulos `CP` a partir de `compras_recebimento`.
 5. **Caixa** — abertura/fechamento (`caixas_sessoes` + `caixas_movimentos`).
+
+## 6. BACKLOG — NÃO ESQUECER
+
+> ⭐ **Tela de Cobrança** (obrigatória) — pedido do Leo em 2026-08-01.
+> Momento na ordem ainda a definir, mas **não pode ficar de fora**.
+> Escopo esperado: gestão de inadimplência a partir dos `titulos` CR em aberto
+> e vencidos — régua de cobrança (avisos por vencimento), agrupamento por
+> cliente com saldo devedor real, filtro por dias em atraso, registro de
+> contato/acordo e integração com `renegociacoes` para renegociar títulos.
+
+### Notas de ambiente / operação
+- ERP **ainda não está em produção** → pode rodar SQL/migração livremente,
+  sem pedir autorização a cada passo (validado pelo Leo em 2026-08-01).
+- A "pasta do ERP Firebird completa" fica no computador local do Leo
+  (pasta **Claude Erp**). Não é acessível a partir do ambiente remoto; para
+  cruzar campo a campo, o conteúdo precisa ser colado ou subido ao repositório.
