@@ -76,6 +76,10 @@ const MENU=[
     {id:'caixa',label:'Caixa'},
     {id:'cobranca',label:'Cobrança'},
   ]},
+  {grupo:'Compras',itens:[
+    {id:'pedidos_compra',label:'Pedidos de Compra'},
+    {id:'recebimentos',label:'Recebimentos (Entradas)'},
+  ]},
   {grupo:'Estoque',itens:[
     {id:'solicitacoes',label:'Solicitações'},
     {id:'gondola',label:'Gôndola'},
@@ -97,6 +101,8 @@ const SCREENS={
   cp:{title:'Contas a Pagar',load:()=>loadCP()},
   caixa:{title:'Caixa',load:()=>loadCaixa()},
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
+  pedidos_compra:{title:'Pedidos de Compra',load:()=>loadPedidosCompra()},
+  recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
   gondola:{title:'Gôndola',load:()=>loadGondola()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
