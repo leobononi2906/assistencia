@@ -62,10 +62,16 @@ Criada nesta mesma data, reusável por atacado/assistência/ecommerce:
   ativos) — não confundir/trocar.
 
 ## Umbler (intake) — relação com a assistência
-- A assistência recebe chamados via Umbler pela Edge Function
-  **`assistencia-umbler-webhook`** (essa função vive no repo **`bononi-hub`**, não aqui).
-- Bug corrigido em 30/07/2026: faltava a constraint
-  `ux_assist_chamados_umbler_conversa` em `assist_chamados` (dava 500 em todo chamado novo).
+- A assistência recebe chamados via Umbler: Aplicação **"GERAL SUPABASE"** → Edge
+  Function **`umbler-intake`** → roteia p/ **`assistencia-umbler-webhook`** (ambas no
+  repo **`bononi-hub`**, não aqui). O webhook faz upsert em `assist_chamados` com
+  `onConflict:'umbler_conversa_id'`.
+- **Bug que travou chamados de 09/07 a 31/07** (corrigido 31/07/2026): o upsert exige
+  índice único em `umbler_conversa_id`. Em 30/07 criaram o índice **PARCIAL**
+  (`WHERE umbler_conversa_id IS NOT NULL`), que **NÃO** satisfaz `ON CONFLICT` →
+  500 em todo chamado novo. Trocado por índice **FULL** em 31/07. Pipeline testado ✅.
+  (Último chamado real ficou em 09/07; produção reiniciada limpa em 31/07 — 482
+  chamados concluídos, 297 eventos antigos marcados como tratados.)
 - Detalhes gerais do intake único: ver `C:\CLAUDE\instrucoes.md` (seção Umbler) e
   `bononi-hub/docs/UMBLER-FONTE-UNICA.md`.
 
