@@ -33,14 +33,36 @@ Estrutura 100% criada. O que falta é fluxo (telas + geração automática), nã
 
 ## 3. Prazo ligado ao cliente ("mostrar só o liberado")
 
-Modelo escolhido: **flag simples**.
+Modelo em **duas camadas**, alinhado ao Firebird (SGA_BONONI):
 
-- Nova coluna `clientes.permite_prazo boolean` (default `false`).
+- **Chave-mestra**: `clientes.permite_prazo boolean` (default `false`) — liga/desliga
+  venda a prazo para o cliente.
+- **Granular (espelha `TBL_CONDPAG_CLI`)**: `clientes_condicoes_pagamento` (N:N) —
+  lista de condições liberadas por cliente. É o que permite "mostrar só o liberado".
 - Regra na venda/OS:
   - Formas `A_VISTA` e `CARTAO` → sempre disponíveis (não checam limite).
-  - Formas/condições `A_PRAZO` → só se `permite_prazo = true` **e** couber no
-    limite disponível (`limite_credito − saldo devedor real em aberto`).
+  - Formas/condições `A_PRAZO` → só se `permite_prazo = true`, a condição estiver
+    liberada para o cliente, **e** couber no limite disponível
+    (`limite_credito − saldo devedor real em aberto`).
   - Cliente sem liberação → só à vista/cartão (comportamento seguro).
+
+**Função para a tela:** `fn_condicoes_liberadas_cliente(id_cliente)` retorna todas
+as condições ativas com a flag `liberada` (À Vista sempre; prazo só se liberado) —
+a tela lista só as `liberada = true`.
+
+### Mapeamento com o Firebird (fonte da verdade do legado)
+
+| Firebird (SGA_BONONI) | ERP novo (`Teste ERP`) |
+|---|---|
+| `TBL_CONDPAG` (LIBERA_LIMITE) | `condicoes_pagamento` (+ `libera_limite`) |
+| `TBL_ITENS_CONDPAG` (PRAZO+PERCENTUAL) | `condicoes_pagamento_parcelas` (parcelas flexíveis) |
+| `TBL_CONDPAG_CLI` | `clientes_condicoes_pagamento` (N:N liberação) |
+| `TBL_FORMA_PAG` (CARTAO/BOLETO/LIBERA_LIMITE) | `formas_pagamento` (`modalidade`/`usa_limite_credito`) |
+| `TBL_CLIENTE.CHCONDPAG / LIMITE_CRED` | `clientes.id_condicao_pagamento` / `limite_credito` |
+
+Ainda **não** portados do Firebird (backlog): `TBL_FORMA_PAG_CLI` (forma por
+cliente), `TBL_CONDPAG_CATEG_CLI` (liberação por categoria), `TBL_TAXA_FORMA_PAG`
+(taxa por condição×forma×empresa).
 
 ## 4. Geração automática de título (entregue)
 
@@ -52,11 +74,13 @@ select "Teste ERP".fn_gerar_titulos_receber('VENDA', 221);
 -- {"ok":true,"origem":"VENDA","parcelas":3,"valor_total":614.30,"titulos":[8,9,10]}
 ```
 
-Comportamento validado (4 testes, todos com rollback — nada gravado):
+Comportamento validado (todos com rollback — nada gravado):
 1. Cliente liberado + boleto 30/60/90 → 3 parcelas com vencimentos e centavos corretos.
-2. Cliente não liberado a prazo → **bloqueia**.
-3. Limite insuficiente → **bloqueia** informando o disponível.
-4. À vista → passa direto, 1 título hoje, sem checar limite.
+2. Cliente não liberado a prazo (`permite_prazo=false`) → **bloqueia**.
+3. Condição não liberada para o cliente (N:N) → **bloqueia**.
+4. Limite insuficiente → **bloqueia** informando o disponível.
+5. À vista → passa direto, 1 título hoje, sem checar limite.
+6. Parcelas flexíveis (ex.: 50% hoje + 40% em 30d + 10% em 60d) → gera na proporção certa.
 
 Migração versionada em
 `supabase/migrations/20260801_financeiro_permite_prazo_e_gerar_titulos.sql`.
