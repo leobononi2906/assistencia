@@ -30,7 +30,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
 | **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
 | **Produtos** | tela única + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
-| **Relatórios** | **Vendas** (modelos: analítico/produto/cliente/vendedor/dia/mês + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_curva_abc` | ✅ |
+| **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
@@ -64,13 +64,19 @@ acordo + UNIQUE backstop) ·
 `31` trava otimista (edição simultânea) em cliente e produto ·
 `32` listagem de grupos de acesso com contadores (tela Grupos) ·
 `33` acompanhamento de acordos de renegociação (Financeiro → Acordos) ·
-`34` relatório de vendas unificado (`erp_rel_vendas` — modelos + filtros).
+`34` relatório de vendas unificado (`erp_rel_vendas`) ·
+`35` relatórios de compras/produtos/clientes (`erp_rel_compras/_produtos/_clientes`).
 
 ## Relatórios (padrão)
-Um relatório por área, com **seletor de modelo/agrupamento + filtros**, render genérico a partir de
-`{colunas,linhas,totais}`, **Imprimir** (motor `imprimirDoc` no core) e **Exportar CSV**. Entregue: **Vendas**
-(analítico, por produto, por cliente, por vendedor, por dia, por mês). A fazer no mesmo molde: Produtos,
-Clientes, Compras e **DRE**.
+Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de
+modelo/agrupamento + filtros**, render a partir de `{colunas,linhas,totais}`, **Imprimir** (`imprimirDoc`)
+e **Exportar CSV**. Entregues:
+- **Vendas**: analítico, por produto, cliente, vendedor, dia, mês
+- **Compras**: analítico, por produto, fornecedor, mês
+- **Produtos**: posição de estoque, mais vendidos, sem giro, por grupo
+- **Clientes**: ranking, inativos, novos no período, por UF
+
+A fazer no mesmo molde: **DRE** (relatório).
 
 ## Impressão (padrão)
 `imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime —
