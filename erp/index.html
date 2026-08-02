@@ -138,6 +138,21 @@ body.modal-open{overflow:hidden}
 /* link p/ abrir documento relacionado (venda/OS/cliente) numa camada por cima */
 .doc-link{color:hsl(var(--blue-mid));cursor:pointer;font-weight:600;text-decoration:none;border-bottom:1px dashed hsla(204 100% 40%/.5)}
 .doc-link:hover{color:hsl(var(--primary));border-bottom-style:solid}
+/* combobox com busca/bipagem */
+.combo{position:relative}
+.combo .combo-in{width:100%;padding:9px 11px;border:1px solid hsl(var(--border));border-radius:var(--radius-sm);
+  background:hsl(var(--card));color:hsl(var(--foreground));outline:none}
+.combo .combo-in:focus{border-color:hsl(var(--blue-mid))}
+.combo-list{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:9;background:hsl(var(--card));
+  border:1px solid hsl(var(--border));border-radius:var(--radius-sm);max-height:240px;overflow-y:auto;
+  display:none;box-shadow:0 8px 24px rgba(15,29,53,.18)}
+.combo-list.open{display:block}
+.combo-opt{padding:8px 11px;font-size:13px;cursor:pointer;border-bottom:1px solid hsl(var(--border));white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.combo-opt:last-child{border-bottom:none}
+.combo-opt.active,.combo-opt:hover{background:hsl(var(--blue-pale))}
+.combo-opt small{color:hsl(var(--text-muted));margin-left:6px}
+.combo-opt.combo-empty{color:hsl(var(--text-muted));cursor:default}
 /* ---------- TOAST ---------- */
 #toast{position:fixed;bottom:20px;right:20px;z-index:80;display:flex;flex-direction:column;gap:8px}
 .toast{background:hsl(var(--foreground));color:#fff;padding:10px 16px;border-radius:var(--radius-sm);

@@ -61,9 +61,32 @@ function openModal(title, bodyHTML, footHTML, opts){
   layer.querySelector('.head h3').textContent=title||'';
   layer.querySelector('.body').innerHTML=bodyHTML||'';
   layer.querySelector('.foot').innerHTML=footHTML||'';
+  // foco automático no 1º campo editável
+  setTimeout(function(){
+    const el=layer.querySelector('.body input:not([type=hidden]):not([readonly]):not([disabled]), .body select, .body textarea');
+    if(el) try{ el.focus(); }catch(e){}
+  },30);
   return layer;
 }
 window.openModal=openModal;
+/* Enter dispara o botão primário do modal (exceto em textarea/combo aberto) */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter') return;
+  const layer=_topLayer(); if(!layer) return;
+  const t=e.target;
+  if(!layer.contains(t)) return;
+  if(t.tagName==='TEXTAREA') return;
+  if(t.classList&&t.classList.contains('combo-in')) return;   // combo trata seu próprio Enter
+  const btn=layer.querySelector('.foot .btn-ok')||layer.querySelector('.foot .btn:last-child');
+  if(btn && !btn.disabled){ e.preventDefault(); btn.click(); }
+});
+/* trava de duplo-clique: após acionar um botão do rodapé do modal, desabilita por ~1s
+   (o handler já disparou; bloqueia apenas o 2º clique acidental). Reabilita p/ permitir retry após erro. */
+document.addEventListener('click',function(e){
+  const btn=e.target&&e.target.closest?e.target.closest('.modal .foot .btn'):null;
+  if(!btn||btn.disabled) return;
+  setTimeout(function(){ if(btn.isConnected){ btn.disabled=true; setTimeout(function(){ btn.disabled=false; },1100); } },0);
+});
 function closeModal(){
   const layer=window.__modalStack.pop();
   if(layer) layer.remove();
@@ -77,6 +100,71 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape' && window._
 function modalBody(){ const l=_topLayer(); return l?l.querySelector('.body'):null; }
 function modalSetTitle(t){ const l=_topLayer(); if(l) l.querySelector('.head h3').textContent=t||''; }
 window.modalBody=modalBody; window.modalSetTitle=modalSetTitle;
+
+/* ---------- combobox com busca + bipagem (código/EAN) ----------
+   items: [{v, label, busca}]  (busca = texto extra p/ filtrar: referência, EAN, código)
+   comboHTML(id, items, value, ph, cb) → HTML; comboVal(id) → valor selecionado (string, '' se nenhum). */
+window.__combo={};
+function comboHTML(id, items, value, ph, cb){
+  items=items||[]; window.__combo[id]={items:items, cb:cb||null, active:0, shown:items};
+  const sel=items.find(function(it){return String(it.v)===String(value);});
+  return '<div class="combo" id="'+id+'_w">'+
+    '<input type="text" class="combo-in" id="'+id+'_in" autocomplete="off" placeholder="'+esc(ph||'Digite para buscar…')+'" '+
+      'value="'+esc(sel?sel.label:'')+'" oninput="comboFilter(\''+id+'\')" onfocus="comboFilter(\''+id+'\')" '+
+      'onkeydown="comboKey(\''+id+'\',event)" onblur="comboBlur(\''+id+'\')">'+
+    '<input type="hidden" id="'+id+'" value="'+esc(value==null?'':value)+'">'+
+    '<div class="combo-list" id="'+id+'_list"></div></div>';
+}
+window.comboHTML=comboHTML;
+function comboVal(id){ const el=$('#'+id); return el?el.value:''; }
+window.comboVal=comboVal;
+function comboSet(id, v){ const st=window.__combo[id]; if(!st) return; const it=st.items.find(function(x){return String(x.v)===String(v);});
+  const hid=$('#'+id), inp=$('#'+id+'_in'); if(hid) hid.value=it?it.v:''; if(inp) inp.value=it?it.label:''; }
+window.comboSet=comboSet;
+function _comboRender(id){
+  const st=window.__combo[id]; if(!st) return; const list=$('#'+id+'_list'); const inp=$('#'+id+'_in'); if(!list||!inp) return;
+  const q=inp.value.toLowerCase().trim(); const hid=$('#'+id);
+  // se o texto não bate com o item selecionado, invalida a seleção
+  const cur=st.items.find(function(x){return String(x.v)===String(hid&&hid.value);});
+  if(cur && inp.value!==cur.label && hid) hid.value='';
+  const f = q ? st.items.filter(function(it){ return (it.label+' '+(it.busca||'')).toLowerCase().indexOf(q)>=0; }) : st.items;
+  st.shown=f.slice(0,60); st.active=0;
+  list.innerHTML = st.shown.length
+    ? st.shown.map(function(it,i){ return '<div class="combo-opt'+(i===0?' active':'')+'" data-v="'+esc(it.v)+'" '+
+        'onmousedown="comboPick(\''+id+'\',this.dataset.v)">'+esc(it.label)+(it.busca?' <small>'+esc(it.busca)+'</small>':'')+'</div>'; }).join('')
+    : '<div class="combo-opt combo-empty">Nada encontrado</div>';
+  list.classList.add('open');
+}
+function comboFilter(id){ _comboRender(id); }
+window.comboFilter=comboFilter;
+function _comboHi(id){ const st=window.__combo[id]; const list=$('#'+id+'_list'); if(!st||!list) return;
+  Array.prototype.forEach.call(list.querySelectorAll('.combo-opt'),function(o,i){ o.classList.toggle('active',i===st.active); });
+  const act=list.querySelector('.combo-opt.active'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest'}); }
+function comboPick(id, v){
+  const st=window.__combo[id]; if(!st) return; const it=st.items.find(function(x){return String(x.v)===String(v);});
+  const hid=$('#'+id), inp=$('#'+id+'_in'), list=$('#'+id+'_list');
+  if(hid) hid.value=it?it.v:''; if(inp) inp.value=it?it.label:''; if(list) list.classList.remove('open');
+  if(st.cb) try{ st.cb(it?it.v:'', it); }catch(e){}
+}
+window.comboPick=comboPick;
+function comboKey(id, e){
+  const st=window.__combo[id]; if(!st) return; const list=$('#'+id+'_list');
+  if(e.key==='ArrowDown'){ e.preventDefault(); st.active=Math.min((st.shown.length-1),st.active+1); _comboHi(id); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); st.active=Math.max(0,st.active-1); _comboHi(id); }
+  else if(e.key==='Enter'){
+    if(list&&list.classList.contains('open')&&st.shown.length){ e.preventDefault(); e.stopPropagation(); comboPick(id, st.shown[st.active].v); }
+  }
+  else if(e.key==='Escape'){ if(list&&list.classList.contains('open')){ e.stopPropagation(); list.classList.remove('open'); } }
+}
+window.comboKey=comboKey;
+function comboBlur(id){ setTimeout(function(){ const list=$('#'+id+'_list'); if(list) list.classList.remove('open'); },160); }
+window.comboBlur=comboBlur;
+/* construtores de itens p/ combos de produto e cliente (bipagem por ref/EAN/código/CPF) */
+function comboProdItems(rows){ return (rows||[]).map(function(p){
+  return {v:p.id, label:(p.nome||('#'+p.id)), busca:[p.referencia,p.codigo_barras].filter(Boolean).join(' ')}; }); }
+function comboCliItems(rows){ return (rows||[]).map(function(c){
+  return {v:c.id, label:(c.nome||('#'+c.id)), busca:[c.cpf_cnpj,c.codigo].filter(Boolean).join(' ')}; }); }
+window.comboProdItems=comboProdItems; window.comboCliItems=comboCliItems;
 
 /* abre um documento numa NOVA camada por cima (consulta empilhada) */
 function abrirDoc(tipo, id, extra){

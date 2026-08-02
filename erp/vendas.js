@@ -36,7 +36,7 @@ async function vdNova(){
   const emp=await lookup('empresas'), cli=await lookup('clientes'), fp=await lookup('formas_pagamento'), cp=await lookup('condicoes_pagamento');
   const body='<div class="form-grid">'+
     '<div class="field"><label>Empresa *</label><select id="vn-emp">'+emp.map(e=>'<option value="'+e.id+'">'+esc(e.nome)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label>Cliente *</label><select id="vn-cli">'+cli.map(c=>'<option value="'+c.id+'">'+esc(c.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Cliente *</label>'+comboHTML('vn-cli',comboCliItems(cli),'','Nome, CPF/CNPJ ou código…')+'</div>'+
     '<div class="field"><label>Forma pagamento</label><select id="vn-fp"><option value="">—</option>'+fp.map(f=>'<option value="'+f.id+'">'+esc(f.descricao)+'</option>').join('')+'</select></div>'+
     '<div class="field"><label>Condição</label><select id="vn-cp"><option value="">—</option>'+cp.map(c=>'<option value="'+c.id+'">'+esc(c.descricao)+'</option>').join('')+'</select></div></div>'+
     '<p style="font-size:12px;color:hsl(var(--muted-foreground))">Os produtos entram por <b>solicitação</b> (estoque lança). Vendedor não adiciona direto.</p>';
@@ -45,7 +45,8 @@ async function vdNova(){
 }
 window.vdNova=vdNova;
 async function vdNovaSalvar(){
-  try{ const {data,error}=await sb.rpc('erp_criar_venda',{p_id_empresa:Number($('#vn-emp').value),p_id_cliente:Number($('#vn-cli').value),
+  try{ if(!comboVal('vn-cli')){ toast('Selecione o cliente','err'); return; }
+    const {data,error}=await sb.rpc('erp_criar_venda',{p_id_empresa:Number($('#vn-emp').value),p_id_cliente:Number(comboVal('vn-cli')),
       p_id_forma:$('#vn-fp').value?Number($('#vn-fp').value):null,p_id_condicao:$('#vn-cp').value?Number($('#vn-cp').value):null,p_id_usuario:UID()});
     if(error) throw error; toast('Venda '+data.numero+' criada','ok'); closeModal(); loadVendas(); setTimeout(()=>vdAbrir(data.id),300);
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
@@ -79,14 +80,15 @@ window.vdAbrir=vdAbrir;
 async function vdSolicitar(id){
   const prod=await lookup('produtos'), cen=await lookup('centros_estoque');
   openModal('Solicitar produto — venda #'+id,
-    '<div class="form-grid"><div class="field full"><label>Produto *</label><select id="vs-prod">'+prod.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="form-grid"><div class="field full"><label>Produto * <span style="color:hsl(var(--text-muted));font-weight:400">(nome, referência ou bipe o código)</span></label>'+comboHTML('vs-prod',comboProdItems(prod),'','Nome, referência ou EAN…')+'</div>'+
     '<div class="field"><label>Quantidade *</label><input type="number" step="0.001" id="vs-qtd"></div>'+
     '<div class="field"><label>Centro estoque</label><select id="vs-cen"><option value="">—</option>'+cen.map(c=>'<option value="'+c.id+'">'+esc(c.descricao)+'</option>').join('')+'</select></div></div>',
     '<button class="btn btn-ghost" onclick="vdAbrir('+id+')">Voltar</button><button class="btn btn-ok" onclick="vdSolicitarSalvar('+id+')">Solicitar</button>');
 }
 window.vdSolicitar=vdSolicitar;
 async function vdSolicitarSalvar(id){
-  try{ const {error}=await sb.rpc('erp_solicitar_produto',{p_origem:'VENDA',p_id_origem:id,p_id_produto:Number($('#vs-prod').value),
+  try{ if(!comboVal('vs-prod')){ toast('Selecione o produto','err'); return; }
+    const {error}=await sb.rpc('erp_solicitar_produto',{p_origem:'VENDA',p_id_origem:id,p_id_produto:Number(comboVal('vs-prod')),
       p_qtd:Number($('#vs-qtd').value),p_id_usuario:UID(),p_id_centro_estoque:$('#vs-cen').value?Number($('#vs-cen').value):null});
     if(error) throw error; toast('Solicitação criada','ok'); vdAbrir(id);
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
@@ -143,7 +145,7 @@ async function osNova(){
   const emp=await lookup('empresas'), cli=await lookup('clientes'), tp=await lookup('tipos_os'), fp=await lookup('formas_pagamento'), cp=await lookup('condicoes_pagamento');
   const body='<div class="form-grid">'+
     '<div class="field"><label>Empresa *</label><select id="on-emp">'+emp.map(e=>'<option value="'+e.id+'">'+esc(e.nome)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label>Cliente *</label><select id="on-cli">'+cli.map(c=>'<option value="'+c.id+'">'+esc(c.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Cliente *</label>'+comboHTML('on-cli',comboCliItems(cli),'','Nome, CPF/CNPJ ou código…')+'</div>'+
     '<div class="field"><label>Tipo de OS</label><select id="on-tp"><option value="">—</option>'+tp.map(t=>'<option value="'+t.id+'">'+esc(t.descricao)+'</option>').join('')+'</select></div>'+
     '<div class="field"><label>Forma pagamento</label><select id="on-fp"><option value="">—</option>'+fp.map(f=>'<option value="'+f.id+'">'+esc(f.descricao)+'</option>').join('')+'</select></div>'+
     '<div class="field"><label>Condição</label><select id="on-cp"><option value="">—</option>'+cp.map(c=>'<option value="'+c.id+'">'+esc(c.descricao)+'</option>').join('')+'</select></div></div>';
@@ -151,7 +153,8 @@ async function osNova(){
 }
 window.osNova=osNova;
 async function osNovaSalvar(){
-  try{ const {data,error}=await sb.rpc('erp_criar_os',{p_id_empresa:Number($('#on-emp').value),p_id_cliente:Number($('#on-cli').value),
+  try{ if(!comboVal('on-cli')){ toast('Selecione o cliente','err'); return; }
+    const {data,error}=await sb.rpc('erp_criar_os',{p_id_empresa:Number($('#on-emp').value),p_id_cliente:Number(comboVal('on-cli')),
       p_id_tipo_os:$('#on-tp').value?Number($('#on-tp').value):null,p_id_forma:$('#on-fp').value?Number($('#on-fp').value):null,
       p_id_condicao:$('#on-cp').value?Number($('#on-cp').value):null,p_id_usuario:UID()});
     if(error) throw error; toast('OS '+data.numero+' criada','ok'); closeModal(); loadOS(); setTimeout(()=>osAbrir(data.id),300);
@@ -185,14 +188,15 @@ window.osAbrir=osAbrir;
 async function osSolicitar(id){
   const prod=await lookup('produtos'), cen=await lookup('centros_estoque');
   openModal('Solicitar produto — OS #'+id,
-    '<div class="form-grid"><div class="field full"><label>Produto *</label><select id="oss-prod">'+prod.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="form-grid"><div class="field full"><label>Produto * <span style="color:hsl(var(--text-muted));font-weight:400">(nome, referência ou bipe o código)</span></label>'+comboHTML('oss-prod',comboProdItems(prod),'','Nome, referência ou EAN…')+'</div>'+
     '<div class="field"><label>Quantidade *</label><input type="number" step="0.001" id="oss-qtd"></div>'+
     '<div class="field"><label>Centro estoque</label><select id="oss-cen"><option value="">—</option>'+cen.map(c=>'<option value="'+c.id+'">'+esc(c.descricao)+'</option>').join('')+'</select></div></div>',
     '<button class="btn btn-ghost" onclick="osAbrir('+id+')">Voltar</button><button class="btn btn-ok" onclick="osSolicitarSalvar('+id+')">Solicitar</button>');
 }
 window.osSolicitar=osSolicitar;
 async function osSolicitarSalvar(id){
-  try{ const {error}=await sb.rpc('erp_solicitar_produto',{p_origem:'OS',p_id_origem:id,p_id_produto:Number($('#oss-prod').value),
+  try{ if(!comboVal('oss-prod')){ toast('Selecione o produto','err'); return; }
+    const {error}=await sb.rpc('erp_solicitar_produto',{p_origem:'OS',p_id_origem:id,p_id_produto:Number(comboVal('oss-prod')),
       p_qtd:Number($('#oss-qtd').value),p_id_usuario:UID(),p_id_centro_estoque:$('#oss-cen').value?Number($('#oss-cen').value):null});
     if(error) throw error; toast('Solicitação criada','ok'); osAbrir(id);
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
