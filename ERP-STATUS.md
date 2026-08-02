@@ -33,7 +33,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Relatórios** | Curva ABC (mensal automática) | `erp_curva_abc`, `erp_gerar_curva_abc` (pg_cron dia 1º) | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
-| **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação | ✅ |
+| **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
 | **Compras / Entrada** | Pedidos + Recebimentos | `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
 | **Fiscal / NF-e** | gerar NF-e (venda/OS) + IBS/CBS/IS | `fn_gerar_nfe` (Edge Function pendente) | 🟡 falta provedor |
@@ -62,7 +62,8 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 acordo + UNIQUE backstop) ·
 `30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores) ·
 `31` trava otimista (edição simultânea) em cliente e produto ·
-`32` listagem de grupos de acesso com contadores (tela Grupos).
+`32` listagem de grupos de acesso com contadores (tela Grupos) ·
+`33` acompanhamento de acordos de renegociação (Financeiro → Acordos).
 
 ## Front — usabilidade de balcão
 - **Combobox com busca + bipagem** (`comboHTML`/`comboVal` no core.js): cliente e produto selecionados

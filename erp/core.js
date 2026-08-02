@@ -243,6 +243,7 @@ const MENU=[
     {id:'cp',label:'Contas a Pagar',mod:'FINANCEIRO_CP'},
     {id:'caixa',label:'Caixa',mod:'CAIXA'},
     {id:'cobranca',label:'Cobrança',mod:'FINANCEIRO_CR'},
+    {id:'acordos',label:'Acordos',mod:'FINANCEIRO_CR'},
   ]},
   {grupo:'Compras',itens:[
     {id:'pedidos_compra',label:'Pedidos de Compra',mod:'COMPRAS'},
@@ -286,6 +287,7 @@ const SCREENS={
   cp:{title:'Contas a Pagar',load:()=>loadCP()},
   caixa:{title:'Caixa',load:()=>loadCaixa()},
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
+  acordos:{title:'Acordos de Renegociação',load:()=>loadAcordos()},
   pedidos_compra:{title:'Pedidos de Compra',load:()=>loadPedidosCompra()},
   recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},

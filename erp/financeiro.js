@@ -431,3 +431,55 @@ async function cobAcaoSalvar(idCliente,idEmpresa){
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
 window.cobAcaoSalvar=cobAcaoSalvar;
+
+/* ---------------- ACORDOS DE RENEGOCIAÇÃO (acompanhamento) ---------------- */
+async function loadAcordos(){
+  try{
+    const {data,error}=await sb.rpc('erp_cobranca_acordos_listar',{p_id_empresa:null});
+    if(error) throw error;
+    const rows=data||[];
+    const tot=rows.reduce((s,a)=>s+(Number(a.valor_financiado)||0),0);
+    const saldo=rows.reduce((s,a)=>s+(Number(a.saldo)||0),0);
+    let html='<div class="grid-kpi">'+
+      '<div class="metric"><div class="lbl">Acordos</div><div class="val">'+rows.length+'</div></div>'+
+      '<div class="metric"><div class="lbl">Total financiado</div><div class="val">'+fmtFull(tot)+'</div></div>'+
+      '<div class="metric"><div class="lbl">Saldo a receber</div><div class="val">'+fmtFull(saldo)+'</div></div></div>';
+    html+='<div class="toolbar"><input type="search" id="ac-busca" placeholder="Filtrar por cliente/número..." onkeyup="acFiltrar()"><div class="spacer"></div></div>';
+    html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Nº</th><th>Cliente</th><th>Empresa</th>'+
+      '<th>Financiado</th><th>Parcelas</th><th>Pago</th><th>Saldo</th><th>Status</th><th></th></tr></thead><tbody id="ac-body"></tbody></table></div>';
+    $('#screen').innerHTML=html; window.__acRows=rows; acFiltrar();
+  }catch(e){ $('#screen').innerHTML=errBox('Não foi possível carregar os acordos.',e.message); }
+}
+window.loadAcordos=loadAcordos;
+function acFiltrar(){
+  const rows=window.__acRows||[]; const q=($('#ac-busca')?$('#ac-busca').value:'').toLowerCase();
+  const f=rows.filter(a=>((a.cliente||'')+(a.numero||'')).toLowerCase().includes(q));
+  const body=$('#ac-body'); if(!body) return;
+  if(!f.length){ body.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum acordo.</div></td></tr>'; return; }
+  const stb={ATIVO:'info',ABERTO:'info',QUITADO:'ok',PAGO:'ok',CANCELADO:'muted'};
+  body.innerHTML=f.map(a=>{
+    const cli=a.id_cliente?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+a.id_cliente+',\'hist\')">'+esc(a.cliente||'—')+'</span>'):esc(a.cliente||'—');
+    return '<tr><td class="mono">'+esc(a.numero||'')+'</td><td>'+cli+'</td><td>'+esc(a.empresa||'')+'</td>'+
+      '<td class="mono">'+fmtNum(a.valor_financiado)+'</td><td class="mono">'+(a.parcelas_pagas||0)+'/'+(a.qtd_parcelas||0)+'</td>'+
+      '<td class="mono">'+fmtNum(a.valor_pago)+'</td><td class="mono">'+fmtNum(a.saldo)+'</td>'+
+      '<td><span class="b-badge b-badge-'+(stb[a.status]||'muted')+'">'+esc(a.status||'')+'</span></td>'+
+      '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="acParcelas('+a.id+',\''+esc(String(a.numero||'').replace(/'/g,''))+'\')">Parcelas</button></td></tr>';
+  }).join('');
+}
+window.acFiltrar=acFiltrar;
+async function acParcelas(id, numero){
+  try{
+    const {data,error}=await sb.rpc('erp_cobranca_acordo_parcelas',{p_id:id}); if(error) throw error;
+    const ps=data||[];
+    let b='<div class="tbl-wrap"><table class="data"><thead><tr><th>Parcela</th><th>Venc.</th><th>Valor</th>'+
+      '<th>Pago</th><th>Saldo</th><th>Status</th></tr></thead><tbody>';
+    if(!ps.length) b+='<tr><td colspan="6"><div class="empty">Sem parcelas.</div></td></tr>';
+    ps.forEach(t=>{ b+='<tr><td class="mono">'+esc(t.parcela||'')+'</td>'+
+      '<td>'+fmtDate(t.vencimento)+(t.dias_atraso>0?' <span class="b-badge b-badge-err">'+t.dias_atraso+'d</span>':'')+'</td>'+
+      '<td class="mono">'+fmtNum(t.valor)+'</td><td class="mono">'+fmtNum(t.valor_pago)+'</td>'+
+      '<td class="mono">'+fmtNum(t.valor_saldo)+'</td><td>'+statusBadge(t.status)+'</td></tr>'; });
+    b+='</tbody></table></div>';
+    openModal('Acordo '+numero+' — parcelas', b, '<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>');
+  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+}
+window.acParcelas=acParcelas;
