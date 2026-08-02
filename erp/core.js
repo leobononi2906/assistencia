@@ -260,6 +260,7 @@ const MENU=[
   {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e',mod:'FISCAL'}]},
   {grupo:'Sistema',itens:[
     {id:'usuarios',label:'Usuários',mod:'USUARIOS'},
+    {id:'grupos',label:'Grupos de acesso',mod:'USUARIOS'},
     {id:'permissoes',label:'Permissões',mod:'USUARIOS'},
     {id:'logs',label:'Logs / Auditoria',mod:'CONFIG'},
     {id:'config',label:'Configurações',mod:'CONFIG'},
@@ -294,6 +295,7 @@ const SCREENS={
   curva_abc:{title:'Curva ABC',load:()=>loadCurvaABC()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
   usuarios:{title:'Usuários',load:()=>loadUsuarios()},
+  grupos:{title:'Grupos de Acesso',load:()=>loadGrupos()},
   permissoes:{title:'Permissões por Grupo',load:()=>loadPermissoes()},
   logs:{title:'Logs / Auditoria',load:()=>loadLogs()},
   config:{title:'Configurações',load:()=>loadConfig()},

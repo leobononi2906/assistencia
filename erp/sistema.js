@@ -83,6 +83,51 @@ async function usrEmpresaSet(idu,ide,val){
 }
 window.usrEmpresaSet=usrEmpresaSet;
 
+/* ================= GRUPOS DE ACESSO ================= */
+async function loadGrupos(){
+  try{
+    const {data,error}=await sb.rpc('erp_grupos_admin'); if(error) throw error;
+    const rows=data||[];
+    let html='<div class="toolbar"><b style="font-size:13px">Grupos de acesso</b><div class="spacer"></div>'+
+      '<button class="btn btn-sm" onclick="grpForm(null)">+ Novo grupo</button></div>'+
+      '<div style="font-size:11px;color:hsl(var(--text-muted));margin-bottom:8px">Um grupo reúne as permissões por módulo. Depois vincule os usuários ao grupo em <b>Usuários → Grupos & Empresas</b>. Usuário sem grupo tem acesso total (ambiente de teste).</div>';
+    html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Grupo</th><th>Descrição</th><th>Usuários</th>'+
+      '<th>Módulos liberados</th><th>Ativo</th><th></th></tr></thead><tbody>';
+    if(!rows.length) html+='<tr><td colspan="6"><div class="empty">Nenhum grupo cadastrado.</div></td></tr>';
+    rows.forEach(g=>{ html+='<tr><td><b>'+esc(g.nome||'')+'</b></td><td>'+esc(g.descricao||'')+'</td>'+
+      '<td class="mono">'+(g.qtd_usuarios||0)+'</td><td class="mono">'+(g.qtd_modulos||0)+'</td>'+
+      '<td>'+(g.ativo?'<span class="b-badge b-badge-ok">Sim</span>':'<span class="b-badge b-badge-muted">Não</span>')+'</td>'+
+      '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick=\'grpForm('+JSON.stringify(g)+')\'>Editar</button> '+
+      '<button class="btn btn-sm" onclick="grpPermissoes('+g.id+')">Permissões</button></td></tr>'; });
+    html+='</tbody></table></div>';
+    $('#screen').innerHTML=html;
+  }catch(e){ $('#screen').innerHTML=errBox('Não foi possível carregar os grupos.',e.message); }
+}
+window.loadGrupos=loadGrupos;
+function grpForm(g){ g=g||{};
+  const b='<div class="form-grid">'+
+    '<div class="field full"><label>Nome *</label><input type="text" id="gr-nome" value="'+esc(g.nome||'')+'"></div>'+
+    '<div class="field full"><label>Descrição</label><input type="text" id="gr-desc" value="'+esc(g.descricao||'')+'"></div>'+
+    '<div class="field"><label>&nbsp;</label><div class="chk"><input type="checkbox" id="gr-ativo" '+(g.ativo!==false?'checked':'')+'><span>Ativo</span></div></div>'+
+    '</div>';
+  openModal((g.id?'Editar ':'Novo ')+'grupo', b,
+    '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-ok" onclick="grpSalvar('+(g.id||'null')+')">Salvar</button>');
+}
+window.grpForm=grpForm;
+async function grpSalvar(id){
+  try{ const nome=$('#gr-nome').value.trim(); if(!nome){ toast('Informe o nome do grupo','err'); return; }
+    const {data,error}=await sb.rpc('erp_grupo_salvar',{p:{id:id||null,nome:nome,descricao:$('#gr-desc').value,ativo:$('#gr-ativo').checked}});
+    if(error) throw error;
+    bononiLog('INFO', id?'GRUPO_EDIT':'GRUPO_NOVO', null, 'USUARIOS','grupos_acesso',(data&&data.id)||null,(id?'Grupo editado: ':'Grupo criado: ')+nome);
+    if(typeof lookupCache!=='undefined') lookupCache['grupos_acesso']=null;
+    closeModal(); toast('Grupo salvo','ok'); loadGrupos();
+  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+}
+window.grpSalvar=grpSalvar;
+function grpPermissoes(idg){ window.__permGrupoInit=idg; nav('permissoes'); }
+window.grpPermissoes=grpPermissoes;
+
 /* ================= PERMISSÕES POR GRUPO ================= */
 let permGrupo=null;
 async function loadPermissoes(){
@@ -94,7 +139,9 @@ async function loadPermissoes(){
       '<div class="spacer"></div><span style="font-size:12px;color:hsl(var(--text-muted))">Marque o que cada grupo pode fazer por módulo.</span></div>'+
       '<div id="pm-body"><div class="empty">Selecione um grupo para editar as permissões.</div></div>';
     $('#screen').innerHTML=html;
-    if(grupos[0]){ $('#pm-grupo').value=grupos[0].id; permCarregar(grupos[0].id); }
+    const init=window.__permGrupoInit; window.__permGrupoInit=null;
+    const sel=init||(grupos[0]&&grupos[0].id);
+    if(sel){ $('#pm-grupo').value=sel; permCarregar(sel); }
   }catch(e){ $('#screen').innerHTML=errBox('Não foi possível carregar as permissões.',e.message); }
 }
 window.loadPermissoes=loadPermissoes;

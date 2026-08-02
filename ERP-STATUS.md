@@ -37,7 +37,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Compras / Entrada** | Pedidos + Recebimentos | `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
 | **Fiscal / NF-e** | gerar NF-e (venda/OS) + IBS/CBS/IS | `fn_gerar_nfe` (Edge Function pendente) | 🟡 falta provedor |
-| **Sistema** | Usuários, Permissões, Logs, Configurações | `erp_usuario_*`, `erp_perm_*`, `vw_logs` | ✅ |
+| **Sistema** | Usuários, **Grupos de acesso**, Permissões (matriz), Logs, Configurações | `erp_usuario_*`, `erp_grupo_salvar`, `erp_grupos_admin`, `erp_perm_*`, `vw_logs` | ✅ |
 
 ## Regras de negócio respeitadas
 - **Vendas não lançam produto direto**: viram **solicitação**; o **estoque** atende (OS e Venda). Gôndola é
@@ -61,7 +61,15 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 `29` concorrência de numeração (advisory lock em orçamento/pedido/recebimento/transferência/inventário/
 acordo + UNIQUE backstop) ·
 `30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores) ·
-`31` trava otimista (edição simultânea) em cliente e produto.
+`31` trava otimista (edição simultânea) em cliente e produto ·
+`32` listagem de grupos de acesso com contadores (tela Grupos).
+
+## Front — usabilidade de balcão
+- **Combobox com busca + bipagem** (`comboHTML`/`comboVal` no core.js): cliente e produto selecionados
+  digitando nome/referência/EAN/CPF ou **bipando o código**; teclado (setas/Enter/Esc). Ligado em Vendas,
+  OS e Solicitar produto.
+- **Modais**: foco automático no 1º campo, **Enter** dispara o botão primário, **Esc/‹ Voltar/fundo** fecham,
+  **trava de duplo-clique** no rodapé (evita venda/OS/baixa duplicada).
 
 ## Concorrência (50-100 usuários simultâneos)
 - **Número de OS/Venda**: vem do `id` (sequence) — sem colisão.
