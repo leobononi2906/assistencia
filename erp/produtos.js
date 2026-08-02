@@ -20,7 +20,7 @@ async function loadProdutos(busca){
   try{
     const {data,error}=await sb.rpc('erp_list',{p_tabela:'produtos',p_busca:busca||null,p_limit:500,p_offset:0});
     if(error) throw error;
-    const rows=data||[];
+    const rows=data||[]; window.__prodRows=rows;
     let html='<div class="toolbar">'+
       '<input type="search" id="pd-busca" placeholder="Buscar produto (nome, referência, EAN)..." value="'+esc(busca||'')+'" onkeydown="if(event.key===\'Enter\')loadProdutos(this.value)">'+
       '<button class="btn btn-ghost btn-sm" onclick="loadProdutos($(\'#pd-busca\').value)">Buscar</button>'+
@@ -32,7 +32,8 @@ async function loadProdutos(busca){
       html+='<tr><td>'+r.id+'</td><td>'+esc(r.referencia||'')+'</td><td>'+esc(r.nome||'')+'</td>'+
         '<td class="mono">'+esc(r.ncm||'—')+'</td><td class="mono">'+fmtNum(r.preco_venda)+'</td>'+
         '<td><span class="b-badge b-badge-'+(String(r.situacao||'').toUpperCase()==='ATIVO'?'ok':'muted')+'">'+esc(r.situacao||'')+'</span></td>'+
-        '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="pdEditor('+r.id+')">Abrir</button></td></tr>';
+        '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="etiquetaProdutoDialog('+r.id+')">Etiqueta</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="pdEditor('+r.id+')">Abrir</button></td></tr>';
     });
     html+='</tbody></table></div><div style="font-size:11px;color:hsl(var(--text-muted));margin-top:8px">'+rows.length+' produto(s)</div>';
     $('#screen').innerHTML=html;

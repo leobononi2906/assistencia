@@ -85,8 +85,9 @@ CMV (custo dos itens vendidos) → lucro bruto (com margem %) → despesas opera
 `imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime.
 Entregue: **impressão de Venda/Recibo e de OS** (botão Imprimir no modal — `imprimirVenda`/`imprimirOS`
 em vendas.js: cabeçalho, itens/peças/serviços, totais, assinatura na OS).
-A fazer: **etiqueta de produto** (térmica/Argox, rolo, com código de barras), etiqueta de expedição,
-DANFE (depende de NF-e) e configuração de layout/impressora por empresa.
+**Etiqueta de produto** (térmica/Argox): `etiquetas.js` com gerador **Code128 em JS puro** (`barcode128`),
+botão Etiqueta na lista de produtos, diálogo de quantidade, layout 50×30mm com nome/ref/EAN/preço.
+A fazer: etiqueta de expedição, DANFE (depende de NF-e) e configuração de layout/impressora por empresa.
 
 ## Front — usabilidade de balcão
 - **Combobox com busca + bipagem** (`comboHTML`/`comboVal` no core.js): cliente e produto selecionados
