@@ -56,6 +56,7 @@ async function vdAbrir(id){
     const {data,error}=await sb.rpc('erp_venda_detalhe',{p_id:id}); if(error) throw error;
     const v=data.venda||{}, itens=data.itens||[], sol=data.solicitacoes||[];
     const fin=v.status==='FATURADA';
+    const bloq=['CANCELADA','DEVOLVIDA'].includes(String(v.status||'').toUpperCase());
     let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(v.numero)+'</b> — '+esc(v.cliente||'')+' · '+esc(v.empresa||'')+' · '+stBadgeVenda(v.status)+' · <span class="mono">'+fmtFull(v.valor_total)+'</span></div>';
     body+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:hsl(var(--text-muted));margin:8px 0 4px">Itens lançados</div>';
     body+= itens.length? '<div class="tbl-wrap"><table class="data"><thead><tr><th>Produto</th><th>Qtd</th><th>Unit</th><th>Total</th></tr></thead><tbody>'+
@@ -67,8 +68,8 @@ async function vdAbrir(id){
       : '<div class="empty" style="padding:14px">Sem solicitações.</div>';
     const foot='<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>'+
       '<button class="btn btn-ghost" onclick="vdSolicitar('+id+')">Solicitar produto</button>'+
-      (fin?'':'<button class="btn btn-ok" onclick="vdFinalizar('+id+')">Finalizar (financeiro)</button>')+
-      '<button class="btn" onclick="vdNFe('+id+')">Gerar NF-e</button>';
+      (fin||bloq?'':'<button class="btn btn-ok" onclick="vdFinalizar('+id+')">Finalizar (financeiro)</button>')+
+      (bloq?'':'<button class="btn" onclick="vdNFe('+id+')">Gerar NF-e</button>');
     openModal('Venda '+esc(v.numero), body, foot);
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
@@ -159,6 +160,7 @@ async function osAbrir(id){
     const {data,error}=await sb.rpc('erp_os_detalhe',{p_id:id}); if(error) throw error;
     const o=data.os||{}, pecas=data.pecas||[], serv=data.servicos||[], sol=data.solicitacoes||[];
     const fin=o.status==='FATURADA';
+    const bloq=['CANCELADA','DEVOLVIDA'].includes(String(o.status||'').toUpperCase());
     let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(o.numero)+'</b> — '+esc(o.cliente||'')+' · '+esc(o.empresa||'')+' · '+stBadgeOS(o.status)+' · <span class="mono">'+fmtFull(o.valor_total)+'</span></div>';
     body+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:hsl(var(--text-muted));margin:8px 0 4px">Peças</div>';
     body+= pecas.length? '<div class="tbl-wrap"><table class="data"><thead><tr><th>Produto</th><th>Qtd</th><th>Total</th></tr></thead><tbody>'+
@@ -170,8 +172,8 @@ async function osAbrir(id){
       : '<div class="empty" style="padding:14px">Sem solicitações.</div>';
     const foot='<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>'+
       '<button class="btn btn-ghost" onclick="osSolicitar('+id+')">Solicitar produto</button>'+
-      (fin?'':'<button class="btn btn-ok" onclick="osFinalizar('+id+')">Finalizar (financeiro)</button>')+
-      '<button class="btn" onclick="osNFe('+id+')">Gerar NF-e</button>';
+      (fin||bloq?'':'<button class="btn btn-ok" onclick="osFinalizar('+id+')">Finalizar (financeiro)</button>')+
+      (bloq?'':'<button class="btn" onclick="osNFe('+id+')">Gerar NF-e</button>');
     openModal('OS '+esc(o.numero), body, foot);
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
