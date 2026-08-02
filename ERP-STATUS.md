@@ -56,7 +56,20 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 `16..17` reforma tributária · `18` produtos tela única · `19` seed CST · `20` clientes ·
 `21` compras/entrada · `22` orçamentos · `23` permissões+logs · `24` inventário+transferências ·
 `25` inventário dupla contagem · `26` cobrança avançada (config PIX/juros, templates, renegociação) ·
-`27` históricos (cliente/produto) + curva ABC mensal (pg_cron).
+`27` históricos (cliente/produto) + curva ABC mensal (pg_cron) ·
+`28` id_origem na cobrança (link título→venda/OS) ·
+`29` concorrência de numeração (advisory lock em orçamento/pedido/recebimento/transferência/inventário/
+acordo + UNIQUE backstop) ·
+`30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores).
+
+## Concorrência (50-100 usuários simultâneos)
+- **Número de OS/Venda**: vem do `id` (sequence) — sem colisão.
+- **Código de cliente/fornecedor**: `sequence` + trigger `BEFORE INSERT` (automático, nunca digitado, sem colisão).
+- **Demais numerações** (orçamento, pedido, recebimento, transferência, inventário, acordo): `pg_advisory_xact_lock`
+  por empresa+documento serializa só o passo da numeração + `UNIQUE(numero,empresa)` como backstop.
+- **Estoque e financeiro** (baixa, entrada, saída, devolução, estorno, transferência de contas): `SELECT ... FOR UPDATE`.
+- **Edição simultânea do MESMO cadastro** (lost update): NÃO há trava hoje (último a salvar vence). Pendente decisão
+  Leo: trava otimista (recomendado, avisa "alterado por outro usuário") × pessimista (estilo Firebird, com timeout).
 
 ## Testes
 Todas as funções de banco foram testadas com **rollback** (bloco `DO ... RAISE EXCEPTION`), inclusive
