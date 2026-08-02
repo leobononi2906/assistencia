@@ -25,7 +25,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Produtos** | tela única (Identidade global + Preço/Fiscal por empresa) | `erp_produto_full/salvar`, `erp_preco/fiscal_empresa_salvar` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
-| **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança | `titulos`, `fn_baixar_titulo`, caixa, régua de cobrança | ✅ |
+| **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação | ✅ |
 | **Compras / Entrada** | Pedidos + Recebimentos | `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
 | **Fiscal / NF-e** | gerar NF-e (venda/OS) + IBS/CBS/IS | `fn_gerar_nfe` (Edge Function pendente) | 🟡 falta provedor |
@@ -47,12 +47,32 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 `11..12` fiscal/NF-e · `13` finalizar venda/OS · `14` config+fiscal por empresa · `15` vendas/OS ·
 `16..17` reforma tributária · `18` produtos tela única · `19` seed CST · `20` clientes ·
 `21` compras/entrada · `22` orçamentos · `23` permissões+logs · `24` inventário+transferências ·
-`25` inventário dupla contagem.
+`25` inventário dupla contagem · `26` cobrança avançada (config PIX/juros, templates, renegociação).
 
 ## Testes
 Todas as funções de banco foram testadas com **rollback** (bloco `DO ... RAISE EXCEPTION`), inclusive
 validando acesso como `anon` (como o front acessa). **Não** foi possível teste visual (e2e) do front
 neste ambiente remoto — o navegador não alcança o Supabase/CDN. O teste de tela é abrir `erp/index.html`.
+
+---
+
+## Expedição — app `bononi-exped` (separado, já em produção)
+
+O grupo tem um **app próprio de expedição** (`github.com/leobononi2906/bononi-exped`): React+Vite+Tailwind
+na Vercel, **mesmo Supabase**, esquema próprio `exp_*` (`exp_documentos`, `exp_itens`, `exp_pickings`,
+`exp_numeros_serie`, `exp_romaneios`, `exp_log_eventos`…). Login pelo **Auth do Hub Bononi**
+(`user_metadata.modulos` contém `"expedicao"`), **não** pelo login do ERP.
+
+- **Fluxo (Kanban):** NOVO → EM_SEPARAÇÃO → PARA_CONFERÊNCIA → CONFERIDO → EXPEDIDO. Picking (bipagem),
+  **conferência cega** (2º operador), número de série, coleta (bipa chave da NF).
+- **Alimentação hoje:** `exp_documentos` tem 2 origens — `BLING` (Edge Function `exp-sync-bling`, marketplace)
+  e `ERP` (NFs de distribuição do sistema de vendas atual). Ou seja, **já consome documentos "origem = ERP"**.
+- **Como encaixa no ERP:** o ERP não terá tela de expedição — ele **abastece** o `bononi-exped` gravando
+  `exp_documentos`/`exp_itens` (origem `ERP`) ao finalizar a venda de distribuição / emitir a NF-e. O novo ERP
+  assume o papel de *feeder* que o sistema atual já cumpre. **Gatilho e tela read-only ainda a decidir.**
+- ⚠️ **Aposentar duplicidade:** existe no schema `"Teste ERP"` uma suíte antiga de separação
+  (`expedicoes`/`erp_separacao_*`, sem front) e o `solicitacoes_produto` (requisição interna de peça, outro
+  propósito). A separação antiga deve ser descontinuada para não competir com o `bononi-exped`.
 
 ---
 
@@ -70,12 +90,24 @@ neste ambiente remoto — o navegador não alcança o Supabase/CDN. O teste de t
   (mudar para "sem permissão explícita = sem acesso").
 - Opcional: descer o gate ao **nível de botão** (esconder Incluir/Excluir/Aprovar por ação) nas telas.
 
-### 3. Refinos transversais (opcionais)
+### 3. Cobrança — completar (depende de terceiros)
+- **Boleto / CNAB remessa-retorno**: definir **banco + convênio/carteira/cedente** (campos já em `cobranca_config`;
+  colunas de boleto já em `titulos`) e escrever a geração/baixa CNAB (240/400).
+- **PIX dinâmico** (txid conciliável): escolher **PSP/banco com API PIX** + Edge Function. (PIX estático já entregue.)
+- **Disparo automático** de WhatsApp/e-mail por faixa da régua: escolher **provedor** (WhatsApp Cloud/Twilio, SMTP) +
+  Edge Function agendada. (Envio assistido de 1 clique já entregue.)
+
+### 4. Expedição — integrar o `bononi-exped` (ver seção acima)
+- Gerar `exp_documentos`/`exp_itens` (origem `ERP`) ao finalizar venda de distribuição / emitir NF-e.
+- Decidir gatilho (finalizar venda × emitir NF-e) e se haverá tela read-only no ERP.
+- Aposentar a suíte antiga `expedicoes`/`erp_separacao_*`.
+
+### 5. Refinos transversais (opcionais)
 - **Relatórios / DRE** (config já existe: `dre_config`, `plano_contas`, `centros_custo`).
 - **Devoluções** (venda/compra) reaproveitando estoque + financeiro.
 - **Cotações de compra** (`cotacoes*`) alimentando o pedido de compra.
-- **Expedição/Separação** (`expedicoes*`) ligada à venda.
 - Dashboard por empresa (filtro global) e KPIs de estoque/compras.
+- **Lista de acordos** de renegociação (tela de acompanhamento; hoje os títulos aparecem em Contas a Receber).
 
 ### 4. Operação / dados
 - Migrar/importar cadastros reais do Firebird (clientes, produtos, saldos) quando validado.
