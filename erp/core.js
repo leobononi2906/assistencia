@@ -26,14 +26,70 @@ window.bononiLog=bononiLog;
 window.onerror=(m,s,l,c,e)=>bononiLog('ERRO','ERRO_JS',{erro:e&&e.message});
 window.onunhandledrejection=(e)=>bononiLog('ERRO','ERRO_PROMISE',{erro:e&&e.reason});
 
-/* ---------- modal ---------- */
-function openModal(title, bodyHTML, footHTML){
-  $('#modal-title').textContent=title; $('#modal-body').innerHTML=bodyHTML;
-  $('#modal-foot').innerHTML=footHTML||''; $('#modal-bg').classList.add('open');
+/* ---------- modal empilhável (stack) ----------
+   Cada openModal preenche a camada do TOPO (comportamento de sempre).
+   Para abrir uma consulta SOBRE outra (ex.: da cobrança abrir a venda),
+   empilhe uma camada nova com pushLayer()/abrirDoc() — ao fechar, volta pra onde estava. */
+window.__modalStack=[];
+function _topLayer(){ const s=window.__modalStack; return s.length?s[s.length-1]:null; }
+function pushLayer(opts){
+  opts=opts||{};
+  const root=$('#modal-root'); if(!root) return null;
+  const depth=window.__modalStack.length;
+  const layer=document.createElement('div');
+  layer.className='modal-layer';
+  layer.style.zIndex=String(60+depth*2);
+  layer.innerHTML='<div class="modal'+(opts.wide?' modal-wide':'')+'">'+
+    '<div class="head">'+
+      (depth>0?'<button type="button" class="btn btn-ghost btn-sm modal-back" title="Voltar">‹ Voltar</button>':'<span></span>')+
+      '<h3></h3><button type="button" class="btn btn-ghost btn-sm modal-x" title="Fechar">✕</button></div>'+
+    '<div class="body"></div><div class="foot"></div></div>';
+  root.appendChild(layer);
+  window.__modalStack.push(layer);
+  document.body.classList.add('modal-open');
+  layer.addEventListener('mousedown',function(e){ if(e.target===layer) closeModal(); });
+  const bk=layer.querySelector('.modal-back'); if(bk) bk.addEventListener('click',closeModal);
+  layer.querySelector('.modal-x').addEventListener('click',closeModal);
+  return layer;
 }
-function closeModal(){ $('#modal-bg').classList.remove('open'); }
+window.pushLayer=pushLayer;
+function openModal(title, bodyHTML, footHTML, opts){
+  opts=opts||{};
+  let layer=_topLayer();
+  if(!layer || opts.push) layer=pushLayer(opts);
+  if(opts.wide) layer.querySelector('.modal').classList.add('modal-wide');
+  layer.querySelector('.head h3').textContent=title||'';
+  layer.querySelector('.body').innerHTML=bodyHTML||'';
+  layer.querySelector('.foot').innerHTML=footHTML||'';
+  return layer;
+}
+window.openModal=openModal;
+function closeModal(){
+  const layer=window.__modalStack.pop();
+  if(layer) layer.remove();
+  if(!window.__modalStack.length) document.body.classList.remove('modal-open');
+}
 window.closeModal=closeModal;
+function closeAllModals(){ while(window.__modalStack.length){ window.__modalStack.pop().remove(); } document.body.classList.remove('modal-open'); }
+window.closeAllModals=closeAllModals;
+document.addEventListener('keydown',function(e){ if(e.key==='Escape' && window.__modalStack.length) closeModal(); });
+
+/* abre um documento numa NOVA camada por cima (consulta empilhada) */
+function abrirDoc(tipo, id, extra){
+  if(!id) return;
+  tipo=String(tipo||'').toUpperCase();
+  const map={VENDA:function(){return typeof vdAbrir==='function'&&vdAbrir(id);},
+             OS:function(){return typeof osAbrir==='function'&&osAbrir(id);},
+             CLIENTE:function(){return typeof clEditor==='function'&&clEditor(id,extra||'dados');},
+             PRODUTO:function(){return typeof pdEditor==='function'&&pdEditor(id,extra||null);}};
+  if(!map[tipo]) return;
+  pushLayer({wide:tipo==='VENDA'||tipo==='OS'||tipo==='CLIENTE'||tipo==='PRODUTO'});
+  _topLayer().querySelector('.body').innerHTML=skeletonTable();
+  try{ map[tipo](); }catch(e){ toast('Erro ao abrir: '+(e.message||e),'err'); closeModal(); }
+}
+window.abrirDoc=abrirDoc;
 function confirmAsync(msg){ return new Promise(res=>{
+  pushLayer();
   openModal('Confirmar','<p style="font-size:14px">'+esc(msg)+'</p>',
     '<button class="btn btn-ghost" onclick="closeModal();window.__cfr(false)">Cancelar</button>'+
     '<button class="btn btn-danger" onclick="closeModal();window.__cfr(true)">Confirmar</button>');

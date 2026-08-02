@@ -82,9 +82,12 @@ async function clRenderHistorico(){
   if(!movs.length) html+='<tr><td colspan="7"><div class="empty">Sem movimentações.</div></td></tr>';
   movs.forEach(m=>{
     const badge=m.doc==='OS'?'b-badge-info':'b-badge-muted';
+    const rot=esc(m.numero||('#'+m.id));
+    const linkable=(m.doc==='VENDA'||m.doc==='OS')&&m.id;
+    const num=linkable?('<span class="doc-link" onclick="abrirDoc(\''+m.doc+'\','+m.id+')">'+rot+'</span>'):rot;
     html+='<tr'+(m.cancelada?' style="opacity:.5;text-decoration:line-through"':'')+'>'+
       '<td>'+fmtDate(m.data)+'</td><td><span class="b-badge '+badge+'">'+esc(m.doc)+'</span></td>'+
-      '<td>'+esc(m.tipo||'')+'</td><td class="mono">'+esc(m.numero||('#'+m.id))+'</td>'+
+      '<td>'+esc(m.tipo||'')+'</td><td class="mono">'+num+'</td>'+
       '<td>'+esc(m.empresa||'')+'</td><td class="mono">'+fmtNum(m.valor)+'</td><td>'+esc(m.status||'')+'</td></tr>';
   });
   html+='</tbody></table></div>';

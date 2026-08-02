@@ -8,6 +8,13 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 
 ## Arquitetura
 - **Front** (`erp/index.html` + JS por módulo): SPA simples, sidebar por grupos, tema Bononi.
+- **Modais empilháveis (stack)**: `pushLayer`/`openModal`/`closeModal` (core.js) mantêm uma pilha de
+  camadas — cada consulta abre por cima da anterior e, ao fechar (X, ‹ Voltar, Esc ou clique no fundo),
+  volta exatamente para onde estava. `abrirDoc(tipo,id)` abre venda/OS/cliente/produto numa camada nova
+  (navegação cruzada estilo pop-up). Ex.: no histórico do cliente clica na OS e abre a OS; em Contas a
+  Receber/Cobrança clica no nº do título e abre a venda/OS que o gerou; nas listas de Vendas/OS/CR o nome
+  do cliente abre a ficha+histórico dele. `openModal` sempre preenche a camada do topo (compatível com todo
+  o código existente).
 - **API**: funções `public.erp_*` (SECURITY DEFINER) expõem o schema `"Teste ERP"` ao PostgREST.
 - **CRUD genérico**: `public.erp_admin_tabelas` (whitelist) + `erp_list/erp_colunas/erp_upsert/erp_delete`
   alimentam a tela **Configurações** — toda tabela registrada vira cadastro editável automaticamente.

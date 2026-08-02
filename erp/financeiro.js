@@ -58,8 +58,13 @@ function ftFiltrar(){
   if(f.length===0){ body.innerHTML='<tr><td colspan="10"><div class="empty">Nenhum título.</div></td></tr>'; return; }
   body.innerHTML=f.map(t=>{
     const aberto=['ABERTO','PAGO_PARCIAL','VENCIDO'].includes(t.status);
-    return '<tr><td>'+esc(t.numero||'')+'</td><td>'+esc(t.parcela||'')+'</td>'+
-      '<td>'+esc(t[parte]||'—')+'</td><td>'+esc(t.empresa||'')+'</td>'+
+    const og=String(t.origem||'').toUpperCase();
+    const numRot=esc(t.numero||'');
+    const num=((og==='VENDA'||og==='OS')&&t.id_origem)?('<span class="doc-link" onclick="abrirDoc(\''+og+'\','+t.id_origem+')">'+numRot+'</span>'):numRot;
+    const parteRot=esc(t[parte]||'—');
+    const parteCel=(tipo==='CR'&&t.id_cliente)?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+t.id_cliente+',\'hist\')">'+parteRot+'</span>'):parteRot;
+    return '<tr><td>'+num+'</td><td>'+esc(t.parcela||'')+'</td>'+
+      '<td>'+parteCel+'</td><td>'+esc(t.empresa||'')+'</td>'+
       '<td>'+fmtDate(t.data_vencimento)+'</td><td class="mono">'+fmtNum(t.valor)+'</td>'+
       '<td class="mono">'+fmtNum(t.valor_saldo)+'</td><td>'+statusBadge(t.status,t.vencido)+'</td>'+
       '<td>'+(t.dias_atraso>0?('<span class="b-badge b-badge-err">'+t.dias_atraso+'d</span>'):'—')+'</td>'+
@@ -252,7 +257,10 @@ async function cobCobrar(idx){
     const body='<div class="form-grid">'+
       '<div class="field full"><label>Títulos em aberto ('+titulos.length+') — total '+fmtNum(total)+'</label>'+
         '<div class="tbl-wrap" style="max-height:150px;overflow:auto"><table class="data"><tbody>'+
-        (titulos.length?titulos.map(t=>'<tr><td>'+esc(t.numero||'')+' '+esc(t.parcela||'')+'</td><td>'+fmtDate(t.vencimento)+'</td><td class="mono">'+fmtNum(t.valor_saldo)+'</td><td>'+(t.dias_atraso>0?('<span class="b-badge b-badge-err">'+t.dias_atraso+'d</span>'):'—')+'</td></tr>').join(''):'<tr><td>Sem títulos</td></tr>')+
+        (titulos.length?titulos.map(t=>{ const og=String(t.origem||'').toUpperCase();
+          const rot=esc(t.numero||'')+' '+esc(t.parcela||'');
+          const num=((og==='VENDA'||og==='OS')&&t.id_origem)?('<span class="doc-link" onclick="abrirDoc(\''+og+'\','+t.id_origem+')">'+rot+'</span>'):rot;
+          return '<tr><td>'+num+'</td><td>'+fmtDate(t.vencimento)+'</td><td class="mono">'+fmtNum(t.valor_saldo)+'</td><td>'+(t.dias_atraso>0?('<span class="b-badge b-badge-err">'+t.dias_atraso+'d</span>'):'—')+'</td></tr>'; }).join(''):'<tr><td>Sem títulos</td></tr>')+
         '</tbody></table></div></div>'+
       '<div class="field full"><label>PIX copia e cola</label>'+pixHint+
         '<textarea id="cob-pix" rows="3" readonly style="font-family:var(--font-mono);font-size:11px">'+esc(pix||'')+'</textarea>'+

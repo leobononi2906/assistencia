@@ -25,9 +25,10 @@ function vdFiltrar(){
   const f=rows.filter(v=>(String(v.cliente||'')+String(v.numero||'')).toLowerCase().includes(q));
   const body=$('#vd-body'); if(!body) return;
   if(f.length===0){ body.innerHTML='<tr><td colspan="7"><div class="empty">Nenhuma venda.</div></td></tr>'; return; }
-  body.innerHTML=f.map(v=>'<tr><td>'+esc(v.numero||'')+'</td><td>'+esc(v.cliente||'—')+'</td><td>'+esc(v.empresa||'')+'</td>'+
+  body.innerHTML=f.map(v=>{ const cli=v.id_cliente?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+v.id_cliente+',\'hist\')">'+esc(v.cliente||'—')+'</span>'):esc(v.cliente||'—');
+    return '<tr><td>'+esc(v.numero||'')+'</td><td>'+cli+'</td><td>'+esc(v.empresa||'')+'</td>'+
     '<td>'+fmtDate(v.data_venda)+'</td><td class="mono">'+fmtNum(v.valor_total)+'</td><td>'+stBadgeVenda(v.status)+'</td>'+
-    '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="vdAbrir('+v.id+')">Abrir</button></td></tr>').join('');
+    '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="vdAbrir('+v.id+')">Abrir</button></td></tr>'; }).join('');
 }
 window.vdFiltrar=vdFiltrar;
 
@@ -131,9 +132,10 @@ function osFiltrar(){
   const f=rows.filter(o=>(String(o.cliente||'')+String(o.numero||'')).toLowerCase().includes(q));
   const body=$('#os-body'); if(!body) return;
   if(f.length===0){ body.innerHTML='<tr><td colspan="7"><div class="empty">Nenhuma OS.</div></td></tr>'; return; }
-  body.innerHTML=f.map(o=>'<tr><td>'+esc(o.numero||'')+'</td><td>'+esc(o.cliente||'—')+'</td><td>'+esc(o.empresa||'')+'</td>'+
+  body.innerHTML=f.map(o=>{ const cli=o.id_cliente?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+o.id_cliente+',\'hist\')">'+esc(o.cliente||'—')+'</span>'):esc(o.cliente||'—');
+    return '<tr><td>'+esc(o.numero||'')+'</td><td>'+cli+'</td><td>'+esc(o.empresa||'')+'</td>'+
     '<td>'+fmtDate(o.data_entrada)+'</td><td class="mono">'+fmtNum(o.valor_total)+'</td><td>'+stBadgeOS(o.status)+'</td>'+
-    '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="osAbrir('+o.id+')">Abrir</button></td></tr>').join('');
+    '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="osAbrir('+o.id+')">Abrir</button></td></tr>'; }).join('');
 }
 window.osFiltrar=osFiltrar;
 async function osNova(){
