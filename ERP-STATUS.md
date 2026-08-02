@@ -65,7 +65,8 @@ acordo + UNIQUE backstop) ·
 `32` listagem de grupos de acesso com contadores (tela Grupos) ·
 `33` acompanhamento de acordos de renegociação (Financeiro → Acordos) ·
 `34` relatório de vendas unificado (`erp_rel_vendas`) ·
-`35` relatórios de compras/produtos/clientes (`erp_rel_compras/_produtos/_clientes`).
+`35` relatórios de compras/produtos/clientes (`erp_rel_compras/_produtos/_clientes`) ·
+`36` DRE por competência (`erp_dre`).
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de
@@ -76,7 +77,9 @@ e **Exportar CSV**. Entregues:
 - **Produtos**: posição de estoque, mais vendidos, sem giro, por grupo
 - **Clientes**: ranking, inativos, novos no período, por UF
 
-A fazer no mesmo molde: **DRE** (relatório).
+**DRE** (`erp_dre`, tela própria de demonstração): Receita bruta → deduções → receita líquida →
+CMV (custo dos itens vendidos) → lucro bruto (com margem %) → despesas operacionais por categoria
+(plano de contas) → resultado líquido. Receita/CMV vêm das vendas; despesas do financeiro (títulos por competência).
 
 ## Impressão (padrão)
 `imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime —

@@ -142,6 +142,65 @@ function relExportCSV(){
 }
 window.relExportCSV=relExportCSV;
 
+/* ===================== DRE (Demonstração do Resultado) ===================== */
+async function loadDRE(){
+  try{
+    const empresas=await lookup('empresas');
+    const hoje=new Date(); const de=new Date(hoje.getFullYear(),0,1).toISOString().slice(0,10); const ate=hoje.toISOString().slice(0,10);
+    const f=relField('Empresa',relSelect('dre-emp',empresas,'Todas'))+
+      relField('De','<input type="date" id="dre-de" value="'+de+'">')+
+      relField('Até','<input type="date" id="dre-ate" value="'+ate+'">')+
+      '<div class="field" style="align-self:end"><button class="btn" onclick="dreGerar()">Gerar DRE</button></div>';
+    $('#screen').innerHTML='<div class="card card-pad" style="margin-bottom:14px"><div class="form-grid">'+f+'</div></div><div id="dre-res"></div>';
+    dreGerar();
+  }catch(e){ $('#screen').innerHTML=errBox('Não foi possível abrir o DRE.',e.message); }
+}
+window.loadDRE=loadDRE;
+
+async function dreGerar(){
+  const res=$('#dre-res'); if(!res) return; res.innerHTML=skeletonTable();
+  const p={ id_empresa:relV('dre-emp')||null, data_de:relV('dre-de')||null, data_ate:relV('dre-ate')||null };
+  try{
+    const {data,error}=await sb.rpc('erp_dre',{p:p}); if(error) throw error;
+    window.__dre={dados:data, periodo:(p.data_de?fmtDate(p.data_de):'…')+' a '+(p.data_ate?fmtDate(p.data_ate):'…')};
+    dreRender();
+  }catch(e){ res.innerHTML=errBox('Erro ao gerar o DRE.',e.message); }
+}
+window.dreGerar=dreGerar;
+
+function dreRowStyle(classe){
+  if(classe==='resultado') return 'font-weight:700;font-size:15px;border-top:2px solid var(--linha,#ccc)';
+  if(classe==='total') return 'font-weight:700;border-top:1px solid var(--linha,#ddd)';
+  if(classe==='grupo') return 'font-weight:600';
+  return 'color:var(--muted,#666);padding-left:18px';
+}
+function dreRender(){
+  const st=window.__dre||{}; const d=st.dados||{}; const lin=d.linhas||[]; const ind=d.indicadores||{};
+  let h='<div class="grid-kpi">'+
+    '<div class="metric"><div class="lbl">Receita líquida</div><div class="val">'+fmtFull(ind.receita_liquida)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Lucro bruto</div><div class="val">'+fmtFull(ind.lucro_bruto)+'</div><div class="lbl">Margem '+fmtNum(ind.margem_bruta)+'%</div></div>'+
+    '<div class="metric"><div class="lbl">Resultado líquido</div><div class="val" style="color:'+((ind.resultado||0)>=0?'var(--ok,#1a7f37)':'var(--err,#c62828)')+'">'+fmtFull(ind.resultado)+'</div></div>'+
+    '</div>';
+  h+='<div class="toolbar"><div class="spacer"></div><button class="btn btn-sm" onclick="dreImprimir()">Imprimir</button></div>';
+  h+='<div class="tbl-wrap"><table class="data"><tbody>';
+  lin.forEach(l=>{ const neg=(l.valor||0)<0;
+    h+='<tr style="'+dreRowStyle(l.classe)+'"><td>'+esc(l.label)+(l.obs?' <span style="font-weight:400;color:var(--muted,#888);font-size:11px">('+esc(l.obs)+')</span>':'')+
+       '</td><td class="mono" style="text-align:right'+(neg?';color:var(--err,#c62828)':'')+'">'+fmtFull(l.valor)+'</td></tr>'; });
+  h+='</tbody></table></div>';
+  $('#dre-res').innerHTML=h;
+}
+window.dreRender=dreRender;
+
+function dreImprimir(){
+  const st=window.__dre||{}; const d=st.dados||{}; const lin=d.linhas||[];
+  let t='<div class="sub">Período: '+esc(st.periodo||'')+'</div><table><tbody>'+
+    lin.map(l=>{ const b=(l.classe==='total'||l.classe==='resultado'||l.classe==='grupo');
+      return '<tr'+(b?' style="font-weight:bold"':'')+'><td'+(l.classe==='item'?' style="padding-left:22px"':'')+'>'+esc(l.label)+(l.obs?' ('+esc(l.obs)+')':'')+
+        '</td><td class="r">'+fmtFull(l.valor)+'</td></tr>'; }).join('')+'</tbody></table>';
+  imprimirDoc('DRE — Demonstração do Resultado', t, '');
+}
+window.dreImprimir=dreImprimir;
+
 function relImprimir(){
   const st=window.__rel||{}; const d=st.dados||{}; const cols=d.colunas||[]; const rows=d.linhas||[]; const tot=d.totais||{};
   const temMoney=cols.some(c=>c.tipo==='money');
