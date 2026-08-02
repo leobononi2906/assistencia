@@ -40,7 +40,7 @@ function renderTitulos(tipo, rows){
     '<div class="metric"><div class="lbl">Títulos</div><div class="val">'+rows.length+'</div></div></div>';
   html+='<div class="toolbar"><input type="search" id="ft-busca" placeholder="Filtrar por '+parte+'..." onkeyup="ftFiltrar()">'+
     '<select id="ft-status" onchange="ftFiltrar()"><option value="">Todos os status</option>'+
-    '<option value="abertos">Somente em aberto</option><option value="vencidos">Somente vencidos</option></select></div>';
+    '<option value="abertos" selected>Somente em aberto</option><option value="vencidos">Somente vencidos</option></select></div>';
   html+='<div class="tbl-wrap"><table class="data"><thead><tr>'+
     '<th>Nº</th><th>Parc.</th><th>'+parte.charAt(0).toUpperCase()+parte.slice(1)+'</th><th>Empresa</th>'+
     '<th>Vencimento</th><th>Valor</th><th>Saldo</th><th>Status</th><th>Atraso</th><th></th></tr></thead><tbody id="ft-body"></tbody></table></div>';
@@ -80,7 +80,7 @@ async function ftBaixar(id, saldo){
     '<div class="field"><label>Desconto</label><input type="number" step="0.01" id="bx-desc" value="0"></div>'+
     '<div class="field"><label>Juros</label><input type="number" step="0.01" id="bx-juros" value="0"></div>'+
     '<div class="field"><label>Multa</label><input type="number" step="0.01" id="bx-multa" value="0"></div>'+
-    '<div class="field"><label>Data da baixa</label><input type="date" id="bx-data"></div>'+
+    '<div class="field"><label>Data da baixa</label><input type="date" id="bx-data" value="'+new Date().toISOString().slice(0,10)+'"></div>'+
     '</div>';
   openModal('Baixar título #'+id, body,
     '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'+

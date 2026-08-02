@@ -21,7 +21,8 @@ async function loadClientes(busca){
         '<td class="mono">'+fmtNum(r.limite_credito)+'</td>'+
         '<td>'+(r.permite_prazo?'<span class="b-badge b-badge-ok">Sim</span>':'<span class="b-badge b-badge-muted">Não</span>')+'</td>'+
         '<td><span class="b-badge b-badge-'+(String(r.situacao||'').toUpperCase()==='ATIVO'?'ok':'muted')+'">'+esc(r.situacao||'')+'</span></td>'+
-        '<td class="acoes"><button class="btn btn-ghost btn-sm" onclick="clEditor('+r.id+')">Abrir</button></td></tr>';
+        '<td class="acoes" style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="clEditor('+r.id+')">Abrir</button> '+
+          '<button class="btn btn-ghost btn-sm" onclick="clEditor('+r.id+',\'hist\')">Histórico</button></td></tr>';
     });
     html+='</tbody></table></div><div style="font-size:11px;color:hsl(var(--text-muted));margin-top:8px">'+rows.length+' cliente(s)</div>';
     $('#screen').innerHTML=html;
@@ -30,7 +31,7 @@ async function loadClientes(busca){
 window.loadClientes=loadClientes;
 
 /* ---------------- EDITOR ---------------- */
-async function clEditor(id){
+async function clEditor(id, initTab){
   clId=id; clFull=null;
   $('#page-title').textContent = id?'Cliente — edição':'Cliente — novo';
   let html='<div class="toolbar"><button class="btn btn-ghost btn-sm" onclick="loadClientes()">&larr; Voltar</button>'+
@@ -39,10 +40,11 @@ async function clEditor(id){
     '<a class="tab active" data-t="dados" onclick="clTab(\'dados\')">Dados & Endereço</a>'+
     '<a class="tab" data-t="credito" onclick="clTab(\'credito\')">Crédito & Pagamento</a>'+
     '<a class="tab" data-t="contatos" onclick="clTab(\'contatos\')">Contatos</a>'+
+    (id?'<a class="tab" data-t="hist" onclick="clTab(\'hist\')">Histórico</a>':'')+
     '</div><div id="cl-tab-body" class="card card-pad"></div>';
   $('#screen').innerHTML=html;
   if(id){ clFull=await clCarregar(id); }
-  clTab('dados');
+  clTab(initTab&&id?initTab:'dados');
 }
 window.clEditor=clEditor;
 
@@ -56,8 +58,51 @@ function clTab(t){
   if(t==='dados') return clRenderDados();
   if(t==='credito') return clRenderCredito();
   if(t==='contatos') return clRenderContatos();
+  if(t==='hist') return clRenderHistorico();
 }
 window.clTab=clTab;
+
+/* ---- Histórico (pagamentos + movimentações) ---- */
+async function clRenderHistorico(){
+  const body=$('#cl-tab-body');
+  if(!clId){ body.innerHTML='<div class="empty">Salve o cliente para ver o histórico.</div>'; return; }
+  body.innerHTML='<div class="empty">Carregando…</div>';
+  const {data,error}=await sb.rpc('erp_cliente_historico',{p_id_cliente:Number(clId),p_id_empresa:null,p_limit:200});
+  if(error){ body.innerHTML=errBox('Erro ao carregar histórico',error.message); return; }
+  const d=data||{}, r=d.resumo||{}, movs=d.movimentacoes||[], pags=d.pagamentos||[];
+  let html='<div class="grid-kpi">'+
+    '<div class="metric"><div class="lbl">Total comprado</div><div class="val">'+fmtFull(r.total_comprado)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Compras</div><div class="val">'+(r.qtd_compras||0)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Total pago</div><div class="val">'+fmtFull(r.total_pago)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Saldo devedor</div><div class="val">'+fmtFull(r.saldo_devedor)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Última compra</div><div class="val" style="font-size:15px">'+(r.ultima_compra?fmtDate(r.ultima_compra):'—')+'</div></div></div>';
+  // Movimentações
+  html+='<h3 style="margin:14px 0 6px">Movimentações ('+movs.length+')</h3>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Data</th><th>Doc</th><th>Tipo</th><th>Número</th><th>Empresa</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
+  if(!movs.length) html+='<tr><td colspan="7"><div class="empty">Sem movimentações.</div></td></tr>';
+  movs.forEach(m=>{
+    const badge=m.doc==='OS'?'b-badge-info':'b-badge-muted';
+    html+='<tr'+(m.cancelada?' style="opacity:.5;text-decoration:line-through"':'')+'>'+
+      '<td>'+fmtDate(m.data)+'</td><td><span class="b-badge '+badge+'">'+esc(m.doc)+'</span></td>'+
+      '<td>'+esc(m.tipo||'')+'</td><td class="mono">'+esc(m.numero||('#'+m.id))+'</td>'+
+      '<td>'+esc(m.empresa||'')+'</td><td class="mono">'+fmtNum(m.valor)+'</td><td>'+esc(m.status||'')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  // Pagamentos
+  html+='<h3 style="margin:14px 0 6px">Pagamentos ('+pags.length+')</h3>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Data</th><th>Título</th><th>Forma</th><th>Pago</th><th>Juros/Multa</th><th></th></tr></thead><tbody>';
+  if(!pags.length) html+='<tr><td colspan="6"><div class="empty">Sem pagamentos registrados.</div></td></tr>';
+  pags.forEach(p=>{
+    const jm=(Number(p.valor_juros)||0)+(Number(p.valor_multa)||0);
+    html+='<tr'+(p.estornado?' style="opacity:.5"':'')+'><td>'+fmtDate(p.data)+'</td>'+
+      '<td class="mono">'+esc(p.titulo||'')+' '+esc(p.parcela||'')+'</td><td>'+esc(p.forma||'—')+'</td>'+
+      '<td class="mono">'+fmtNum(p.valor_pago)+'</td><td class="mono">'+(jm?fmtNum(jm):'—')+'</td>'+
+      '<td>'+(p.estornado?'<span class="b-badge b-badge-err">estornado</span>':'')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+window.clRenderHistorico=clRenderHistorico;
 
 /* ---- Dados & Endereço ---- */
 async function clRenderDados(){

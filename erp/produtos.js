@@ -56,6 +56,8 @@ async function pdEditor(id){
     '<a class="tab active" data-t="ident" onclick="pdTab(\'ident\')">Identidade (global)</a>'+
     '<a class="tab" data-t="preco" onclick="pdTab(\'preco\')">Preço por empresa</a>'+
     '<a class="tab" data-t="fiscal" onclick="pdTab(\'fiscal\')">Fiscal por empresa</a>'+
+    (id?'<a class="tab" data-t="mov" onclick="pdTab(\'mov\')">Movimentações</a>':'')+
+    (id?'<a class="tab" data-t="abc" onclick="pdTab(\'abc\')">Curva ABC</a>':'')+
     '</div>';
   html+='<div id="pd-tab-body" class="card card-pad"></div>';
   $('#screen').innerHTML=html;
@@ -82,8 +84,65 @@ function pdTab(t){
   if(t==='ident') return pdRenderIdent();
   if(t==='preco') return pdRenderPreco();
   if(t==='fiscal') return pdRenderFiscal();
+  if(t==='mov') return pdRenderMov();
+  if(t==='abc') return pdRenderAbc();
 }
 window.pdTab=pdTab;
+
+/* ---- Movimentações de estoque do produto ---- */
+async function pdRenderMov(){
+  const body=$('#pd-tab-body');
+  if(!pdProdutoId){ body.innerHTML='<div class="empty">Salve o produto primeiro.</div>'; return; }
+  body.innerHTML='<div class="empty">Carregando…</div>';
+  const {data,error}=await sb.rpc('erp_produto_historico',{p_id_produto:Number(pdProdutoId),p_id_empresa:null,p_limit:300});
+  if(error){ body.innerHTML=errBox('Erro ao carregar movimentações',error.message); return; }
+  const d=data||{}, r=d.resumo||{}, movs=d.movimentos||[];
+  let html='<div class="grid-kpi">'+
+    '<div class="metric"><div class="lbl">Saldo atual</div><div class="val">'+fmtNum(r.saldo_atual)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Entradas 12m</div><div class="val">'+fmtNum(r.entradas_12m)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Saídas 12m</div><div class="val">'+fmtNum(r.saidas_12m)+'</div></div></div>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Qtd</th><th>Custo un.</th><th>Saldo ant.</th><th>Saldo post.</th><th>Ref.</th><th>Empresa/Centro</th><th>Usuário</th></tr></thead><tbody>';
+  if(!movs.length) html+='<tr><td colspan="10"><div class="empty">Sem movimentações.</div></td></tr>';
+  movs.forEach(m=>{
+    const ent=m.tipo==='ENTRADA';
+    html+='<tr><td>'+fmtDateTime(m.data)+'</td>'+
+      '<td><span class="b-badge '+(ent?'b-badge-ok':'b-badge-warn')+'">'+esc(m.tipo||'')+'</span></td>'+
+      '<td>'+esc(m.origem||'')+'</td>'+
+      '<td class="mono">'+(ent?'+':'−')+fmtNum(m.quantidade)+'</td>'+
+      '<td class="mono">'+(m.custo_unitario!=null?fmtNum(m.custo_unitario):'—')+'</td>'+
+      '<td class="mono">'+(m.estoque_anterior!=null?fmtNum(m.estoque_anterior):'—')+'</td>'+
+      '<td class="mono">'+(m.estoque_posterior!=null?fmtNum(m.estoque_posterior):'—')+'</td>'+
+      '<td class="mono">'+esc(m.numero_referencia||'')+'</td>'+
+      '<td>'+esc((m.empresa||'')+(m.centro?(' / '+m.centro):''))+'</td>'+
+      '<td>'+esc(m.usuario||'')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+window.pdRenderMov=pdRenderMov;
+
+/* ---- Curva ABC do produto (mês a mês) ---- */
+async function pdRenderAbc(){
+  const body=$('#pd-tab-body');
+  if(!pdProdutoId){ body.innerHTML='<div class="empty">Salve o produto primeiro.</div>'; return; }
+  body.innerHTML='<div class="empty">Carregando…</div>';
+  const {data,error}=await sb.rpc('erp_produto_curva_abc',{p_id_produto:Number(pdProdutoId),p_id_empresa:null,p_meses:24});
+  if(error){ body.innerHTML=errBox('Erro ao carregar curva ABC',error.message); return; }
+  const rows=data||[];
+  const cls={A:'b-badge-ok',B:'b-badge-warn',C:'b-badge-muted'};
+  let html='<p class="hint" style="margin-bottom:8px">Classe por mês (consolidado). A curva é gerada automaticamente todo dia 1º; classe A = 80% do faturamento, B = 80–95%, C = restante.</p>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Mês</th><th>Classe</th><th>Posição</th><th>Faturamento</th><th>Qtd</th><th>Particip.</th></tr></thead><tbody>';
+  if(!rows.length) html+='<tr><td colspan="6"><div class="empty">Sem curva ABC gerada ainda para este produto.</div></td></tr>';
+  rows.forEach(x=>{
+    html+='<tr><td class="mono">'+String(x.mes).padStart(2,'0')+'/'+x.ano+'</td>'+
+      '<td><span class="b-badge '+(cls[x.classe]||'b-badge-muted')+'">'+esc(x.classe)+'</span></td>'+
+      '<td class="mono">'+(x.posicao||'')+'º</td><td class="mono">'+fmtNum(x.faturamento)+'</td>'+
+      '<td class="mono">'+fmtNum(x.quantidade)+'</td><td class="mono">'+fmtNum(x.participacao)+'%</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+window.pdRenderAbc=pdRenderAbc;
 
 /* ---- Identidade (global) ---- */
 async function pdRenderIdent(){
@@ -215,3 +274,65 @@ async function pdSalvarFiscal(){
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
 window.pdSalvarFiscal=pdSalvarFiscal;
+
+/* ================= CURVA ABC (tela) ================= */
+let abcEmpresa='', abcAno=null, abcMes=null;
+async function loadCurvaABC(){
+  const empresas=await lookup('empresas');
+  const now=new Date();
+  if(abcAno===null){ // default: mês anterior (que é o gerado automaticamente)
+    const d=new Date(now.getFullYear(), now.getMonth()-1, 1);
+    abcAno=d.getFullYear(); abcMes=d.getMonth()+1;
+  }
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  let optMes=''; for(let m=1;m<=12;m++) optMes+='<option value="'+m+'"'+(m===abcMes?' selected':'')+'>'+meses[m-1]+'</option>';
+  let optAno=''; for(let a=now.getFullYear();a>=now.getFullYear()-4;a--) optAno+='<option value="'+a+'"'+(a===abcAno?' selected':'')+'>'+a+'</option>';
+  const optEmp='<option value="">Consolidado (todas)</option>'+(empresas||[]).map(e=>'<option value="'+e.id+'"'+(String(abcEmpresa)===String(e.id)?' selected':'')+'>'+esc(e.nome_fantasia||e.nome)+'</option>').join('');
+  let html='<div class="toolbar">'+
+    '<select id="abc-emp" onchange="abcReload()">'+optEmp+'</select>'+
+    '<select id="abc-mes" onchange="abcReload()">'+optMes+'</select>'+
+    '<select id="abc-ano" onchange="abcReload()">'+optAno+'</select>'+
+    '<select id="abc-classe" onchange="abcReload()"><option value="">Todas classes</option><option>A</option><option>B</option><option>C</option></select>'+
+    '<div class="spacer"></div>'+
+    '<button class="btn btn-sm" onclick="abcGerar()">↻ Gerar/atualizar este mês</button></div>'+
+    '<div id="abc-body"></div>';
+  $('#screen').innerHTML=html;
+  abcReload();
+}
+window.loadCurvaABC=loadCurvaABC;
+async function abcReload(){
+  abcEmpresa=$('#abc-emp').value; abcAno=Number($('#abc-ano').value); abcMes=Number($('#abc-mes').value);
+  const classe=$('#abc-classe').value||null;
+  const body=$('#abc-body'); body.innerHTML='<div class="empty">Carregando…</div>';
+  const {data,error}=await sb.rpc('erp_curva_abc',{p_ano:abcAno,p_mes:abcMes,p_id_empresa:abcEmpresa?Number(abcEmpresa):null,p_classe:classe,p_limit:2000});
+  if(error){ body.innerHTML=errBox('Erro ao carregar curva ABC',error.message); return; }
+  const d=data||{}, r=d.resumo||{}, itens=d.itens||[];
+  let html='<div class="grid-kpi">'+
+    '<div class="metric"><div class="lbl">Faturamento</div><div class="val">'+fmtFull(r.faturamento)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Produtos</div><div class="val">'+(r.produtos||0)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Classe A</div><div class="val">'+(r.A||0)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Classe B</div><div class="val">'+(r.B||0)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Classe C</div><div class="val">'+(r.C||0)+'</div></div></div>';
+  const cls={A:'b-badge-ok',B:'b-badge-warn',C:'b-badge-muted'};
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>#</th><th>Produto</th><th>Ref.</th><th>Classe</th><th>Faturamento</th><th>Qtd</th><th>Margem</th><th>Particip.</th><th>Acum.</th></tr></thead><tbody>';
+  if(!itens.length) html+='<tr><td colspan="9"><div class="empty">Sem curva para este mês. Clique em “Gerar/atualizar este mês”.</div></td></tr>';
+  itens.forEach(x=>{
+    html+='<tr><td class="mono">'+(x.posicao||'')+'</td><td>'+esc(x.produto||'')+'</td><td class="mono">'+esc(x.referencia||'')+'</td>'+
+      '<td><span class="b-badge '+(cls[x.classe]||'b-badge-muted')+'">'+esc(x.classe)+'</span></td>'+
+      '<td class="mono">'+fmtNum(x.faturamento)+'</td><td class="mono">'+fmtNum(x.quantidade)+'</td>'+
+      '<td class="mono">'+fmtNum(x.margem)+'</td><td class="mono">'+fmtNum(x.participacao)+'%</td>'+
+      '<td class="mono">'+fmtNum(x.participacao_acum)+'%</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+window.abcReload=abcReload;
+async function abcGerar(){
+  try{
+    const emp=$('#abc-emp').value?Number($('#abc-emp').value):null;
+    const {data,error}=await sb.rpc('erp_gerar_curva_abc',{p_ano:Number($('#abc-ano').value),p_mes:Number($('#abc-mes').value),p_id_empresa:emp});
+    if(error) throw error;
+    toast('Curva gerada: '+(data&&data.produtos||0)+' produto(s)','ok'); abcReload();
+  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+}
+window.abcGerar=abcGerar;

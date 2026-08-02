@@ -11,6 +11,7 @@ function fmtFull(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',curr
 function fmtNum(v){ return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v)||0); }
 function parseLocalDate(s){ if(!s) return null; const p=String(s).slice(0,10).split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
 function fmtDate(s){ const d=parseLocalDate(s); return d?d.toLocaleDateString('pt-BR'):''; }
+function fmtDateTime(s){ if(!s) return ''; const d=new Date(s); return isNaN(d)?fmtDate(s):d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 function toast(msg,tipo){ const t=document.createElement('div'); t.className='toast '+(tipo||''); t.textContent=msg;
   $('#toast').appendChild(t); setTimeout(()=>t.remove(),2600); }
 function skeletonTable(){ return '<div class="tbl-wrap card-pad"><div class="skel" style="width:40%;margin-bottom:14px"></div>'+
@@ -105,6 +106,9 @@ const MENU=[
     {id:'transferencias',label:'Transferências',mod:'ESTOQUE'},
     {id:'inventarios',label:'Inventário',mod:'ESTOQUE'},
   ]},
+  {grupo:'Relatórios',itens:[
+    {id:'curva_abc',label:'Curva ABC',mod:'RELATORIOS'},
+  ]},
   {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e',mod:'FISCAL'}]},
   {grupo:'Sistema',itens:[
     {id:'usuarios',label:'Usuários',mod:'USUARIOS'},
@@ -139,6 +143,7 @@ const SCREENS={
   gondola:{title:'Gôndola',load:()=>loadGondola()},
   transferencias:{title:'Transferências de Estoque',load:()=>loadTransferencias()},
   inventarios:{title:'Inventário',load:()=>loadInventarios()},
+  curva_abc:{title:'Curva ABC',load:()=>loadCurvaABC()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
   usuarios:{title:'Usuários',load:()=>loadUsuarios()},
   permissoes:{title:'Permissões por Grupo',load:()=>loadPermissoes()},

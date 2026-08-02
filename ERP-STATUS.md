@@ -21,8 +21,9 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | Módulo | Telas | Backend principal | Status |
 |--------|-------|-------------------|:------:|
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
-| **Clientes** | lista + Dados/Crédito/Contatos | `erp_cliente_full/salvar`, condições liberadas, limite/uso de crédito | ✅ |
-| **Produtos** | tela única (Identidade global + Preço/Fiscal por empresa) | `erp_produto_full/salvar`, `erp_preco/fiscal_empresa_salvar` | ✅ |
+| **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
+| **Produtos** | tela única + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
+| **Relatórios** | Curva ABC (mensal automática) | `erp_curva_abc`, `erp_gerar_curva_abc` (pg_cron dia 1º) | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação | ✅ |
@@ -47,7 +48,8 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 `11..12` fiscal/NF-e · `13` finalizar venda/OS · `14` config+fiscal por empresa · `15` vendas/OS ·
 `16..17` reforma tributária · `18` produtos tela única · `19` seed CST · `20` clientes ·
 `21` compras/entrada · `22` orçamentos · `23` permissões+logs · `24` inventário+transferências ·
-`25` inventário dupla contagem · `26` cobrança avançada (config PIX/juros, templates, renegociação).
+`25` inventário dupla contagem · `26` cobrança avançada (config PIX/juros, templates, renegociação) ·
+`27` históricos (cliente/produto) + curva ABC mensal (pg_cron).
 
 ## Testes
 Todas as funções de banco foram testadas com **rollback** (bloco `DO ... RAISE EXCEPTION`), inclusive
