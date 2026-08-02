@@ -30,6 +30,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
 | **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
 | **Produtos** | tela única + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
+| **Permissões** | 10 perfis semeados (Admin, Gestor, Vendedor Loja/Externo, Faturamento, Financeiro, Estoque, Técnico/Recepção OS, Relatórios); menu e telas filtrados por `can()`; **botões de criação escondidos por grupo** (`permBtn`) em Clientes/Produtos/Vendas/OS/Compras/Orçamentos; tela Permissões por Grupo | `erp_permissoes_usuario`, `erp_grupo_permissoes(_salvar)` | ✅ |
 | **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |

@@ -239,6 +239,9 @@ function can(codigo, acao){
   return !!(m && m[acao||'ver']);
 }
 window.can=can;
+/* retorna o HTML do botão só se o usuário tiver a permissão (esconde por grupo) */
+function permBtn(codigo, acao, html){ return can(codigo, acao)?html:''; }
+window.permBtn=permBtn;
 
 function entrarApp(){
   $('#login-screen').classList.add('hidden');

@@ -8,7 +8,7 @@ async function loadOrcamentos(){
     if(error) throw error;
     const rows=(data||[]).sort((a,b)=>b.id-a.id);
     let html='<div class="toolbar"><b style="font-size:13px">Orçamentos de Venda</b><div class="spacer"></div>'+
-      '<button class="btn btn-sm" onclick="ocEditor(null)">+ Novo orçamento</button></div>';
+      permBtn('ORCAMENTOS','incluir','<button class="btn btn-sm" onclick="ocEditor(null)">+ Novo orçamento</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Número</th><th>Cliente</th><th>Empresa</th>'+
       '<th>Emissão</th><th>Validade</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>';
     if(rows.length===0) html+='<tr><td colspan="8"><div class="empty">Nenhum orçamento.</div></td></tr>';

@@ -11,7 +11,7 @@ async function loadPedidosCompra(){
     if(error) throw error;
     const rows=(data||[]).sort((a,b)=>b.id-a.id);
     let html='<div class="toolbar"><b style="font-size:13px">Pedidos de Compra</b><div class="spacer"></div>'+
-      '<button class="btn btn-sm" onclick="pcEditor(null)">+ Novo pedido</button></div>';
+      permBtn('COMPRAS','incluir','<button class="btn btn-sm" onclick="pcEditor(null)">+ Novo pedido</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Número</th><th>Fornecedor</th><th>Empresa</th>'+
       '<th>Data</th><th>Previsão</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>';
     if(rows.length===0) html+='<tr><td colspan="8"><div class="empty">Nenhum pedido de compra.</div></td></tr>';
@@ -121,7 +121,7 @@ async function loadRecebimentos(){
     if(error) throw error;
     const rows=(data||[]).sort((a,b)=>b.id-a.id);
     let html='<div class="toolbar"><b style="font-size:13px">Recebimentos / Entradas de NF</b><div class="spacer"></div>'+
-      '<button class="btn btn-sm" onclick="rcEditor(null)">+ Nova entrada</button></div>';
+      permBtn('COMPRAS','incluir','<button class="btn btn-sm" onclick="rcEditor(null)">+ Nova entrada</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Número</th><th>Fornecedor</th><th>NF</th><th>Tipo</th>'+
       '<th>Empresa</th><th>Recebido em</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>';
     if(rows.length===0) html+='<tr><td colspan="9"><div class="empty">Nenhuma entrada.</div></td></tr>';

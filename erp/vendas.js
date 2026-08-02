@@ -13,7 +13,7 @@ async function loadVendas(){
     if(error) throw error;
     const rows=(data||[]).sort((a,b)=>b.id-a.id);
     let html='<div class="toolbar"><input type="search" id="vd-busca" placeholder="Filtrar por cliente/número..." onkeyup="vdFiltrar()">'+
-      '<div class="spacer"></div><button class="btn btn-sm" onclick="vdNova()">+ Nova venda</button></div>';
+      '<div class="spacer"></div>'+permBtn('VENDAS','incluir','<button class="btn btn-sm" onclick="vdNova()">+ Nova venda</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Número</th><th>Cliente</th><th>Empresa</th>'+
       '<th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="vd-body"></tbody></table></div>';
     $('#screen').innerHTML=html; window.__vdRows=rows; vdFiltrar();
@@ -175,7 +175,7 @@ async function loadOS(){
     if(error) throw error;
     const rows=(data||[]).sort((a,b)=>b.id-a.id);
     let html='<div class="toolbar"><input type="search" id="os-busca" placeholder="Filtrar por cliente/número..." onkeyup="osFiltrar()">'+
-      '<div class="spacer"></div><button class="btn btn-sm" onclick="osNova()">+ Nova OS</button></div>';
+      '<div class="spacer"></div>'+permBtn('OS','incluir','<button class="btn btn-sm" onclick="osNova()">+ Nova OS</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Número</th><th>Cliente</th><th>Empresa</th>'+
       '<th>Entrada</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="os-body"></tbody></table></div>';
     $('#screen').innerHTML=html; window.__osRows=rows; osFiltrar();

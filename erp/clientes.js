@@ -11,7 +11,7 @@ async function loadClientes(busca){
     let html='<div class="toolbar">'+
       '<input type="search" id="cl-busca" placeholder="Buscar cliente (nome, fantasia, CPF/CNPJ)..." value="'+esc(busca||'')+'" onkeydown="if(event.key===\'Enter\')loadClientes(this.value)">'+
       '<button class="btn btn-ghost btn-sm" onclick="loadClientes($(\'#cl-busca\').value)">Buscar</button>'+
-      '<div class="spacer"></div><button class="btn btn-sm" onclick="clEditor(null)">+ Novo cliente</button></div>';
+      '<div class="spacer"></div>'+permBtn('CLIENTES','incluir','<button class="btn btn-sm" onclick="clEditor(null)">+ Novo cliente</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Cód.</th><th>Nome</th><th>CPF/CNPJ</th>'+
       '<th>Cidade/UF</th><th>Limite</th><th>Prazo</th><th>Situação</th><th></th></tr></thead><tbody>';
     if(rows.length===0) html+='<tr><td colspan="8"><div class="empty">Nenhum cliente encontrado.</div></td></tr>';

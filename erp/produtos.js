@@ -24,7 +24,7 @@ async function loadProdutos(busca){
     let html='<div class="toolbar">'+
       '<input type="search" id="pd-busca" placeholder="Buscar produto (nome, referência, EAN)..." value="'+esc(busca||'')+'" onkeydown="if(event.key===\'Enter\')loadProdutos(this.value)">'+
       '<button class="btn btn-ghost btn-sm" onclick="loadProdutos($(\'#pd-busca\').value)">Buscar</button>'+
-      '<div class="spacer"></div><button class="btn btn-sm" onclick="pdEditor(null)">+ Novo produto</button></div>';
+      '<div class="spacer"></div>'+permBtn('PRODUTOS','incluir','<button class="btn btn-sm" onclick="pdEditor(null)">+ Novo produto</button>')+'</div>';
     html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>#</th><th>Referência</th><th>Nome</th>'+
       '<th>NCM</th><th>Preço venda</th><th>Situação</th><th></th></tr></thead><tbody>';
     if(rows.length===0) html+='<tr><td colspan="7"><div class="empty">Nenhum produto encontrado.</div></td></tr>';
