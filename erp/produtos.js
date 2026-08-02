@@ -247,6 +247,7 @@ async function pdRenderFiscal(){
   const body=$('#pd-tab-body');
   if(!pdProdutoId){ body.innerHTML='<div class="empty">Salve a identidade do produto primeiro.</div>'; return; }
   const [gtrib,cstibs,cclass]=await Promise.all([lookup('grupos_tributarios'),lookup('cst_ibscbs'),lookup('cclasstrib')]);
+  window.__gtrib=gtrib;
   const f=(pdFull&&pdFull.fiscal)||{};
   const gEf=pdFull&&pdFull.grupo_trib_efetivo, nEf=pdFull&&pdFull.ncm_efetivo;
   const cstOpts=(cstibs||[]).map(o=>'<option value="'+esc(o.codigo)+'"'+(String(f.cst_ibscbs||'')===String(o.codigo)?' selected':'')+'>'+esc(o.codigo+' — '+(o.descricao||''))+'</option>').join('');
@@ -255,7 +256,8 @@ async function pdRenderFiscal(){
     '<div style="font-size:12px;color:hsl(var(--text-muted));margin-bottom:10px">Configuração fiscal específica desta empresa. Em branco, usa o padrão global do produto. '+
       'Efetivo hoje: grupo tributário <b>#'+esc(String(gEf||'—'))+'</b>, NCM <b>'+esc(nEf||'—')+'</b>.</div>'+
     '<div class="form-grid">'+
-    '<div class="field"><label>Grupo tributário (empresa)</label><select id="pf-gtrib">'+pdOptions(gtrib,f.id_grupo_tributario)+'</select></div>'+
+    '<div class="field"><label>Grupo tributário (empresa)</label><select id="pf-gtrib" onchange="pdFiscalIpi()">'+pdOptions(gtrib,f.id_grupo_tributario)+'</select></div>'+
+    '<div class="field"><label>IPI (do grupo tributário)</label><input type="text" id="pf-ipi" readonly value="'+esc(pdIpiTexto(gtrib,f.id_grupo_tributario))+'" style="background:hsl(var(--muted));"></div>'+
     '<div class="field"><label>NCM</label><input type="text" id="pf-ncm" maxlength="10" value="'+esc(f.ncm||'')+'"></div>'+
     '<div class="field"><label>CEST</label><input type="text" id="pf-cest" maxlength="10" value="'+esc(f.cest||'')+'"></div>'+
     '<div class="field"><label>CFOP padrão</label><input type="text" id="pf-cfop" maxlength="10" value="'+esc(f.cfop_padrao||'')+'"></div>'+
@@ -270,6 +272,17 @@ async function pdRenderFiscal(){
     '</div>'+
     '<div style="margin-top:14px"><button class="btn btn-ok" onclick="pdSalvarFiscal()">Salvar fiscal da empresa</button></div>';
 }
+/* mostra a alíquota/CST de IPI do grupo tributário selecionado (IPI é definido no grupo, não no produto) */
+function pdIpiTexto(gtrib, idGrupo){
+  const g=(gtrib||[]).find(x=>String(x.id)===String(idGrupo));
+  if(!g) return '— selecione um grupo tributário —';
+  const aliq=(g.aliq_ipi==null?'0':g.aliq_ipi); const cst=(g.cst_ipi||'—');
+  return 'Alíquota '+fmtNum(aliq)+'%  ·  CST '+cst;
+}
+function pdFiscalIpi(){
+  const inp=$('#pf-ipi'); if(inp) inp.value=pdIpiTexto(window.__gtrib, $('#pf-gtrib').value);
+}
+window.pdFiscalIpi=pdFiscalIpi;
 async function pdSalvarFiscal(){
   try{
     const payload={ id_grupo_tributario:$('#pf-gtrib').value, ncm:$('#pf-ncm').value, cest:$('#pf-cest').value,
