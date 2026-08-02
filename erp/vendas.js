@@ -70,6 +70,7 @@ async function vdAbrir(id){
       sol.map(s=>'<tr><td>'+esc(s.produto||'')+'</td><td class="mono">'+fmtNum(s.qtd_solicitada)+'</td><td class="mono">'+fmtNum(s.qtd_pendente)+'</td><td>'+esc(s.status)+'</td></tr>').join('')+'</tbody></table></div>'
       : '<div class="empty" style="padding:14px">Sem solicitações.</div>';
     const foot='<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>'+
+      '<button class="btn btn-ghost" onclick="imprimirVenda('+id+')">Imprimir</button>'+
       '<button class="btn btn-ghost" onclick="vdSolicitar('+id+')">Solicitar produto</button>'+
       (fin||bloq?'':'<button class="btn btn-ok" onclick="vdFinalizar('+id+')">Finalizar (financeiro)</button>')+
       (bloq?'':'<button class="btn" onclick="vdNFe('+id+')">Gerar NF-e</button>');
@@ -77,6 +78,56 @@ async function vdAbrir(id){
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
 window.vdAbrir=vdAbrir;
+
+/* ---------------- IMPRESSÃO DE DOCUMENTOS ---------------- */
+function docCabecalho(pares){
+  return '<table style="width:100%;margin-bottom:10px"><tr>'+pares.map(function(col){
+    return '<td style="border:none;vertical-align:top">'+col.map(function(p){ return '<b>'+p[0]+':</b> '+esc(p[1]==null?'':p[1]); }).join('<br>')+'</td>';
+  }).join('')+'</tr></table>';
+}
+async function imprimirVenda(id){
+  try{
+    const {data,error}=await sb.rpc('erp_venda_detalhe',{p_id:id}); if(error) throw error;
+    const v=data.venda||{}, itens=data.itens||[];
+    let b=docCabecalho([
+      [['Nº',v.numero],['Data',fmtDate(v.data_venda)],['Status',v.status]],
+      [['Cliente',v.cliente],['Empresa',v.empresa],['Pagamento',v.forma_pagamento||'—']] ]);
+    b+='<table><thead><tr><th>Produto</th><th class="r">Qtd</th><th class="r">Unit.</th><th class="r">Total</th></tr></thead><tbody>'+
+      (itens.length?itens.map(i=>'<tr><td>'+esc(i.descricao||'')+'</td><td class="r">'+fmtNum(i.quantidade)+'</td><td class="r">'+fmtNum(i.valor_unitario)+'</td><td class="r">'+fmtNum(i.valor_total)+'</td></tr>').join('')
+        :'<tr><td colspan="4">Sem itens.</td></tr>')+'</tbody></table>';
+    b+='<table style="width:260px;margin-left:auto;margin-top:8px">'+
+      (v.valor_produtos!=null?'<tr><td>Produtos</td><td class="r">'+fmtFull(v.valor_produtos)+'</td></tr>':'')+
+      '<tr style="font-weight:bold"><td>TOTAL</td><td class="r">'+fmtFull(v.valor_total)+'</td></tr></table>';
+    imprimirDoc('Venda '+(v.numero||''), b, '');
+  }catch(e){ toast('Erro ao imprimir: '+(e.message||e),'err'); }
+}
+window.imprimirVenda=imprimirVenda;
+async function imprimirOS(id){
+  try{
+    const {data,error}=await sb.rpc('erp_os_detalhe',{p_id:id}); if(error) throw error;
+    const o=data.os||{}, pecas=data.pecas||[], serv=data.servicos||[];
+    let b=docCabecalho([
+      [['Nº',o.numero],['Entrada',fmtDate(o.data_entrada)],['Status',o.status]],
+      [['Cliente',o.cliente],['Empresa',o.empresa],['Pagamento',o.forma_pagamento||'—']] ]);
+    b+='<div style="font-weight:bold;margin:6px 0 2px">Peças</div>';
+    b+='<table><thead><tr><th>Produto</th><th class="r">Qtd</th><th class="r">Total</th></tr></thead><tbody>'+
+      (pecas.length?pecas.map(i=>'<tr><td>'+esc(i.descricao||'')+'</td><td class="r">'+fmtNum(i.quantidade)+'</td><td class="r">'+fmtNum(i.valor_total)+'</td></tr>').join('')
+        :'<tr><td colspan="3">Sem peças.</td></tr>')+'</tbody></table>';
+    if(serv.length){
+      b+='<div style="font-weight:bold;margin:10px 0 2px">Serviços</div>';
+      b+='<table><thead><tr><th>Serviço</th><th class="r">Total</th></tr></thead><tbody>'+
+        serv.map(s=>'<tr><td>'+esc(s.descricao||s.servico||'')+'</td><td class="r">'+fmtNum(s.valor_total!=null?s.valor_total:s.valor)+'</td></tr>').join('')+'</tbody></table>';
+    }
+    b+='<table style="width:260px;margin-left:auto;margin-top:8px">'+
+      (o.valor_pecas!=null?'<tr><td>Peças</td><td class="r">'+fmtFull(o.valor_pecas)+'</td></tr>':'')+
+      (o.valor_servicos!=null?'<tr><td>Serviços</td><td class="r">'+fmtFull(o.valor_servicos)+'</td></tr>':'')+
+      '<tr style="font-weight:bold"><td>TOTAL</td><td class="r">'+fmtFull(o.valor_total)+'</td></tr></table>';
+    b+='<div style="margin-top:40px;border-top:1px solid #333;width:280px;text-align:center;padding-top:4px">Assinatura do cliente</div>';
+    imprimirDoc('Ordem de Serviço '+(o.numero||''), b, '');
+  }catch(e){ toast('Erro ao imprimir: '+(e.message||e),'err'); }
+}
+window.imprimirOS=imprimirOS;
+
 async function vdSolicitar(id){
   const prod=await lookup('produtos'), cen=await lookup('centros_estoque');
   openModal('Solicitar produto — venda #'+id,
@@ -178,6 +229,7 @@ async function osAbrir(id){
       sol.map(s=>'<tr><td>'+esc(s.produto||'')+'</td><td class="mono">'+fmtNum(s.qtd_solicitada)+'</td><td class="mono">'+fmtNum(s.qtd_pendente)+'</td><td>'+esc(s.status)+'</td></tr>').join('')+'</tbody></table></div>'
       : '<div class="empty" style="padding:14px">Sem solicitações.</div>';
     const foot='<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>'+
+      '<button class="btn btn-ghost" onclick="imprimirOS('+id+')">Imprimir</button>'+
       '<button class="btn btn-ghost" onclick="osSolicitar('+id+')">Solicitar produto</button>'+
       (fin||bloq?'':'<button class="btn btn-ok" onclick="osFinalizar('+id+')">Finalizar (financeiro)</button>')+
       (bloq?'':'<button class="btn" onclick="osNFe('+id+')">Gerar NF-e</button>');

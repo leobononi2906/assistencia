@@ -82,9 +82,11 @@ CMV (custo dos itens vendidos) → lucro bruto (com margem %) → despesas opera
 (plano de contas) → resultado líquido. Receita/CMV vêm das vendas; despesas do financeiro (títulos por competência).
 
 ## Impressão (padrão)
-`imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime —
-base para relatórios, OS, venda/recibo e etiquetas. A fazer: layouts de OS/venda/NF e etiquetas
-(produto/expedição com código de barras) + configuração por empresa.
+`imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime.
+Entregue: **impressão de Venda/Recibo e de OS** (botão Imprimir no modal — `imprimirVenda`/`imprimirOS`
+em vendas.js: cabeçalho, itens/peças/serviços, totais, assinatura na OS).
+A fazer: **etiqueta de produto** (térmica/Argox, rolo, com código de barras), etiqueta de expedição,
+DANFE (depende de NF-e) e configuração de layout/impressora por empresa.
 
 ## Front — usabilidade de balcão
 - **Combobox com busca + bipagem** (`comboHTML`/`comboVal` no core.js): cliente e produto selecionados
