@@ -31,18 +31,22 @@ async function loadClientes(busca){
 window.loadClientes=loadClientes;
 
 /* ---------------- EDITOR ---------------- */
-async function clEditor(id, initTab){
+async function clEditor(id, initTab, opts){
+  opts=opts||{};
   clId=id; clFull=null;
-  $('#page-title').textContent = id?'Cliente — edição':'Cliente — novo';
-  let html='<div class="toolbar"><button class="btn btn-ghost btn-sm" onclick="loadClientes()">&larr; Voltar</button>'+
-    '<div class="spacer"></div></div>';
+  const inModal=!!opts.modal && typeof modalBody==='function' && modalBody();
+  const tgt = inModal ? modalBody() : $('#screen');
+  if(inModal) modalSetTitle(id?'Cliente — edição':'Cliente');
+  else $('#page-title').textContent = id?'Cliente — edição':'Cliente — novo';
+  let html = inModal ? '' :
+    '<div class="toolbar"><button class="btn btn-ghost btn-sm" onclick="loadClientes()">&larr; Voltar</button><div class="spacer"></div></div>';
   html+='<div class="tabs" id="cl-tabs">'+
     '<a class="tab active" data-t="dados" onclick="clTab(\'dados\')">Dados & Endereço</a>'+
     '<a class="tab" data-t="credito" onclick="clTab(\'credito\')">Crédito & Pagamento</a>'+
     '<a class="tab" data-t="contatos" onclick="clTab(\'contatos\')">Contatos</a>'+
     (id?'<a class="tab" data-t="hist" onclick="clTab(\'hist\')">Histórico</a>':'')+
     '</div><div id="cl-tab-body" class="card card-pad"></div>';
-  $('#screen').innerHTML=html;
+  tgt.innerHTML=html;
   if(id){ clFull=await clCarregar(id); }
   clTab(initTab&&id?initTab:'dados');
 }
@@ -165,14 +169,20 @@ async function clSalvarDados(){
       celular:$('#cl-cel').value, whatsapp:$('#cl-wpp').value, id_vendedor:$('#cl-vend').value,
       endereco:$('#cl-end').value, numero:$('#cl-num').value, complemento:$('#cl-compl').value,
       bairro:$('#cl-bairro').value, cep:$('#cl-cep').value, cidade:$('#cl-cidade').value, uf:$('#cl-uf').value,
-      id_municipio:clMunId(muns), situacao:$('#cl-sit').value, observacao:$('#cl-obs').value };
+      id_municipio:clMunId(muns), situacao:$('#cl-sit').value, observacao:$('#cl-obs').value,
+      atualizado_em_ref:(clFull&&clFull.cliente&&clFull.cliente.atualizado_em)||null };
     const {data,error}=await sb.rpc('erp_cliente_salvar',{p:payload});
     if(error) throw error;
     const novo=!clId; clId=Number(data);
     toast(novo?'Cliente criado (#'+clId+')':'Cliente salvo','ok');
     clFull=await clCarregar(clId);
     if(novo) clEditor(clId);
-  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+  }catch(e){
+    if(String(e.message||e).indexOf('CONFLITO_EDICAO')>=0){
+      toast('Este cliente foi alterado por outro usuário. Recarreguei os dados — revise e salve de novo.','err');
+      clFull=await clCarregar(clId); clRenderDados();
+    } else { toast('Erro: '+(e.message||e),'err'); }
+  }
 }
 window.clSalvarDados=clSalvarDados;
 

@@ -73,6 +73,10 @@ window.closeModal=closeModal;
 function closeAllModals(){ while(window.__modalStack.length){ window.__modalStack.pop().remove(); } document.body.classList.remove('modal-open'); }
 window.closeAllModals=closeAllModals;
 document.addEventListener('keydown',function(e){ if(e.key==='Escape' && window.__modalStack.length) closeModal(); });
+/* corpo e título da camada de topo (usado por editores que renderizam dentro do modal) */
+function modalBody(){ const l=_topLayer(); return l?l.querySelector('.body'):null; }
+function modalSetTitle(t){ const l=_topLayer(); if(l) l.querySelector('.head h3').textContent=t||''; }
+window.modalBody=modalBody; window.modalSetTitle=modalSetTitle;
 
 /* abre um documento numa NOVA camada por cima (consulta empilhada) */
 function abrirDoc(tipo, id, extra){
@@ -80,10 +84,10 @@ function abrirDoc(tipo, id, extra){
   tipo=String(tipo||'').toUpperCase();
   const map={VENDA:function(){return typeof vdAbrir==='function'&&vdAbrir(id);},
              OS:function(){return typeof osAbrir==='function'&&osAbrir(id);},
-             CLIENTE:function(){return typeof clEditor==='function'&&clEditor(id,extra||'dados');},
-             PRODUTO:function(){return typeof pdEditor==='function'&&pdEditor(id,extra||null);}};
+             CLIENTE:function(){return typeof clEditor==='function'&&clEditor(id,extra||'dados',{modal:true});},
+             PRODUTO:function(){return typeof pdEditor==='function'&&pdEditor(id,{modal:true});}};
   if(!map[tipo]) return;
-  pushLayer({wide:tipo==='VENDA'||tipo==='OS'||tipo==='CLIENTE'||tipo==='PRODUTO'});
+  pushLayer({wide:true});
   _topLayer().querySelector('.body').innerHTML=skeletonTable();
   try{ map[tipo](); }catch(e){ toast('Erro ao abrir: '+(e.message||e),'err'); closeModal(); }
 }

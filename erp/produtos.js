@@ -41,13 +41,17 @@ async function loadProdutos(busca){
 window.loadProdutos=loadProdutos;
 
 /* ---------------- EDITOR (tela única) ---------------- */
-async function pdEditor(id){
+async function pdEditor(id, opts){
+  opts=opts||{};
   pdProdutoId=id; pdFull=null;
   const empresas=await lookup('empresas');
   if(!pdEmpresa && empresas[0]) pdEmpresa=empresas[0].id;
-  $('#page-title').textContent = id?'Produto — edição':'Produto — novo';
+  const inModal=!!opts.modal && typeof modalBody==='function' && modalBody();
+  const tgt = inModal ? modalBody() : $('#screen');
+  if(inModal) modalSetTitle(id?'Produto — edição':'Produto');
+  else $('#page-title').textContent = id?'Produto — edição':'Produto — novo';
   let html='<div class="toolbar">'+
-    '<button class="btn btn-ghost btn-sm" onclick="loadProdutos()">&larr; Voltar</button>'+
+    (inModal?'':'<button class="btn btn-ghost btn-sm" onclick="loadProdutos()">&larr; Voltar</button>')+
     '<div class="spacer"></div>'+
     '<label style="font-size:12px;color:hsl(var(--text-muted));margin-right:6px">Empresa (preço/fiscal):</label>'+
     '<select id="pd-emp" onchange="pdTrocaEmpresa(this.value)"'+(id?'':' disabled')+'>'+pdOptions(empresas,pdEmpresa,false)+'</select>'+
@@ -60,7 +64,7 @@ async function pdEditor(id){
     (id?'<a class="tab" data-t="abc" onclick="pdTab(\'abc\')">Curva ABC</a>':'')+
     '</div>';
   html+='<div id="pd-tab-body" class="card card-pad"></div>';
-  $('#screen').innerHTML=html;
+  tgt.innerHTML=html;
   if(id){ pdFull=await pdCarregar(id, pdEmpresa); }
   pdTab('ident');
 }
@@ -186,7 +190,8 @@ async function pdSalvarIdent(){
       id_grupo_tributario:$('#pi-gtrib').value, ncm:$('#pi-ncm').value, cest:$('#pi-cest').value,
       origem:$('#pi-origem').value, preco_custo:$('#pi-custo').value, preco_venda:$('#pi-preco').value,
       estoque_minimo:$('#pi-emin').value, estoque_maximo:$('#pi-emax').value,
-      situacao:$('#pi-situacao').value, controla_estoque:$('#pi-controla').checked };
+      situacao:$('#pi-situacao').value, controla_estoque:$('#pi-controla').checked,
+      atualizado_em_ref:(pdFull&&pdFull.produto&&pdFull.produto.atualizado_em)||null };
     const {data,error}=await sb.rpc('erp_produto_salvar',{p:payload});
     if(error) throw error;
     const novo=!pdProdutoId;
@@ -194,7 +199,12 @@ async function pdSalvarIdent(){
     toast(novo?'Produto criado (#'+pdProdutoId+')':'Identidade salva','ok');
     if(novo){ pdEditor(pdProdutoId); } // recarrega já em modo edição (habilita empresa/tabs)
     else { pdFull=await pdCarregar(pdProdutoId, pdEmpresa); }
-  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+  }catch(e){
+    if(String(e.message||e).indexOf('CONFLITO_EDICAO')>=0){
+      toast('Este produto foi alterado por outro usuário. Recarreguei os dados — revise e salve de novo.','err');
+      pdFull=await pdCarregar(pdProdutoId, pdEmpresa); pdTab('ident');
+    } else { toast('Erro: '+(e.message||e),'err'); }
+  }
 }
 window.pdSalvarIdent=pdSalvarIdent;
 

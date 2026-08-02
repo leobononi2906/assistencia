@@ -60,7 +60,8 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 `28` id_origem na cobrança (link título→venda/OS) ·
 `29` concorrência de numeração (advisory lock em orçamento/pedido/recebimento/transferência/inventário/
 acordo + UNIQUE backstop) ·
-`30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores).
+`30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores) ·
+`31` trava otimista (edição simultânea) em cliente e produto.
 
 ## Concorrência (50-100 usuários simultâneos)
 - **Número de OS/Venda**: vem do `id` (sequence) — sem colisão.
@@ -68,8 +69,9 @@ acordo + UNIQUE backstop) ·
 - **Demais numerações** (orçamento, pedido, recebimento, transferência, inventário, acordo): `pg_advisory_xact_lock`
   por empresa+documento serializa só o passo da numeração + `UNIQUE(numero,empresa)` como backstop.
 - **Estoque e financeiro** (baixa, entrada, saída, devolução, estorno, transferência de contas): `SELECT ... FOR UPDATE`.
-- **Edição simultânea do MESMO cadastro** (lost update): NÃO há trava hoje (último a salvar vence). Pendente decisão
-  Leo: trava otimista (recomendado, avisa "alterado por outro usuário") × pessimista (estilo Firebird, com timeout).
+- **Edição simultânea do MESMO cadastro** (lost update): **trava otimista** (migration 31) em cliente e produto —
+  compara `atualizado_em` no salvar; se outro usuário alterou no meio, retorna `CONFLITO_EDICAO` e o front avisa
+  e recarrega, em vez de sobrescrever. Compatível (sem `atualizado_em_ref`, não checa). Extensível a orçamento/pedido.
 
 ## Testes
 Todas as funções de banco foram testadas com **rollback** (bloco `DO ... RAISE EXCEPTION`), inclusive
