@@ -102,6 +102,8 @@ const MENU=[
   {grupo:'Estoque',itens:[
     {id:'solicitacoes',label:'Solicitações',mod:'ESTOQUE'},
     {id:'gondola',label:'Gôndola',mod:'ESTOQUE'},
+    {id:'transferencias',label:'Transferências',mod:'ESTOQUE'},
+    {id:'inventarios',label:'Inventário',mod:'ESTOQUE'},
   ]},
   {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e',mod:'FISCAL'}]},
   {grupo:'Sistema',itens:[
@@ -135,6 +137,8 @@ const SCREENS={
   recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
   gondola:{title:'Gôndola',load:()=>loadGondola()},
+  transferencias:{title:'Transferências de Estoque',load:()=>loadTransferencias()},
+  inventarios:{title:'Inventário',load:()=>loadInventarios()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
   usuarios:{title:'Usuários',load:()=>loadUsuarios()},
   permissoes:{title:'Permissões por Grupo',load:()=>loadPermissoes()},
