@@ -58,7 +58,8 @@ async function vdAbrir(id){
     const v=data.venda||{}, itens=data.itens||[], sol=data.solicitacoes||[];
     const fin=v.status==='FATURADA';
     const bloq=['CANCELADA','DEVOLVIDA'].includes(String(v.status||'').toUpperCase());
-    let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(v.numero)+'</b> — '+esc(v.cliente||'')+' · '+esc(v.empresa||'')+' · '+stBadgeVenda(v.status)+' · <span class="mono">'+fmtFull(v.valor_total)+'</span></div>';
+    const cliLink=v.id_cliente?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+v.id_cliente+',\'hist\')">'+esc(v.cliente||'')+'</span>'):esc(v.cliente||'');
+    let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(v.numero)+'</b> — '+cliLink+' · '+esc(v.empresa||'')+' · '+stBadgeVenda(v.status)+' · <span class="mono">'+fmtFull(v.valor_total)+'</span></div>';
     body+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:hsl(var(--text-muted));margin:8px 0 4px">Itens lançados</div>';
     body+= itens.length? '<div class="tbl-wrap"><table class="data"><thead><tr><th>Produto</th><th>Qtd</th><th>Unit</th><th>Total</th></tr></thead><tbody>'+
       itens.map(i=>'<tr><td>'+esc(i.descricao||'')+'</td><td class="mono">'+fmtNum(i.quantidade)+'</td><td class="mono">'+fmtNum(i.valor_unitario)+'</td><td class="mono">'+fmtNum(i.valor_total)+'</td></tr>').join('')+'</tbody></table></div>'
@@ -163,7 +164,8 @@ async function osAbrir(id){
     const o=data.os||{}, pecas=data.pecas||[], serv=data.servicos||[], sol=data.solicitacoes||[];
     const fin=o.status==='FATURADA';
     const bloq=['CANCELADA','DEVOLVIDA'].includes(String(o.status||'').toUpperCase());
-    let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(o.numero)+'</b> — '+esc(o.cliente||'')+' · '+esc(o.empresa||'')+' · '+stBadgeOS(o.status)+' · <span class="mono">'+fmtFull(o.valor_total)+'</span></div>';
+    const cliLink=o.id_cliente?('<span class="doc-link" onclick="abrirDoc(\'CLIENTE\','+o.id_cliente+',\'hist\')">'+esc(o.cliente||'')+'</span>'):esc(o.cliente||'');
+    let body='<div style="margin-bottom:10px;font-size:13px"><b>'+esc(o.numero)+'</b> — '+cliLink+' · '+esc(o.empresa||'')+' · '+stBadgeOS(o.status)+' · <span class="mono">'+fmtFull(o.valor_total)+'</span></div>';
     body+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;color:hsl(var(--text-muted));margin:8px 0 4px">Peças</div>';
     body+= pecas.length? '<div class="tbl-wrap"><table class="data"><thead><tr><th>Produto</th><th>Qtd</th><th>Total</th></tr></thead><tbody>'+
       pecas.map(i=>'<tr><td>'+esc(i.descricao||'')+'</td><td class="mono">'+fmtNum(i.quantidade)+'</td><td class="mono">'+fmtNum(i.valor_total)+'</td></tr>').join('')+'</tbody></table></div>'
