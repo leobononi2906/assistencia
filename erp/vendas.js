@@ -71,6 +71,7 @@ async function vdAbrir(id){
       : '<div class="empty" style="padding:14px">Sem solicitações.</div>';
     const foot='<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>'+
       '<button class="btn btn-ghost" onclick="imprimirVenda('+id+')">Imprimir</button>'+
+      '<button class="btn btn-ghost" onclick="imprimirEtiquetaExpedicao('+id+')">Etiqueta expedição</button>'+
       '<button class="btn btn-ghost" onclick="vdSolicitar('+id+')">Solicitar produto</button>'+
       (fin||bloq?'':'<button class="btn btn-ok" onclick="vdFinalizar('+id+')">Finalizar (financeiro)</button>')+
       (bloq?'':'<button class="btn" onclick="vdNFe('+id+')">Gerar NF-e</button>');

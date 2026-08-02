@@ -69,3 +69,43 @@ function imprimirEtiquetaProduto(id, qtd){
   w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },350);
 }
 window.imprimirEtiquetaProduto=imprimirEtiquetaProduto;
+
+/* Etiqueta de expedição (destinatário) a partir de uma venda */
+async function imprimirEtiquetaExpedicao(idVenda){
+  try{
+    const {data,error}=await sb.rpc('erp_venda_detalhe',{p_id:idVenda}); if(error) throw error;
+    const v=data.venda||{};
+    const clientes=await lookup('clientes');
+    const c=clientes.find(x=>String(x.id)===String(v.id_cliente))||{};
+    const linhaEnd=[c.endereco,c.numero].filter(Boolean).join(', ')+(c.complemento?' - '+c.complemento:'');
+    const linhaCid=[c.cidade,c.uf].filter(Boolean).join(' / ');
+    const bc=barcode128(String(v.numero||idVenda),{mod:1.3,h:38});
+    const body=
+      '<div class="exp">'+
+        '<div class="rem">REMETENTE: '+esc(v.empresa||'')+'</div>'+
+        '<div class="dest-lbl">DESTINATÁRIO</div>'+
+        '<div class="nome">'+esc(c.nome||v.cliente||'')+'</div>'+
+        (linhaEnd?'<div class="l">'+esc(linhaEnd)+'</div>':'')+
+        (c.bairro?'<div class="l">'+esc(c.bairro)+'</div>':'')+
+        (linhaCid?'<div class="l">'+esc(linhaCid)+'</div>':'')+
+        (c.cep?'<div class="l">CEP: '+esc(c.cep)+'</div>':'')+
+        '<div class="bc">'+bc+'</div>'+
+        '<div class="ped">Venda '+esc(v.numero||'')+'</div>'+
+      '</div>';
+    const w=window.open('','_blank','width=520,height=420'); if(!w){ toast('Permita pop-ups para imprimir','err'); return; }
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta de expedição</title><style>'+
+      '@page{size:100mm 60mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}'+
+      '.exp{width:100mm;height:60mm;padding:4mm 5mm;page-break-after:always;display:flex;flex-direction:column}'+
+      '.rem{font-size:8pt;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:1.5mm}'+
+      '.dest-lbl{font-size:8pt;font-weight:bold;letter-spacing:1px}'+
+      '.nome{font-size:14pt;font-weight:bold;margin:0.5mm 0}.l{font-size:10pt;line-height:1.25}'+
+      '.bc{margin-top:auto}.bc svg{display:block}.ped{font-size:9pt;text-align:center}'+
+      '@media screen{body{background:#eee;padding:10px}.exp{background:#fff;border:1px solid #ccc;margin:0 auto}}'+
+      '@media print{.noprint{display:none}}'+
+      '</style></head><body>'+body+
+      '<div class="noprint" style="text-align:center;margin:10px 0"><button onclick="window.print()" style="padding:8px 16px">Imprimir</button></div>'+
+      '</body></html>');
+    w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },350);
+  }catch(e){ toast('Erro ao imprimir etiqueta: '+(e.message||e),'err'); }
+}
+window.imprimirEtiquetaExpedicao=imprimirEtiquetaExpedicao;
