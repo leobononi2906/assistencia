@@ -166,6 +166,26 @@ function comboCliItems(rows){ return (rows||[]).map(function(c){
   return {v:c.id, label:(c.nome||('#'+c.id)), busca:[c.cpf_cnpj,c.codigo].filter(Boolean).join(' ')}; }); }
 window.comboProdItems=comboProdItems; window.comboCliItems=comboCliItems;
 
+/* ---------- impressão genérica (relatórios, OS, venda, recibo) ----------
+   imprimirDoc(titulo, corpoHTML, rodape) abre uma janela limpa e chama imprimir. */
+function imprimirDoc(titulo, corpoHTML, rodape){
+  const w=window.open('','_blank','width=920,height=720');
+  if(!w){ toast('Permita pop-ups para imprimir','err'); return; }
+  const emp=(window.usuarioAtual&&(window.usuarioAtual.empresa_nome||window.usuarioAtual.empresa))||'Grupo Bononi Acessórios';
+  w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>'+esc(titulo)+'</title>'+
+    '<style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;padding:22px;margin:0}'+
+    'h1{font-size:16px;margin:0 0 2px}.sub{color:#666;font-size:11px;margin-bottom:14px}'+
+    'table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left}'+
+    'th{background:#eee}td.r,th.r{text-align:right}.foot{margin-top:12px;font-weight:bold;font-size:13px}'+
+    '@media print{.noprint{display:none}}</style></head><body>'+
+    '<h1>'+esc(titulo)+'</h1><div class="sub">'+esc(emp)+' — '+new Date().toLocaleString('pt-BR')+'</div>'+
+    corpoHTML+(rodape?'<div class="foot">'+rodape+'</div>':'')+
+    '<div class="noprint" style="margin-top:16px"><button onclick="window.print()" style="padding:8px 16px">Imprimir</button></div>'+
+    '</body></html>');
+  w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },350);
+}
+window.imprimirDoc=imprimirDoc;
+
 /* abre um documento numa NOVA camada por cima (consulta empilhada) */
 function abrirDoc(tipo, id, extra){
   if(!id) return;
@@ -256,6 +276,7 @@ const MENU=[
     {id:'inventarios',label:'Inventário',mod:'ESTOQUE'},
   ]},
   {grupo:'Relatórios',itens:[
+    {id:'rel_vendas',label:'Vendas',mod:'RELATORIOS'},
     {id:'curva_abc',label:'Curva ABC',mod:'RELATORIOS'},
   ]},
   {grupo:'Fiscal',itens:[{id:'nfe',label:'NF-e',mod:'FISCAL'}]},
@@ -294,6 +315,7 @@ const SCREENS={
   gondola:{title:'Gôndola',load:()=>loadGondola()},
   transferencias:{title:'Transferências de Estoque',load:()=>loadTransferencias()},
   inventarios:{title:'Inventário',load:()=>loadInventarios()},
+  rel_vendas:{title:'Relatório de Vendas',load:()=>loadRelVendas()},
   curva_abc:{title:'Curva ABC',load:()=>loadCurvaABC()},
   nfe:{title:'Notas Fiscais (NF-e)',load:()=>loadNFe()},
   usuarios:{title:'Usuários',load:()=>loadUsuarios()},

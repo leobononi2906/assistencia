@@ -30,7 +30,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
 | **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
 | **Produtos** | tela única + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
-| **Relatórios** | Curva ABC (mensal automática) | `erp_curva_abc`, `erp_gerar_curva_abc` (pg_cron dia 1º) | ✅ |
+| **Relatórios** | **Vendas** (modelos: analítico/produto/cliente/vendedor/dia/mês + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
@@ -63,7 +63,19 @@ acordo + UNIQUE backstop) ·
 `30` código de cadastro automático sequencial (sequence + trigger em clientes e fornecedores) ·
 `31` trava otimista (edição simultânea) em cliente e produto ·
 `32` listagem de grupos de acesso com contadores (tela Grupos) ·
-`33` acompanhamento de acordos de renegociação (Financeiro → Acordos).
+`33` acompanhamento de acordos de renegociação (Financeiro → Acordos) ·
+`34` relatório de vendas unificado (`erp_rel_vendas` — modelos + filtros).
+
+## Relatórios (padrão)
+Um relatório por área, com **seletor de modelo/agrupamento + filtros**, render genérico a partir de
+`{colunas,linhas,totais}`, **Imprimir** (motor `imprimirDoc` no core) e **Exportar CSV**. Entregue: **Vendas**
+(analítico, por produto, por cliente, por vendedor, por dia, por mês). A fazer no mesmo molde: Produtos,
+Clientes, Compras e **DRE**.
+
+## Impressão (padrão)
+`imprimirDoc(titulo, corpoHTML, rodape)` (core.js) abre janela limpa com cabeçalho da empresa e imprime —
+base para relatórios, OS, venda/recibo e etiquetas. A fazer: layouts de OS/venda/NF e etiquetas
+(produto/expedição com código de barras) + configuração por empresa.
 
 ## Front — usabilidade de balcão
 - **Combobox com busca + bipagem** (`comboHTML`/`comboVal` no core.js): cliente e produto selecionados
