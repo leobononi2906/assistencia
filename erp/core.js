@@ -275,6 +275,7 @@ const MENU=[
     {id:'recebimentos',label:'Recebimentos (Entradas)',mod:'COMPRAS'},
   ]},
   {grupo:'Estoque',itens:[
+    {id:'posicao',label:'Posição',mod:'ESTOQUE'},
     {id:'solicitacoes',label:'Solicitações',mod:'ESTOQUE'},
     {id:'gondola',label:'Gôndola',mod:'ESTOQUE'},
     {id:'transferencias',label:'Transferências',mod:'ESTOQUE'},
@@ -322,6 +323,7 @@ const SCREENS={
   cotacoes:{title:'Cotações de Compra',load:()=>loadCotacoes()},
   pedidos_compra:{title:'Pedidos de Compra',load:()=>loadPedidosCompra()},
   recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
+  posicao:{title:'Posição de Estoque',load:()=>loadPosicaoEstoque()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
   gondola:{title:'Gôndola',load:()=>loadGondola()},
   transferencias:{title:'Transferências de Estoque',load:()=>loadTransferencias()},

@@ -42,7 +42,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
 | **Compras / Entrada** | **Demanda/Sugestão** + **Cotações** + Pedidos + Recebimentos | `erp_demanda_*`, `erp_produto_estoque_limites`, `erp_cotacao_*` (mapa comparativo → pedido), `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
-| **Estoque** | Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
+| **Estoque** | **Posição** (contábil × não-contábil), Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `erp_estoque_posicao`, `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
 | **Fiscal / NF-e** | gerar NF-e (venda/OS) + IBS/CBS/IS | `fn_gerar_nfe` (Edge Function pendente) | 🟡 falta provedor |
 | **Sistema** | Usuários, **Grupos de acesso**, Permissões (matriz), Logs, Configurações | `erp_usuario_*`, `erp_grupo_salvar`, `erp_grupos_admin`, `erp_perm_*`, `vw_logs` | ✅ |
 
@@ -58,6 +58,9 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
   a NF-e é acessório opcional, nunca vinculada.
 - **Limite de crédito**: só modalidade **a prazo** consome; à vista/cartão passam direto; exige `permite_prazo`.
 - **Fiscal por empresa** + **Reforma Tributária** (IBS/CBS/IS, CST/cClassTrib) no cálculo da NF-e.
+- **Centro de estoque não-contábil**: `centros_estoque.contabiliza=false` marca centros cujo saldo
+  **não conta** como estoque vendável/contábil (ex.: **Garantia** — peça na empresa, ainda não enviada ao
+  fornecedor, que não pode contabilizar). A Posição separa contábil × não-contábil e a Demanda ignora esses centros.
 - **Transferência entre empresas**: como o saldo é por centro (e centro pertence a uma empresa),
   transferir entre centros de empresas diferentes move o saldo entre as empresas.
 - **Permissões**: admin/sem-grupo = acesso total (pragmático); com grupo, valem as permissões (união).
@@ -85,7 +88,9 @@ análise de reposição/giro com filtros e formação do pedido agrupado por for
 mapa comparativo de fornecedores → pedido por fornecedor (numeração COT######) ·
 `39` preço compartilhado por empresa (`empresas.id_empresa_precos` + `fn_preco_owner`; `erp_empresas_precos_listar`,
 `erp_empresa_precos_definir`; `erp_produto_full`/`erp_preco_empresa_salvar`/`erp_resolver_preco` resolvem pelo dono) ·
-`40` recálculo de preço por markup quando o custo muda (`erp_precos_recalcular_margem`; tag Preço fixo = `tipo_calculo` FIXO).
+`40` recálculo de preço por markup quando o custo muda (`erp_precos_recalcular_margem`; tag Preço fixo = `tipo_calculo` FIXO) ·
+`41` centro de estoque não-contábil (`centros_estoque.contabiliza`) + posição de estoque (`erp_estoque_posicao`);
+demanda passa a ignorar centros não-contábeis (ex.: Garantia) no saldo.
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de

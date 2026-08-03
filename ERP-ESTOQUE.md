@@ -1,4 +1,18 @@
-# ERP Bononi — Estoque: Solicitação de produto + Gôndola
+# ERP Bononi — Estoque: Posição + Solicitação de produto + Gôndola
+
+## Posição de estoque (tela Estoque → Posição)
+- Saldo por produto, com **filtros por empresa, centro, grupo e busca**; visão **consolidada
+  por produto** ou **detalhada por centro** (toggle), e "só com saldo".
+- **Centro não-contábil**: `centros_estoque.contabiliza=false` marca um centro cujo saldo
+  **não conta** como estoque vendável/contábil. Caso de uso: **Garantia** — o produto está
+  fisicamente na empresa (numa ala de garantia), mas ainda não foi enviado ao fornecedor e
+  **não pode contabilizar como estoque**. Marca-se em Configurações → Centros de Estoque
+  (campo `contabiliza`). Gôndola continua contando (é vendável).
+- A posição separa **estoque contábil** (centros que contam) de **não-contábil** (garantia etc.),
+  e a **análise de demanda** (`erp_demanda_listar`) passou a **ignorar** centros não-contábeis
+  no saldo — não sugere compra a menos por causa de peça parada em garantia.
+- Backend: `erp_estoque_posicao(empresa, centro, grupo, busca, só_com_saldo, detalhado)`.
+
 
 ## Regra de negócio
 - **Vendas nunca lança produto direto** na OS/Venda. Cria uma **solicitação**.
