@@ -1,6 +1,6 @@
 # ERP Bononi — Status Geral do Sistema
 
-_Documento-mestre. Atualizado em 2026-08-02._
+_Documento-mestre. Atualizado em 2026-08-03._
 
 Sistema próprio do **Grupo Bononi Acessórios**, substituindo o Firebird (SGA_BONONI).
 Banco: **Supabase / PostgreSQL**, projeto `vishxwdxqiygbxmtpfoy`, schema **`"Teste ERP"`**.
@@ -35,7 +35,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
-| **Compras / Entrada** | Pedidos + Recebimentos | `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
+| **Compras / Entrada** | **Demanda/Sugestão** + Pedidos + Recebimentos | `erp_demanda_listar/_filtros/_gerar_pedidos`, `erp_produto_estoque_limites`, `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
 | **Fiscal / NF-e** | gerar NF-e (venda/OS) + IBS/CBS/IS | `fn_gerar_nfe` (Edge Function pendente) | 🟡 falta provedor |
 | **Sistema** | Usuários, **Grupos de acesso**, Permissões (matriz), Logs, Configurações | `erp_usuario_*`, `erp_grupo_salvar`, `erp_grupos_admin`, `erp_perm_*`, `vw_logs` | ✅ |
@@ -43,6 +43,10 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 ## Regras de negócio respeitadas
 - **Vendas não lançam produto direto**: viram **solicitação**; o **estoque** atende (OS e Venda). Gôndola é
   controle à parte (o vendedor lança direto só a quantidade da gôndola).
+- **Demanda e Pedido de Compra são complementares**: o comprador não digita o pedido no escuro — abre
+  **Compras → Demanda/Sugestão**, filtra por produto/grupo/subgrupo/fornecedor, analisa a necessidade
+  (reposição por mín/máx ou giro por consumo/cobertura), ajusta mínimo/máximo e a quantidade, e daí
+  **forma o pedido** (um por fornecedor). A tela de Pedidos de Compra segue existindo para edição manual/avulsa.
 - **Financeiro × NF-e independentes**: finalizar o pedido gera o movimento financeiro (títulos);
   a NF-e é acessório opcional, nunca vinculada.
 - **Limite de crédito**: só modalidade **a prazo** consome; à vista/cartão passam direto; exige `permite_prazo`.
@@ -67,7 +71,9 @@ acordo + UNIQUE backstop) ·
 `33` acompanhamento de acordos de renegociação (Financeiro → Acordos) ·
 `34` relatório de vendas unificado (`erp_rel_vendas`) ·
 `35` relatórios de compras/produtos/clientes (`erp_rel_compras/_produtos/_clientes`) ·
-`36` DRE por competência (`erp_dre`).
+`36` DRE por competência (`erp_dre`) ·
+`37` demanda de compra (`erp_demanda_listar/_filtros/_gerar_pedidos` + `erp_produto_estoque_limites`):
+análise de reposição/giro com filtros e formação do pedido agrupado por fornecedor.
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de

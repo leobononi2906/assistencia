@@ -269,6 +269,7 @@ const MENU=[
     {id:'acordos',label:'Acordos',mod:'FINANCEIRO_CR'},
   ]},
   {grupo:'Compras',itens:[
+    {id:'demanda',label:'Demanda / Sugestão',mod:'COMPRAS'},
     {id:'pedidos_compra',label:'Pedidos de Compra',mod:'COMPRAS'},
     {id:'recebimentos',label:'Recebimentos (Entradas)',mod:'COMPRAS'},
   ]},
@@ -316,6 +317,7 @@ const SCREENS={
   caixa:{title:'Caixa',load:()=>loadCaixa()},
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
   acordos:{title:'Acordos de Renegociação',load:()=>loadAcordos()},
+  demanda:{title:'Demanda / Sugestão de Compra',load:()=>loadDemanda()},
   pedidos_compra:{title:'Pedidos de Compra',load:()=>loadPedidosCompra()},
   recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},
