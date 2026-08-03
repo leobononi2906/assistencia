@@ -1,178 +1,163 @@
-# Plano — Migração da Assistência para o novo modelo Umbler (fonte única)
+# Plano — Migrar o Umbler do CRM Atacado (stonnidist-v2) para o modelo de fonte única
 
-> Documento de planejamento. **Nada de código do CRM foi alterado.** Objetivo:
-> entender o que existe hoje e planejar a troca da ingestão da assistência para o
-> modelo de **fonte única** da Umbler. Data: 03/08/2026.
-> Projeto Supabase: `vishxwdxqiygbxmtpfoy`.
-
----
-
-## 1. O que é o CRM da Assistência (não muda)
-
-App estático (`index.html` + `assistencia.js` + `rede-autorizada.js`) que loga no
-Supabase e **lê**:
-
-| O front lê | De onde vem |
-|---|---|
-| Kanban / lista / cards de chamados | view **`assist_kanban`** (sobre `assist_chamados`) |
-| KPIs e índice de defeito | views `assist_kpis`, `assist_indice_defeito` |
-| Detalhe do chamado + "Conversa WhatsApp" | `assist_chamados` + `assist_followups` (filtra `tipo='whatsapp'` / `origem='whatsapp'`) |
-| Banner "chamados novos" | `assist_chamados` com `umbler_conversa_id IS NOT NULL` |
-| Lookups (status, setor, prioridade, defeito, causa…) | `assist_status`, `assist_setores`, etc. |
-
-**Contrato de leitura que NÃO pode quebrar:**
-- `assist_followups` de WhatsApp gravados com `tipo='whatsapp'`, `origem='Umbler'`,
-  `umbler_mensagem_id` preenchido.
-- `assist_chamados` com `umbler_conversa_id`, `telefone_normalizado`, `nome_contato`,
-  `cliente_id_erp/nome_erp`, `status_id`, `setor_responsavel_id`, `data_ultimo_followup`,
-  campos `*_umbler` e `tags_umbler`.
-- A view `assist_kanban` continua sendo a única porta de entrada de leitura.
-
-> A migração precisa manter **exatamente** essas colunas populadas. Se isso for
-> respeitado, o front **não muda uma linha**.
+> Planejamento. **Nenhum código do CRM (`stonnidist-v2`) foi alterado.** Este doc só
+> entende o que existe e planeja a troca do Umbler do **atacado** para o **modelo de
+> fonte única** (`umbler-intake`) já usado pela assistência. Data: 03/08/2026.
+> Supabase: `vishxwdxqiygbxmtpfoy`.
+>
+> ⚠️ Três coisas SEPARADAS, não confundir:
+> - **Assistência** (repo `assistencia`) — já migrado, tabelas `assist_*`. Fora deste plano.
+> - **CRM Atacado = Umbler atacado** (repo `stonnidist-v2`) — **É O ALVO DESTE PLANO.**
+> - **Ecommerce** (`Ecomm_UMBLER`) — já roteado pela fonte única. Fora deste plano.
 
 ---
 
-## 2. Como a Umbler está implementada hoje
+## 1. O que é o CRM Atacado (não muda)
 
-### 2.1 Fonte única (modelo NOVO — já roda no banco)
-Aplicação Umbler **"Geral"** → Edge Function **`umbler-intake`** (`verify_jwt=false`):
+App HTML/JS puro (`stonnidist-v2`, deploy Vercel na `main`). Login Supabase. Só **lê**
+do banco. O que ele usa do Umbler:
 
-1. Grava o **payload cru** em `umbler_eventos` (dedup por `event_id`) — nada se perde.
-2. Faz **parse** e upsert em `umbler_conversas` (por `id_conversa`) e
-   `umbler_mensagens` (por `event_id`).
-3. Carimba cada registro com **`segmento`**, resolvido pelo de-para
-   **`umbler_canal_segmento`** (`id_canal → segmento`). Canal novo entra como
-   `pendente` (classificação manual depois).
-4. **Roteia por segmento** reencaminhando o cru para a função do setor:
-   - `assistencia` → `assistencia-umbler-webhook`
-   - `ecommerce` → `Ecomm_UMBLER`
-   - `atacado` → `UMBLERATC` (desligado por enquanto)
+| Onde (`js/`) | Lê de | Pra quê |
+|---|---|---|
+| `data.js loadUmbler` | `atac_umbler_contatos` (`nao_comercial=false`) | Fila **"Contatos Sem Tratativa"** (lead sem vínculo no ERP) |
+| `data.js loadContatos` | `atac_umbler_contatos` (período) | **Esforço por vendedor** (Falados/Atendimentos no ranking) |
+| `data.js loadDetalhe` | `atac_umbler_contatos` por telefone | Umbler no drawer do cliente |
+| `data.js loadUmblerVendMap` | `atac_umbler_vendedor` | De-para atendente Umbler → vendedor ERP |
+| `umbler.js` | escreve `atac_cliente_telefones`, `atac_cliente_vendedor`, `atac_clientes` | Vincular contato a cliente / criar lead |
 
-De-para atual (`umbler_canal_segmento`): `SUPORTE STONNI → assistencia`;
-`OFICIAL LF/LV → ecommerce`; canais ATAC/Marketing ainda `pendente`.
+**Modelo de dados do atacado é LEVE:** `atac_umbler_contatos` = **1 linha por telefone**
+(upsert por `telefone`), não é log de mensagem. Guarda: último contato, atendente, inbox,
+tags, `nao_comercial` + motivo, e já tem coluna `id_conversa_umbler`. Volume: **1656
+contatos** (796 comerciais). `atac_umbler_vendedor`: 11 mapeamentos.
 
-Volume atual: `umbler_eventos` ~1518, `umbler_conversas` ~176, `umbler_mensagens` ~1336.
-
-### 2.2 Assistência (modelo VELHO — ainda em produção)
-`assistencia-umbler-webhook` recebe o cru do intake e **re-parseia o mesmo payload**
-para escrever em `assist_chamados` + `assist_followups`. Regras de negócio que ela
-carrega hoje:
-
-- **Bloqueio de número** (`assist_numeros_bloqueados` por `telefone_norm` ativo).
-- **Direção**: heurística `isOutgoing` (Direction/Type). Saída não abre chamado.
-- **TAG → status**: `EM ATENDIMENTO`/`ATENDIMENTO` → status "Em atendimento".
-- **Vínculo cliente ERP** por telefone via `assist_clientes_telefone_lookup` (`like`).
-- **Abertura**: status default "Novo", setor default "Garantia", upsert por
-  `umbler_conversa_id` (unique index FULL — corrigido em 31/07, antes era parcial e
-  quebrava o `ON CONFLICT`).
-- Grava `assist_followups` (`tipo='whatsapp'`, `origem='Umbler'`).
-
-`umbler-backfill-assist` (cron 1/min) reprocessa `umbler_eventos` de segmento
-`assistencia` ainda não roteados, chamando de novo o webhook (idempotente por
-`umbler_mensagem_id`).
-
-### 2.3 Diagnóstico
-O parse acontece **duas vezes** sobre o mesmo payload: uma no `intake` (→ `umbler_mensagens`)
-e outra no `assistencia-umbler-webhook` (→ `assist_*`). Dois pontos de verdade, duas
-chances de divergir. `umbler_mensagens` já tem `direcao`, `conteudo`, `nome_atendente`,
-`tags` prontos — o webhook está reinventando isso.
+**Contrato de leitura que NÃO pode quebrar:** `atac_umbler_contatos` precisa continuar
+com as colunas `telefone, nome_contato, ultimo_contato, nome_atendente,
+id_atendente_umbler, inbox_umbler, tags, nao_comercial, motivo_nao_comercial`,
+1 linha por telefone, comercial = `nao_comercial=false`.
 
 ---
 
-## 3. Modelo alvo
+## 2. Como o Umbler do atacado funciona HOJE (modelo velho)
 
-**Assistência consome a fonte única.** `assist_chamados`/`assist_followups` passam a ser
-**projeção** de `umbler_conversas` + `umbler_mensagens` (segmento `assistencia`), em vez
-de re-parse do payload cru. A view `assist_kanban` e o front continuam idênticos.
+App Umbler **próprio do atacado** → webhook direto na Edge Function **`UMBLERATC`**
+(`verify_jwt=false`). **NÃO passa pela fonte única.** Prova no banco:
+`umbler_conversas` com `segmento='atacado'` = **0**; canais ATACADO/JOÃO/GUILHERME/ANA/
+IGUI/MARKETING ainda `pendente` no de-para `umbler_canal_segmento`.
+
+Regras de negócio que o `UMBLERATC` carrega (precisam sobreviver à migração):
+1. **Segmentação por TAG:** tags `ECOMMERCE` / `ASSISTENCIA` → `nao_comercial=true` (não é
+   atacado). Correção do lead de ECOMMERCE que foi etiquetado DEPOIS da 1ª mensagem.
+2. **Atendente:** `id_membro` → `atac_umbler_vendedor.id_membro_umbler`; fallback por
+   inbox exclusivo (inbox com 1 vendedor ativo só). Inbox geral "ATACADO" fica sem dono.
+3. **Não sobrescrever** `nao_comercial=true` manual com `false`; não apagar atendente com vazio.
+4. **Auto-vínculo ERP** via RPC **`buscar_cliente_por_telefone`** (⚠️ RPC do ATACADO,
+   busca `atac_clientes` — NÃO é a `erp_cliente_por_telefone` da assistência).
+5. **Upsert por `telefone`**.
+
+---
+
+## 3. O modelo NOVO (fonte única) — como a assistência já faz
+
+App Umbler **"Geral"** → **`umbler-intake`** grava tudo em:
+`umbler_eventos` (cru, dedup por `event_id`), `umbler_conversas` (1/conversa),
+`umbler_mensagens` (1/mensagem). Carimba `segmento` pelo de-para **por CANAL**
+(`umbler_canal_segmento: id_canal → segmento`) e **roteia** pro webhook do setor.
+Hoje o roteamento do atacado está **comentado**: `// atacado: 'UMBLERATC'`.
+
+**Diferença conceitual crítica:** fonte única segmenta **por CANAL**; o `UMBLERATC`
+segmenta **por TAG**. Precisa conciliar (ver §5).
+
+---
+
+## 4. Modelo alvo do atacado
+
+Atacado passa a receber pela **fonte única** (`umbler-intake`), e `atac_umbler_contatos`
+vira **projeção** de `umbler_conversas` (segmento `atacado`) + as regras do §2. O CRM
+**não muda** — continua lendo `atac_umbler_contatos`.
 
 ```
-Umbler "Geral" ─▶ umbler-intake ─▶ umbler_eventos
-                                   umbler_conversas   ──┐
-                                   umbler_mensagens   ──┤ (segmento=assistencia)
-                                                        ▼
-                                             PROJETOR (regras de negócio)
-                                                        ▼
-                                        assist_chamados + assist_followups
-                                                        ▼
-                                            assist_kanban  ──▶  CRM (sem mudança)
+Umbler "Geral" ─▶ umbler-intake ─▶ umbler_eventos / umbler_conversas / umbler_mensagens
+                     (segmento por canal)          │  (segmento=atacado)
+                                                    ▼
+                                     PROJETOR atacado (regras do UMBLERATC)
+                                                    ▼
+                                          atac_umbler_contatos  ──▶  CRM (sem mudança)
 ```
 
-### Duas opções de projetor
-- **A) Edge Function `assist-projetar` (recomendado).** Lê `umbler_mensagens` novas de
-  segmento `assistencia` e aplica as regras (bloqueio, tag→status, cliente ERP, setor
-  Garantia, upsert por conversa). Disparada pelo `intake` logo após gravar (substitui a
-  rota atual) e/ou por cron de segurança. Lógica de negócio fica **em um lugar só**, em
-  TS, fácil de versionar.
-- **B) Trigger no banco** `AFTER INSERT ON umbler_mensagens`. Sem edge function, mas
-  espalha regra de negócio (busca ERP, bloqueio) em PL/pgSQL — mais difícil de manter.
+### Duas opções
+- **A) Reusar o `UMBLERATC` como projetor (menor risco, recomendado pra 1ª fase).**
+  Classificar os canais atacado no de-para e **ligar a rota** `atacado: 'UMBLERATC'` no
+  intake. O `UMBLERATC` continua igual (recebe o mesmo payload cru, agora vindo do intake
+  em vez do app próprio) e segue populando `atac_umbler_contatos`. Ganho imediato: todo
+  contato atacado passa a existir também em `umbler_conversas/mensagens` (log completo,
+  histórico de mensagem que hoje o atacado NÃO tem).
+- **B) Projetor novo lendo `umbler_conversas` (fim de estado).** Move as regras do §2 pra
+  um projetor que lê a fonte única; aposenta o `UMBLERATC`. Só depois da fase A estável.
 
-**Recomendação: opção A.** É a menor mudança de mentalidade em relação ao que já existe
-e mantém as regras testáveis.
-
----
-
-## 4. Passo a passo da migração (sem tocar no front do CRM)
-
-1. **Manter o webhook velho ligado** durante toda a transição (rollback trivial).
-2. **Criar `assist-projetar`** consumindo `umbler_mensagens` (segmento `assistencia`,
-   `direcao='cliente'` = incoming). Reaproveitar as regras do webhook:
-   bloqueio de número, TAG→status, upsert por `umbler_conversa_id`, setor "Garantia",
-   status "Novo". **Trocar** a busca de cliente para a RPC canônica
-   `erp_cliente_por_telefone(p_tel)` (unifica DDI 55 e 9º dígito — o webhook velho ainda
-   usa `like` na view, que é mais frágil).
-3. **Shadow run:** rodar o projetor sem cutover, comparando contagem/linhas geradas
-   contra o que o webhook produz (ex.: projetar num schema/tabela espelho ou só logar
-   diffs). Validar que `assist_followups` e `assist_chamados` saem idênticos.
-4. **Backfill idempotente** das 176 conversas / 1336 mensagens já em `umbler_*`
-   (dedup por `umbler_mensagem_id` / `umbler_conversa_id`).
-5. **Cutover:** no `umbler-intake`, trocar a rota `assistencia` de
-   `assistencia-umbler-webhook` para `assist-projetar` (ou deixar o intake só gravar e o
-   projetor rodar por cron/trigger). Desligar `umbler-backfill-assist`.
-6. **Front do CRM:** **zero mudança.** Continua lendo `assist_kanban` / `assist_followups`.
-   Esse é o critério de sucesso.
-7. **Aposentar** `assistencia-umbler-webhook` só depois de alguns dias verdes.
+**Recomendação:** fazer **A primeiro** (ligar na fonte única sem mexer na lógica), medir,
+depois avaliar **B**.
 
 ---
 
-## 5. Riscos e pontos de atenção
+## 5. Passo a passo (sem tocar no repo do CRM)
 
-- **Contrato de leitura** (seção 1): se `assist_followups` deixar de sair com
-  `tipo='whatsapp'` / `origem='Umbler'` / `umbler_mensagem_id`, a aba "Conversa WhatsApp"
-  quebra. O projetor precisa replicar isso literalmente.
-- **Direção:** usar `umbler_mensagens.direcao` (`cliente`/`empresa`) no lugar da heurística
-  `isOutgoing`. Mensagem de saída **não abre** chamado — só muda status por tag.
-- **Idempotência:** dedup por `event_id` (mensagem) e `umbler_conversa_id` (chamado, unique
-  index FULL já existe). Backfill e reprocesso não podem duplicar followup.
-- **Cliente ERP:** padronizar na RPC `erp_cliente_por_telefone` (o webhook velho usa `like`
-  na view — manter os dois divergiria o vínculo).
-- **Canais `pendente`:** enquanto ATAC/Marketing não forem classificados, não entram na
-  assistência — ok, mas revisar o de-para antes do cutover.
-- **`assist_webhook_debug`:** o webhook grava tudo lá (~490 linhas). No modelo novo o cru
-  já vive em `umbler_eventos`; pode-se aposentar o debug próprio.
-
----
-
-## 6. ⚠️ Segurança (fora do escopo da migração, mas obrigatório sinalizar)
-
-O advisor do Supabase acusa **RLS desabilitado em 138 tabelas**, incluindo
-`umbler_eventos`, `umbler_conversas`, `umbler_mensagens`, `umbler_canal_segmento` e as
-`assist_*`. Com RLS off, **qualquer um com a anon key lê/grava todas as linhas** — inclui
-telefones, nomes e conteúdo de conversa (PII). Recomendação: habilitar RLS + policies
-antes/junto da migração. **Não aplicar automaticamente** (ligar RLS sem policy bloqueia o
-acesso do app) — decisão e policies com o dono.
+1. **Classificar os canais do atacado** em `umbler_canal_segmento`: `ATACADO`, `JOÃO ATAC`,
+   `GUILHERME ATAC`, `ANA ATAC`, `IGUI ATAC` → `segmento='atacado'`. Decidir `MARKETING`
+   (provável `pendente`/próprio). Hoje todos estão `pendente`.
+2. **Apontar o app Umbler do atacado para a Aplicação "Geral"** (ou o webhook do intake),
+   deixando de bater direto no `UMBLERATC`. Assim o intake vira o único receptor.
+3. **Ligar a rota** no `umbler-intake`: `atacado: 'UMBLERATC'` (hoje comentada).
+4. **Conciliar segmentação canal × tag (o ponto sensível):** no modelo novo o ecommerce tem
+   canais próprios (OFICIAL LF/LV). Mas o `UMBLERATC` ainda filtra por tag
+   `ECOMMERCE/ASSISTENCIA`. Manter o filtro por tag no `UMBLERATC` durante a fase A (defesa
+   em profundidade). Na fase B, decidir se a segmentação passa a ser 100% por canal.
+5. **Idempotência / não duplicar:** `atac_umbler_contatos` é upsert por `telefone` → reprocesso
+   é seguro. Preencher `id_conversa_umbler` (coluna já existe) com `umbler_conversas.id_conversa`.
+6. **Backfill opcional:** reprocessar `umbler_eventos` de segmento atacado (quando existirem)
+   pro `UMBLERATC`, nos moldes do `umbler-backfill-assist` da assistência.
+7. **CRM (`stonnidist-v2`): ZERO mudança.** Continua lendo `atac_umbler_contatos`. Critério
+   de sucesso.
+8. **Rollback trivial:** reapontar o app do atacado de volta pro webhook `UMBLERATC` direto.
 
 ---
 
-## 7. Inventário de referência
+## 6. Riscos e atenção
 
-**Edge Functions (Umbler):** `umbler-intake` (receptor único), `assistencia-umbler-webhook`
-(legado assistência), `Ecomm_UMBLER` (ecommerce), `UMBLERATC` (atacado, off),
-`umbler-backfill-assist` (cron reprocesso).
+- **Ordem de ativação:** o comentário no intake diz *"atacado POR ÚLTIMO"*. Ligar só depois
+  de assistência e ecommerce estáveis (estão).
+- **Segmentação dupla (canal × tag):** maior risco. Um contato no canal ATACADO com tag
+  ECOMMERCE precisa continuar caindo como `nao_comercial`. Manter o filtro de tag do
+  `UMBLERATC` na fase A resolve.
+- **Inbox/atendente:** o de-para `atac_umbler_vendedor` usa `inbox_umbler` e `id_membro_umbler`.
+  A fonte única passa `Channel.Name` (=inbox) e `LastOrganizationMember.Id` (=id_membro) —
+  compatível com o que o `UMBLERATC` já lê. Conferir que o nome do canal bate.
+- **RPC certa:** manter `buscar_cliente_por_telefone` (atacado). NÃO trocar pela
+  `erp_cliente_por_telefone` (assistência) — buscam tabelas diferentes.
+- **Volume:** 1656 contatos hoje; a fila "Sem Tratativa" (796 comerciais) não pode inflar
+  nem sumir no cutover — comparar contagem antes/depois.
 
-**Tabelas fonte única:** `umbler_eventos`, `umbler_conversas`, `umbler_mensagens`,
-`umbler_canal_segmento`.
+---
 
-**Tabelas/views assistência:** `assist_chamados`, `assist_followups`, `assist_kanban`,
-`assist_kpis`, `assist_indice_defeito`, `assist_numeros_bloqueados`, lookups `assist_*`,
-`assist_clientes_telefone_lookup`, RPC `erp_cliente_por_telefone`.
+## 7. ⚠️ Segurança (sinalização obrigatória)
+
+Advisor do Supabase: **RLS desabilitado em 138 tabelas**, incluindo `atac_umbler_contatos`,
+`atac_umbler_vendedor`, `atac_cliente_telefones`, `atac_clientes` e as `umbler_*`. Com RLS
+off, qualquer um com a anon key lê/grava tudo (telefones, nomes, tags — PII). Recomendo
+habilitar RLS + policies. **Não aplicar automático** (ligar RLS sem policy trava o app) —
+decisão do dono.
+
+---
+
+## 8. Inventário de referência
+
+**Edge Functions:** `umbler-intake` (receptor único), `UMBLERATC` (webhook atacado, hoje
+recebe direto do app próprio), `Ecomm_UMBLER` (ecommerce, já roteado), `assistencia-umbler-webhook`
+(assistência, já roteado).
+
+**Fonte única:** `umbler_eventos`, `umbler_conversas`, `umbler_mensagens`, `umbler_canal_segmento`.
+
+**Atacado (CRM):** `atac_umbler_contatos` (1/telefone, 1656), `atac_umbler_vendedor` (de-para, 11),
+`atac_cliente_telefones`, `atac_cliente_vendedor`, `atac_clientes`, RPC `buscar_cliente_por_telefone`.
+
+**Repo CRM (só leitura):** `leobononi2906/stonnidist-v2` — `js/umbler.js`, `js/data.js`
+(`loadUmbler`/`loadContatos`/`loadUmblerVendMap`), `_HANDOFF.md`, `_PROGRESSO.md`.
