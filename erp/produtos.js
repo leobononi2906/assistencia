@@ -197,6 +197,8 @@ async function pdSalvarIdent(){
     if(error) throw error;
     const novo=!pdProdutoId;
     pdProdutoId=Number(data);
+    // preços em modo markup (não-fixos) seguem o custo — recalcula após salvar a identidade
+    try{ await sb.rpc('erp_precos_recalcular_margem',{p_id_produto:pdProdutoId}); }catch(_){}
     toast(novo?'Produto criado (#'+pdProdutoId+')':'Identidade salva','ok');
     if(novo){ pdEditor(pdProdutoId); } // recarrega já em modo edição (habilita empresa/tabs)
     else { pdFull=await pdCarregar(pdProdutoId, pdEmpresa); }
@@ -209,21 +211,45 @@ async function pdSalvarIdent(){
 }
 window.pdSalvarIdent=pdSalvarIdent;
 
-/* ---- Preço por empresa ---- */
+/* ---- Preço por empresa (custo → markup → venda; tag Preço fixo; compartilhamento) ---- */
+function pdCustoAtual(){ return Number(pdFull&&pdFull.produto&&pdFull.produto.preco_custo)||0; }
+function pdCalcVenda(t){ const custo=pdCustoAtual(); const m=Number(($('#pp-margem-'+t)||{}).value);
+  const v=$('#pp-preco-'+t); if(!v) return; if(custo>0 && !isNaN(m)) v.value=(Math.round(custo*(1+m/100)*100)/100); }
+function pdCalcMarkup(t){ const custo=pdCustoAtual(); const val=Number(($('#pp-preco-'+t)||{}).value);
+  const m=$('#pp-margem-'+t); if(!m) return; if(custo>0 && !isNaN(val)) m.value=(Math.round((val/custo-1)*10000)/100); }
+window.pdCalcVenda=pdCalcVenda; window.pdCalcMarkup=pdCalcMarkup;
+
 async function pdRenderPreco(){
   const body=$('#pd-tab-body');
   if(!pdProdutoId){ body.innerHTML='<div class="empty">Salve a identidade do produto primeiro.</div>'; return; }
   const tabelas=await lookup('tabelas_preco');
   const precos=(pdFull&&pdFull.precos)||[];
+  const custo=pdCustoAtual();
   const mapa={}; precos.forEach(pp=>mapa[pp.id_tabela_preco]=pp);
-  let html='<div style="font-size:12px;color:hsl(var(--text-muted));margin-bottom:10px">Preços da empresa selecionada, por tabela de preço.</div>';
-  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Tabela</th><th>Tipo cálculo</th><th>Margem %</th><th>Preço venda</th><th></th></tr></thead><tbody>';
+  // banner de compartilhamento
+  let banner;
+  if(pdFull&&pdFull.preco_compartilhado){
+    banner='<div class="err" style="background:hsla(38 92% 50%/.12);border-color:hsla(38 92% 50%/.35);color:hsl(var(--warning));font-weight:500">'+
+      'Esta empresa <b>usa os preços de '+esc(pdFull.preco_owner_nome||'—')+'</b>. Alterações valem para todas as empresas do mesmo grupo de preço.</div>';
+  } else {
+    const seg=(pdFull&&pdFull.preco_seguidores)||[];
+    banner='<div style="font-size:12px;color:hsl(var(--text-muted))">Preços próprios desta empresa.'+
+      (seg.length?(' Compartilhados com: <b>'+seg.map(esc).join(', ')+'</b>.'):'')+'</div>';
+  }
+  let html='<div class="toolbar" style="margin-bottom:6px"><div>'+banner+'</div><div class="spacer"></div>'+
+    '<button class="btn btn-ghost btn-sm" onclick="pdComparAbrir()">Gerenciar compartilhamento</button></div>';
+  html+='<div style="font-size:12px;color:hsl(var(--text-muted));margin-bottom:8px">Custo atual: <b>'+fmtFull(custo)+'</b>. '+
+    'O markup calcula a venda; edite a venda que o markup se ajusta. <b>Preço fixo</b> trava a venda (não recalcula quando o custo mudar).</div>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Tabela</th><th>Markup %</th><th>Preço venda</th><th>Preço fixo</th><th></th></tr></thead><tbody>';
   tabelas.forEach(t=>{
     const pp=mapa[t.id]||{};
+    const fixo=String(pp.tipo_calculo||'')==='FIXO';
+    let markup=pp.margem_percentual, venda=pp.preco_venda;
+    if((markup==null||markup==='') && venda!=null && custo>0) markup=Math.round((Number(venda)/custo-1)*10000)/100;
     html+='<tr><td>'+esc(pdLabel(t))+'</td>'+
-      '<td><select id="pp-tipo-'+t.id+'"><option value="FIXO"'+(String(pp.tipo_calculo||'FIXO')==='FIXO'?' selected':'')+'>FIXO</option><option value="MARGEM"'+(pp.tipo_calculo==='MARGEM'?' selected':'')+'>MARGEM</option></select></td>'+
-      '<td><input type="number" step="0.01" style="width:90px" id="pp-margem-'+t.id+'" value="'+(pp.margem_percentual==null?'':esc(String(pp.margem_percentual)))+'"></td>'+
-      '<td><input type="number" step="0.01" style="width:120px" id="pp-preco-'+t.id+'" value="'+(pp.preco_venda==null?'':esc(String(pp.preco_venda)))+'"></td>'+
+      '<td><input type="number" step="0.01" style="width:90px" id="pp-margem-'+t.id+'" value="'+(markup==null?'':esc(String(markup)))+'" oninput="pdCalcVenda('+t.id+')"></td>'+
+      '<td><input type="number" step="0.01" style="width:120px" id="pp-preco-'+t.id+'" value="'+(venda==null?'':esc(String(venda)))+'" oninput="pdCalcMarkup('+t.id+')"></td>'+
+      '<td><label class="chk"><input type="checkbox" id="pp-fixo-'+t.id+'" '+(fixo?'checked':'')+'></label></td>'+
       '<td class="acoes"><button class="btn btn-sm" onclick="pdSalvarPreco('+t.id+')">Salvar</button></td></tr>';
   });
   html+='</tbody></table></div>';
@@ -231,7 +257,8 @@ async function pdRenderPreco(){
 }
 async function pdSalvarPreco(idTabela){
   try{
-    const payload={ tipo_calculo:$('#pp-tipo-'+idTabela).value,
+    const fixo=($('#pp-fixo-'+idTabela)||{}).checked;
+    const payload={ tipo_calculo: fixo?'FIXO':'MARGEM',
       margem_percentual:$('#pp-margem-'+idTabela).value, preco_venda:$('#pp-preco-'+idTabela).value };
     const {error}=await sb.rpc('erp_preco_empresa_salvar',
       {p_id_produto:pdProdutoId,p_id_empresa:pdEmpresa,p_id_tabela:Number(idTabela),p:payload});
@@ -241,6 +268,43 @@ async function pdSalvarPreco(idTabela){
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
 window.pdSalvarPreco=pdSalvarPreco;
+
+/* ---- Modal: compartilhamento de preços entre empresas ---- */
+async function pdComparAbrir(){
+  openModal('Compartilhamento de preços','<div class="empty">Carregando…</div>',
+    '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Fechar</button>',{push:true,wide:true});
+  pdComparRender();
+}
+window.pdComparAbrir=pdComparAbrir;
+async function pdComparRender(){
+  const b=modalBody(); if(!b) return;
+  const {data,error}=await sb.rpc('erp_empresas_precos_listar');
+  if(error){ b.innerHTML=errBox('Erro ao carregar empresas',error.message); return; }
+  const emps=Array.isArray(data)?data:[];
+  const donas=emps.filter(e=>e.propria);
+  let h='<div style="font-size:12px;color:hsl(var(--text-muted));margin-bottom:10px">Cada empresa tem preços próprios ou compartilha os de outra. Só dá para compartilhar com uma empresa de preços próprios.</div>';
+  h+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Empresa</th><th>Preços</th><th>Compartilhado com</th></tr></thead><tbody>';
+  emps.forEach(e=>{
+    const temSeg=Number(e.seguidores)>0;
+    let sel='<select onchange="pdComparDefinir('+e.id+',this.value)"><option value="">Preços próprios</option>'+
+      donas.filter(d=>d.id!==e.id).map(d=>'<option value="'+d.id+'"'+(String(e.id_empresa_precos)===String(d.id)?' selected':'')+'>Usa preços de '+esc(d.nome)+'</option>').join('')+'</select>';
+    h+='<tr><td>'+esc(e.nome)+'</td>'+
+      '<td>'+(e.propria?('<span class="b-badge b-badge-ok">próprios</span>'+(temSeg?(' <span style="font-size:11px;color:hsl(var(--text-muted))">'+e.seguidores+' seguidora(s)</span>'):'')):'<span class="b-badge b-badge-info">compartilha</span>')+'</td>'+
+      '<td>'+(temSeg?'<span style="font-size:11px;color:hsl(var(--text-muted))">tem seguidoras — realoque-as antes</span>':sel)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  b.innerHTML=h;
+}
+async function pdComparDefinir(idEmp, idDona){
+  try{
+    const {error}=await sb.rpc('erp_empresa_precos_definir',{p_id_empresa:idEmp,p_id_empresa_precos:idDona?Number(idDona):null});
+    if(error) throw error;
+    toast('Compartilhamento atualizado','ok');
+    if(pdProdutoId){ pdFull=await pdCarregar(pdProdutoId, pdEmpresa); pdTab('preco'); }
+    pdComparRender();
+  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+}
+window.pdComparDefinir=pdComparDefinir;
 
 /* ---- Fiscal por empresa (inclui reforma IBS/CBS/IS) ---- */
 async function pdRenderFiscal(){

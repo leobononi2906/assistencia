@@ -19,6 +19,12 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 - **CRUD genérico**: `public.erp_admin_tabelas` (whitelist) + `erp_list/erp_colunas/erp_upsert/erp_delete`
   alimentam a tela **Configurações** — toda tabela registrada vira cadastro editável automaticamente.
 - **Multi-empresa**: config e fiscal por empresa (`fn_config`, `produtos_fiscal_empresa`, `produtos_precos`).
+- **Preço × Fiscal (grupo × empresa)**: **fiscal é por empresa** (com fallback pro padrão global do produto).
+  **Preço é por empresa, mas com compartilhamento**: `empresas.id_empresa_precos` aponta para a empresa "dona"
+  do grupo de preço — quem compartilha lê/grava os preços da dona, e a venda (`erp_resolver_preco`) resolve pelo dono.
+  Preço editado por **markup sobre o custo** (venda = custo × (1+markup/100), edição nos dois sentidos); a tag
+  **Preço fixo** (`tipo_calculo=FIXO`) trava a venda, senão (`MARGEM`) ela recalcula quando o custo muda
+  (`erp_precos_recalcular_margem`).
 - **Acesso**: `usuarios_grupos` → `grupos_permissoes` (grupo × módulo × ação); `fn_pode`/`erp_permissoes_usuario`.
 - **Auditoria**: `erp_log` grava em `log_acessos`.
 - **Login de teste**: usuário `Leonardo`, senha `bononi123` (ambiente de teste; sem produção ainda).
@@ -29,7 +35,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 |--------|-------|-------------------|:------:|
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
 | **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
-| **Produtos** | tela única + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
+| **Produtos** | tela única (Identidade global · **Preço por empresa c/ markup + tag Preço fixo + compartilhamento** · Fiscal por empresa) + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_preco_empresa_salvar`, `erp_precos_recalcular_margem`, `erp_empresas_precos_listar/_definir`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
 | **Permissões** | 10 perfis semeados (Admin, Gestor, Vendedor Loja/Externo, Faturamento, Financeiro, Estoque, Técnico/Recepção OS, Relatórios); menu e telas filtrados por `can()`; **botões de criação escondidos por grupo** (`permBtn`) em Clientes/Produtos/Vendas/OS/Compras/Orçamentos; tela Permissões por Grupo | `erp_permissoes_usuario`, `erp_grupo_permissoes(_salvar)` | ✅ |
 | **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
@@ -76,7 +82,10 @@ acordo + UNIQUE backstop) ·
 `37` demanda de compra (`erp_demanda_listar/_filtros/_gerar_pedidos` + `erp_produto_estoque_limites`):
 análise de reposição/giro com filtros e formação do pedido agrupado por fornecedor ·
 `38` cotações de compra (`erp_cotacao_salvar/detalhe/listar/resposta_salvar/selecionar[_menor]/gerar_pedidos/status`):
-mapa comparativo de fornecedores → pedido por fornecedor (numeração COT######).
+mapa comparativo de fornecedores → pedido por fornecedor (numeração COT######) ·
+`39` preço compartilhado por empresa (`empresas.id_empresa_precos` + `fn_preco_owner`; `erp_empresas_precos_listar`,
+`erp_empresa_precos_definir`; `erp_produto_full`/`erp_preco_empresa_salvar`/`erp_resolver_preco` resolvem pelo dono) ·
+`40` recálculo de preço por markup quando o custo muda (`erp_precos_recalcular_margem`; tag Preço fixo = `tipo_calculo` FIXO).
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de
