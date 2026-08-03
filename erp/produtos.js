@@ -61,6 +61,7 @@ async function pdEditor(id, opts){
     '<a class="tab active" data-t="ident" onclick="pdTab(\'ident\')">Identidade (global)</a>'+
     '<a class="tab" data-t="preco" onclick="pdTab(\'preco\')">Preço por empresa</a>'+
     '<a class="tab" data-t="fiscal" onclick="pdTab(\'fiscal\')">Fiscal por empresa</a>'+
+    (id?'<a class="tab" data-t="achegar" onclick="pdTab(\'achegar\')">A chegar</a>':'')+
     (id?'<a class="tab" data-t="mov" onclick="pdTab(\'mov\')">Movimentações</a>':'')+
     (id?'<a class="tab" data-t="abc" onclick="pdTab(\'abc\')">Curva ABC</a>':'')+
     '</div>';
@@ -89,10 +90,36 @@ function pdTab(t){
   if(t==='ident') return pdRenderIdent();
   if(t==='preco') return pdRenderPreco();
   if(t==='fiscal') return pdRenderFiscal();
+  if(t==='achegar') return pdRenderAChegar();
   if(t==='mov') return pdRenderMov();
   if(t==='abc') return pdRenderAbc();
 }
 window.pdTab=pdTab;
+
+/* ---- A chegar (compras em pedidos abertos + previsão de entrega) ---- */
+async function pdRenderAChegar(){
+  const body=$('#pd-tab-body');
+  if(!pdProdutoId){ body.innerHTML='<div class="empty">Salve o produto primeiro.</div>'; return; }
+  body.innerHTML='<div class="empty">Carregando…</div>';
+  const {data,error}=await sb.rpc('erp_produto_a_chegar',{p_id_produto:Number(pdProdutoId),p_id_empresa:null});
+  if(error){ body.innerHTML=errBox('Erro ao carregar compras a chegar',error.message); return; }
+  const d=data||{}, itens=d.itens||[];
+  let html='<div class="grid-kpi">'+
+    '<div class="metric"><div class="lbl">Qtd a chegar</div><div class="val">'+fmtNum(d.total_pendente)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Próxima previsão</div><div class="val">'+(d.proxima_previsao?fmtDate(d.proxima_previsao):'—')+'</div></div></div>';
+  html+='<p class="hint" style="margin-bottom:8px;font-size:12px;color:hsl(var(--text-muted))">Quantidade comprada ainda não recebida, por pedido de compra aberto, com a previsão de entrega.</p>';
+  html+='<div class="tbl-wrap"><table class="data"><thead><tr><th>Pedido</th><th>Fornecedor</th><th>Empresa</th><th>Previsão</th><th>Comprado</th><th>Recebido</th><th>A chegar</th><th>Status</th></tr></thead><tbody>';
+  if(!itens.length) html+='<tr><td colspan="8"><div class="empty">Nada a chegar (sem pedidos de compra abertos para este produto).</div></td></tr>';
+  itens.forEach(i=>{
+    html+='<tr><td class="mono">'+esc(i.numero||'')+'</td><td>'+esc(i.fornecedor||'')+'</td><td>'+esc(i.empresa||'')+'</td>'+
+      '<td>'+(i.data_previsao?fmtDate(i.data_previsao):'—')+'</td>'+
+      '<td class="mono">'+fmtNum(i.quantidade)+'</td><td class="mono">'+fmtNum(i.recebida)+'</td>'+
+      '<td class="mono" style="font-weight:700">'+fmtNum(i.pendente)+'</td><td>'+esc(i.status||'')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+window.pdRenderAChegar=pdRenderAChegar;
 
 /* ---- Movimentações de estoque do produto ---- */
 async function pdRenderMov(){

@@ -69,7 +69,7 @@ function epRender(){
   if(epDet){
     h+='<th>Ref.</th><th>Produto</th><th>Empresa</th><th>Centro</th><th>Saldo</th><th>Reserv.</th><th>Dispon.</th><th>Custo méd.</th><th>Valor</th>';
   }else{
-    h+='<th>Ref.</th><th>Produto</th><th>Contábil</th><th>Reserv.</th><th>Dispon.</th><th>Não-contábil</th><th>Custo méd.</th><th>Valor contábil</th>';
+    h+='<th>Ref.</th><th>Produto</th><th>Contábil</th><th>Reserv.</th><th>Dispon.</th><th>A chegar</th><th>Não-contábil</th><th>Custo méd.</th><th>Valor contábil</th>';
   }
   h+='</tr></thead><tbody>';
   epRows.forEach(r=>{
@@ -89,6 +89,8 @@ function epRender(){
           (r.grupo?('<div style="font-size:11px;color:hsl(var(--text-muted))">'+esc(r.grupo)+'</div>'):'')+'</td>'+
         '<td class="mono">'+fmtNum(r.estoque_contabil)+'</td><td class="mono">'+fmtNum(r.reservado)+'</td>'+
         '<td class="mono">'+fmtNum(r.disponivel)+'</td>'+
+        '<td class="mono"'+(Number(r.a_chegar)>0?' style="color:hsl(var(--blue-mid));font-weight:700" title="Próxima previsão: '+(r.proxima_entrada?fmtDate(r.proxima_entrada):'—')+'"':'')+'>'+
+          (Number(r.a_chegar)>0?('+'+fmtNum(r.a_chegar)+(r.proxima_entrada?(' <span style="font-size:10px;color:hsl(var(--text-muted));font-weight:400">'+fmtDate(r.proxima_entrada)+'</span>'):'')):'—')+'</td>'+
         '<td class="mono"'+(nc>0?' style="color:hsl(var(--warning));font-weight:700"':'')+'>'+(nc>0?fmtNum(nc):'—')+'</td>'+
         '<td class="mono">'+fmtNum(r.custo_medio)+'</td><td class="mono">'+fmtFull(r.valor_contabil)+'</td></tr>';
     }

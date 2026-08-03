@@ -35,7 +35,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 |--------|-------|-------------------|:------:|
 | **Login / Dashboard** | login, KPIs | `erp_login` (retorna permissões) | ✅ |
 | **Clientes** | lista + Dados/Crédito/Contatos + **Histórico** (pagamentos e movimentações) | `erp_cliente_full/salvar`, `erp_cliente_historico` | ✅ |
-| **Produtos** | tela única (Identidade global · **Preço por empresa c/ markup + tag Preço fixo + compartilhamento** · Fiscal por empresa) + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_preco_empresa_salvar`, `erp_precos_recalcular_margem`, `erp_empresas_precos_listar/_definir`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
+| **Produtos** | tela única (Identidade global · **Preço por empresa c/ markup + tag Preço fixo + compartilhamento** · Fiscal por empresa) + **A chegar** (compras + previsão) + **Movimentações** + **Curva ABC** | `erp_produto_full/salvar`, `erp_preco_empresa_salvar`, `erp_precos_recalcular_margem`, `erp_empresas_precos_listar/_definir`, `erp_produto_a_chegar`, `erp_produto_historico`, `erp_produto_curva_abc` | ✅ |
 | **Permissões** | 10 perfis semeados (Admin, Gestor, Vendedor Loja/Externo, Faturamento, Financeiro, Estoque, Técnico/Recepção OS, Relatórios); menu e telas filtrados por `can()`; **botões de criação escondidos por grupo** (`permBtn`) em Clientes/Produtos/Vendas/OS/Compras/Orçamentos; tela Permissões por Grupo | `erp_permissoes_usuario`, `erp_grupo_permissoes(_salvar)` | ✅ |
 | **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
@@ -90,7 +90,9 @@ mapa comparativo de fornecedores → pedido por fornecedor (numeração COT#####
 `erp_empresa_precos_definir`; `erp_produto_full`/`erp_preco_empresa_salvar`/`erp_resolver_preco` resolvem pelo dono) ·
 `40` recálculo de preço por markup quando o custo muda (`erp_precos_recalcular_margem`; tag Preço fixo = `tipo_calculo` FIXO) ·
 `41` centro de estoque não-contábil (`centros_estoque.contabiliza`) + posição de estoque (`erp_estoque_posicao`);
-demanda passa a ignorar centros não-contábeis (ex.: Garantia) no saldo.
+demanda passa a ignorar centros não-contábeis (ex.: Garantia) no saldo ·
+`42` "a chegar" na consulta do produto e na posição (`erp_produto_a_chegar`): qtd comprada em pedidos abertos
++ previsão de entrega, pro vendedor saber o que está chegando.
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de

@@ -11,6 +11,10 @@
 - A posição separa **estoque contábil** (centros que contam) de **não-contábil** (garantia etc.),
   e a **análise de demanda** (`erp_demanda_listar`) passou a **ignorar** centros não-contábeis
   no saldo — não sugere compra a menos por causa de peça parada em garantia.
+- **A chegar (compras em trânsito)**: a posição consolidada e a **consulta do produto** (aba "A chegar")
+  mostram a **quantidade comprada em pedidos abertos** (PENDENTE/APROVADO/ENVIADO/RECEBIDO_PARCIAL, saldo
+  não recebido) com a **previsão de entrega** — pro vendedor saber o que está chegando. Backend:
+  `erp_produto_a_chegar(produto, empresa)`; a coluna `a_chegar`/`proxima_entrada` também vem em `erp_estoque_posicao`.
 - Backend: `erp_estoque_posicao(empresa, centro, grupo, busca, só_com_saldo, detalhado)`.
 
 
