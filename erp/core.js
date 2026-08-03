@@ -270,6 +270,7 @@ const MENU=[
   ]},
   {grupo:'Compras',itens:[
     {id:'demanda',label:'Demanda / Sugestão',mod:'COMPRAS'},
+    {id:'cotacoes',label:'Cotações',mod:'COMPRAS'},
     {id:'pedidos_compra',label:'Pedidos de Compra',mod:'COMPRAS'},
     {id:'recebimentos',label:'Recebimentos (Entradas)',mod:'COMPRAS'},
   ]},
@@ -318,6 +319,7 @@ const SCREENS={
   cobranca:{title:'Cobrança',load:()=>loadCobranca()},
   acordos:{title:'Acordos de Renegociação',load:()=>loadAcordos()},
   demanda:{title:'Demanda / Sugestão de Compra',load:()=>loadDemanda()},
+  cotacoes:{title:'Cotações de Compra',load:()=>loadCotacoes()},
   pedidos_compra:{title:'Pedidos de Compra',load:()=>loadPedidosCompra()},
   recebimentos:{title:'Recebimentos (Entradas)',load:()=>loadRecebimentos()},
   solicitacoes:{title:'Solicitações de Produto',load:()=>loadSolicitacoes()},

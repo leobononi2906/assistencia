@@ -179,7 +179,8 @@ function dmResumo(){
       (fornSet.size?(' · '+fornSet.size+' fornecedor(es) → '+fornSet.size+' pedido(s)'):'')+
       (semForn?(' · <span style="color:hsl(var(--destructive))">'+semForn+' sem fornecedor</span>'):'')+'</div>'+
     '<div class="spacer" style="flex:1"></div>'+
-    (podeGerar?'<button class="btn btn-ok" onclick="dmGerarPedidos()" '+(comQtd.length?'':'disabled')+'>Gerar pedido(s) de compra</button>'
+    (podeGerar?'<button class="btn" onclick="dmCotar()" '+(comQtd.length?'':'disabled')+'>Cotar marcados</button>'+
+               '<button class="btn btn-ok" onclick="dmGerarPedidos()" '+(comQtd.length?'':'disabled')+'>Gerar pedido(s) de compra</button>'
               :'<span style="font-size:12px;color:hsl(var(--text-muted))">Sem permissão para incluir compras</span>')+'</div>';
 }
 
@@ -206,3 +207,19 @@ async function dmGerarPedidos(){
   }catch(e){ bononiLog('ERRO','DEMANDA_GERAR',{erro:e&&e.message}); toast('Erro: '+(e.message||e),'err'); }
 }
 window.dmGerarPedidos=dmGerarPedidos;
+
+async function dmCotar(){
+  const sel=dmRows.filter(r=>dmSel.has(r.id_produto) && dmEffQtd(r)>0);
+  if(sel.length===0){ toast('Marque itens e informe a quantidade','err'); return; }
+  const emp=val('#dm-emp');
+  if(!emp){ toast('Selecione a empresa para abrir a cotação','err'); return; }
+  if(!await confirmAsync('Abrir uma cotação com '+sel.length+' item(ns)? Você registra as respostas dos fornecedores na tela de Cotações.')) return;
+  try{
+    const itens=sel.map(r=>({id_produto:r.id_produto, quantidade:dmEffQtd(r)}));
+    const {data,error}=await sb.rpc('erp_cotacao_salvar',{p_cab:{id_empresa:emp,id_usuario:UID()},p_itens:itens});
+    if(error) throw error;
+    toast('Cotação criada','ok'); dmSel.clear();
+    nav('cotacoes'); setTimeout(()=>{ if(typeof ctEditor==='function') ctEditor(Number(data)); },60);
+  }catch(e){ bononiLog('ERRO','DEMANDA_COTAR',{erro:e&&e.message}); toast('Erro: '+(e.message||e),'err'); }
+}
+window.dmCotar=dmCotar;

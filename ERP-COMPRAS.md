@@ -1,8 +1,9 @@
 # ERP Bononi — Compras / Entrada
 
-Fluxo de compras (`erp/compras.js` + `erp/demanda.js`, menu **Compras**):
-**Demanda → Pedido → Recebimento** (entrada de NF) → estoque + Contas a Pagar.
-NF-e de compra fica de fora (acessório, futuro).
+Fluxo de compras (`erp/compras.js` + `erp/demanda.js` + `erp/cotacoes.js`, menu **Compras**):
+**Demanda → (Cotação) → Pedido → Recebimento** (entrada de NF) → estoque + Contas a Pagar.
+A Cotação é opcional: dá para ir da Demanda direto ao Pedido, ou passar pela Cotação quando
+quiser comparar fornecedores. NF-e de compra fica de fora (acessório, futuro).
 
 ## Telas
 - **Demanda / Sugestão de Compra** (`erp/demanda.js`) — a etapa que **antecede** o pedido:
@@ -21,6 +22,16 @@ NF-e de compra fica de fora (acessório, futuro).
     produto não tem principal, e **“Gerar pedido(s) de compra”** — agrupa por fornecedor
     e cria **um Pedido PENDENTE por fornecedor** (`erp_demanda_gerar_pedidos`, que reusa
     `erp_pedido_compra_salvar`). Sem permissão `COMPRAS/incluir`, o botão não aparece.
+- **Cotações de Compra** (`erp/cotacoes.js`) — cotação de preços entre fornecedores antes do pedido:
+  - **Cabeçalho + itens:** empresa, validade, observação e a lista de produtos a cotar (com quantidade).
+    Pode nascer vazia (manual) ou **direto da Demanda** (botão “Cotar marcados” em Demanda/Sugestão).
+  - **Mapa comparativo:** para cada fornecedor registra-se uma **resposta** (preço/prazo/condição por item)
+    via “+ Cotação de fornecedor”. A matriz mostra item × fornecedor com o **menor preço destacado**;
+    escolhe-se o vencedor por item (ou **“Selecionar menor preço”** automático).
+  - **Gerar pedido(s):** os itens selecionados viram **um Pedido de Compra por fornecedor** (reusa
+    `erp_pedido_compra_salvar`) e a cotação passa a **FINALIZADA**.
+  - **Status:** ABERTA → (ENVIADA/RESPONDIDA) → FINALIZADA (ou CANCELADA). Edição/respostas travam
+    após FINALIZADA/CANCELADA. Numeração `COT######` por empresa (advisory lock + UNIQUE backstop).
 - **Pedidos de Compra** — lista + editor (cabeçalho: empresa, fornecedor, condição, previsão,
   frete/desconto) com grade de itens. Ações: salvar, **aprovar**, **gerar recebimento** e cancelar.
   Status: PENDENTE → APROVADO/ENVIADO → RECEBIDO_PARCIAL → RECEBIDO (ou CANCELADO).
@@ -49,6 +60,12 @@ subgrupo/fornecedor/busca/urgência; modos reposição/giro/ambos), `erp_demanda
 validação máx≥mín) e `erp_demanda_gerar_pedidos` (agrupa por fornecedor e cria os pedidos).
 Consumo = `estoque_movimentos.tipo='SAIDA'` excluindo transferências.
 As funções órfãs `erp_demanda_compra`/`erp_demanda_abc` (sem tela) foram substituídas por esta suíte.
+
+**Cotações (migration 38):** `erp_cotacao_salvar/detalhe/listar` (cabeçalho+itens, numeração COT######),
+`erp_cotacao_resposta_salvar` (resposta de um fornecedor, preço/prazo/condição por item),
+`erp_cotacao_selecionar`/`erp_cotacao_selecionar_menor` (vencedor por item; auto menor preço),
+`erp_cotacao_gerar_pedidos` (um pedido por fornecedor, reusa `erp_pedido_compra_salvar`) e
+`erp_cotacao_status`. Tabelas `cotacoes`/`cotacoes_itens`/`cotacoes_respostas` (já existentes).
 
 Testado (rollback): pedido → recebimento vinculado → confirmar gerou 1 movimento de estoque,
 atualizou o custo do produto e gerou 4 parcelas em Contas a Pagar; status propagados corretamente.
