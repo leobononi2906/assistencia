@@ -49,6 +49,9 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 ## Regras de negócio respeitadas
 - **Vendas não lançam produto direto**: viram **solicitação**; o **estoque** atende (OS e Venda). Gôndola é
   controle à parte (o vendedor lança direto só a quantidade da gôndola).
+- **Baixa de estoque no FATURAMENTO**: ao mudar a Venda/OS para `FATURADA`, um trigger baixa o estoque
+  pelo helper único `erp_baixar_estoque` (kardex + valida saldo + aborta se faltar). É **idempotente**:
+  só baixa itens com `movimentou_estoque=false`, então não baixa 2× quando a peça já saiu na separação.
 - **Demanda e Pedido de Compra são complementares**: o comprador não digita o pedido no escuro — abre
   **Compras → Demanda/Sugestão**, filtra por produto/grupo/subgrupo/fornecedor, analisa a necessidade
   (reposição por mín/máx ou giro por consumo/cobertura), ajusta mínimo/máximo e a quantidade, e daí
@@ -92,7 +95,14 @@ mapa comparativo de fornecedores → pedido por fornecedor (numeração COT#####
 `41` centro de estoque não-contábil (`centros_estoque.contabiliza`) + posição de estoque (`erp_estoque_posicao`);
 demanda passa a ignorar centros não-contábeis (ex.: Garantia) no saldo ·
 `42` "a chegar" na consulta do produto e na posição (`erp_produto_a_chegar`): qtd comprada em pedidos abertos
-+ previsão de entrega, pro vendedor saber o que está chegando.
++ previsão de entrega, pro vendedor saber o que está chegando ·
+`43` conferência de recebimento (`erp_entrada_conferir`/`erp_entrada_finalizar`/`erp_entrada_dados`):
+confere qtd recebida × NF (conferência cega opcional), aponta divergências e dá entrada no estoque +
+Contas a Pagar ao finalizar · `44` estoque parado (`erp_estoque_parado`): produtos com saldo contábil e
+sem saída no período (valor parado × dias) · `45` fix `erp_log` (recria a sobrecarga de 7 args que sumiu;
+venda/orçamento/encomenda voltam a salvar) · `46` baixa de estoque no **faturamento** de Venda/OS
+(trigger + helper `erp_baixar_estoque`: grava kardex, valida saldo, aborta se faltar e é idempotente —
+não baixa 2× se a peça já saiu na separação).
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de
