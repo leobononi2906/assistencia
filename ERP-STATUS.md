@@ -40,6 +40,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
+| **Pátio / Serviços** | grupo próprio (fora do comercial), telas de pátio que cruzam várias OS: **Distribuição** (serviço/produção → técnico), **Precificação** (gestão: soma horas apontadas total × faturável, precifica manual), **Apontamento** (colaborador registra horas — tela simples), **Solicitações** (produto p/ OS) | `os_distribuicao_dados`, `os_distribuir_servico/_producao`, `os_precificacao_dados`, `os_apontamento_salvar`, `os_apontamento_faturavel`, `os_avaliar_servicos`, `os_solicitacoes_listar`, `erp_solicitar_produto` (`erp/servicos.js`) | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
 | **Compras / Entrada** | **Demanda/Sugestão** + **Cotações** + Pedidos + Recebimentos | `erp_demanda_*`, `erp_produto_estoque_limites`, `erp_cotacao_*` (mapa comparativo → pedido), `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | **Posição** (contábil × não-contábil), Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `erp_estoque_posicao`, `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
@@ -102,7 +103,9 @@ Contas a Pagar ao finalizar · `44` estoque parado (`erp_estoque_parado`): produ
 sem saída no período (valor parado × dias) · `45` fix `erp_log` (recria a sobrecarga de 7 args que sumiu;
 venda/orçamento/encomenda voltam a salvar) · `46` baixa de estoque no **faturamento** de Venda/OS
 (trigger + helper `erp_baixar_estoque`: grava kardex, valida saldo, aborta se faltar e é idempotente —
-não baixa 2× se a peça já saiu na separação).
+não baixa 2× se a peça já saiu na separação) ·
+`47` Pátio/Serviços — precificação por horas (`os_apontamentos.faturavel`; `os_precificacao_dados` soma
+horas apontadas total × faturável por serviço; `os_apontamento_faturavel` aprova/reprova; `os_solicitacoes_listar`).
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de

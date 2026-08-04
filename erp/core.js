@@ -261,6 +261,12 @@ const MENU=[
     {id:'vendas',label:'Vendas',mod:'VENDAS'},
     {id:'os',label:'Ordens de Serviço',mod:'OS'},
   ]},
+  {grupo:'Pátio / Serviços',itens:[
+    {id:'distribuicao',label:'Distribuição',mod:'OS'},
+    {id:'precificacao',label:'Precificação',mod:'OS'},
+    {id:'apontamento',label:'Apontamento',mod:'OS'},
+    {id:'os_solicitacoes',label:'Solicitações',mod:'OS'},
+  ]},
   {grupo:'Financeiro',itens:[
     {id:'cr',label:'Contas a Receber',mod:'FINANCEIRO_CR'},
     {id:'cp',label:'Contas a Pagar',mod:'FINANCEIRO_CP'},
@@ -314,6 +320,10 @@ const SCREENS={
   orcamentos:{title:'Orçamentos de Venda',load:()=>loadOrcamentos()},
   vendas:{title:'Vendas',load:()=>loadVendas()},
   os:{title:'Ordens de Serviço',load:()=>loadOS()},
+  distribuicao:{title:'Distribuição de Serviços',load:()=>loadDistribuicao()},
+  precificacao:{title:'Precificação de Serviços',load:()=>loadPrecificacao()},
+  apontamento:{title:'Apontamento de Horas',load:()=>loadApontamento()},
+  os_solicitacoes:{title:'Solicitações de Produto (OS)',load:()=>loadOsSolicitacoes()},
   cr:{title:'Contas a Receber',load:()=>loadCR()},
   cp:{title:'Contas a Pagar',load:()=>loadCP()},
   caixa:{title:'Caixa',load:()=>loadCaixa()},
