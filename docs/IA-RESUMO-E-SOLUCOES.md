@@ -33,57 +33,67 @@ cliente com a solução certa** no Notion, e o vídeo vem junto.
 
 ---
 
-## 2. POC em um chamado REAL (provado em 04/08/2026)
+## 2. POC AO VIVO (provada em 04/08/2026)
 
-Chamado real puxado do `umbler_mensagens` (canal **SUPORTE STONNI**), conversa
-`anDN6VML3ICHGNyL` — cliente **Zelão** (parceiro), sobre a geladeira do cliente
-final **Elias**.
+Chamado real do `umbler_mensagens` (canal **SUPORTE STONNI**), conversa
+`anDkfthp-WoTgdbt` — cliente **Leonardo Bomfim**, **gerador que não dá partida**
+(o cliente depende do gerador para ligar o caminhão). **Nesta POC a imagem foi
+lida de verdade por visão** (baixada do S3 da Umbler) e a solução veio **de
+verdade do Notion** (página "Gerador"). Só o áudio não foi transcrito (em
+produção é uma chamada Whisper — ver seção 3).
 
-### 2.1. O que a IA leu (a conversa crua, resumida)
-- "Pifou dinovo" / "Deu bom não"
-- "Ela já veio duas vezes / E não resolveu"
-- "Essa geladeira é aquela de semana passada? A do Elias?" → "Sim, do Elias"
-- (empresa) "Ele falou que ela parou?"
-- "Até o ideal seria bom mexer aqui, porque uma vez que mexeu aqui e não foi
-  solucionado o problema do cliente"
-- \+ 1 áudio e 1 imagem do cliente (na POC não transcritos; em produção entram
-  no resumo — ver seção 3).
+### 2.1. O que a IA leu (dados reais)
+- **Texto (cliente):** *"como que eu vou ficar sem gerador esses dias, meu
+  caminhão não liga sem o gerador… enquanto vcs vão ver o que tá acontecendo eu
+  faço como?"* → urgência: veículo parado.
+- **Texto (empresa):** *"Pedi para o cliente abrir a frente do gerador… ver se é
+  o fusível que está queimado"* + foto *"Verifique esse fusível"*.
+- **Imagem lida por visão (real, nesta POC):** um **bloco distribuidor de
+  energia / porta-fusível** cromado, com fusível verde translúcido e terminais —
+  exatamente o ponto que o técnico mandou conferir.
+- **Resolução no fim do chat:** *"após a análise, tudo indica que o problema está
+  na placa ou no carburador… será necessário trazer o gerador para a assistência
+  para laudo e reparo em garantia."*
+- \+ vários áudios do cliente (não transcritos nesta POC).
 
-### 2.2. Resumo estruturado que a IA geraria (o "resumo_ia")
+### 2.2. Resumo estruturado que a IA gera (o "resumo_ia")
 
 ```
-PRODUTO ......... Geladeira (linha portátil / compressor)
-RECLAMAÇÃO ...... Geladeira voltou a apresentar defeito ("pifou de novo").
-                  Cliente final: Elias. Reincidente.
-DEFEITO PERCEBIDO Aparelho parou de funcionar / não gela.
-HISTÓRICO ....... Já passou 2x pela assistência e o problema NÃO foi resolvido.
-JÁ TENTADO ...... Dois reparos anteriores (sem sucesso).
-URGÊNCIA/TOM .... Frustração — reincidência; parceiro sugere reavaliar o conserto.
-FALTA INFO ...... Código de erro no display? Foto do painel? (pedir ao cliente)
+PRODUTO ......... Gerador (12/24V)
+RECLAMAÇÃO ...... Gerador não dá partida; cliente depende dele p/ ligar o caminhão.
+DEFEITO PERCEBIDO Falha na partida / não liga.
+JÁ TENTADO ...... Abrir a frente e verificar o fusível (foto conferida).
+IMAGEM .......... Bloco de fusível/distribuidor — fusível aparentemente íntegro.
+DIAGNÓSTICO ..... Não é só o fusível; indícios de placa ou carburador.
+URGÊNCIA/TOM .... Alta — veículo parado sem o gerador.
+FALTA INFO ...... Código de erro no display (Exx)?
 ```
 
-### 2.3. Soluções sugeridas (casadas com o Notion "Geladeira 30L")
+### 2.3. Soluções sugeridas (casadas com o Notion "⚡ Gerador")
 
-Ranqueadas por probabilidade, direto do banco de soluções:
+Ranqueadas por probabilidade, direto do banco de soluções (TABELA DE ERROS real):
 
-1. **Compressor (mais provável — é reincidente).** Notion: *"Compressor está
-   fazendo barulho / não gela → na maioria dos casos é o compressor; direcionar
-   à assistência, fazer troca do compressor."* Como já foram 2 reparos sem
-   sucesso, **trocar o compressor** é o caminho.
-2. **Confirmar o código de erro.** Pedir foto do display. Se **E3** → "Proteção
-   do compressor: desligar da tomada 30 min e reiniciar". Se **E1** → baixa
-   tensão (testar 110/220V). *(TABELA DE ERROS do Notion.)*
-3. **Vídeo para mandar ao cliente** (sai junto da solução no Notion): troca do
-   sensor `https://youtu.be/1jbzjJSyBlg` — se o diagnóstico apontar sensor.
+1. **E04 – Falha na partida (mais provável).** Checklist do Notion: 1) bateria
+   18–32V; 2) combustível; 3) **carburador e sistema de combustível**; 4) vela de
+   ignição; 5) partida manual → automático. *(Bate com o diagnóstico do próprio
+   técnico: carburador.)*
+2. **Confirmar o código no display:** E20 = bateria <16V; E10 = voltagem alta;
+   E80 = só alerta de troca de óleo (não é defeito).
+3. **Vídeo para mandar ao cliente** (já no Notion, junto do produto): *"primeira
+   partida do gerador"* `https://www.youtube.com/shorts/1bKsBfcMeqY` e os vídeos
+   de **teste 12V/24V**.
+4. Se descartar fusível + checklist E04 → **encaminhar à assistência p/ laudo** —
+   que foi exatamente a decisão do técnico.
 
-**Conclusão do atendente, pronta:** produto reincidente (2 reparos), sintoma =
-parou/não gela → **abrir troca de compressor** e, antes, **confirmar o código de
-erro no display** com uma foto. Isso é exatamente o tipo de resposta que o Codex
-deu manualmente essa semana — só que **automática e no chamado**.
+**Conclusão pronta pro atendente:** não é só o fusível (imagem confere) → seguir
+o checklist E04 (foco em **carburador**), mandar o vídeo da primeira partida e,
+não resolvendo, abrir laudo em garantia. Isso é o mesmo que o Codex fez manual
+essa semana — só que **automático e já dentro do chamado**.
 
-> Esse é o valor: o atendente abre o chamado e **já encontra** o resumo + as 3
-> soluções mais prováveis + o vídeo certo, sem ler a conversa toda nem procurar
-> no Notion.
+> Esse é o valor: o atendente abre o chamado e **já encontra** o resumo + as
+> soluções mais prováveis + o vídeo certo, sem ler a conversa toda nem garimpar
+> no Notion. **Tudo nesta POC é rastreável a dado real** (conversa + imagem lida
+> + página do Notion + link de vídeo).
 
 ---
 
@@ -211,9 +221,12 @@ Storage é irrisório porque **não guardamos a mídia** — só o texto derivad
 ---
 
 ## Referências
-- Conversa da POC: `umbler_mensagens` / `umbler_conversas` id `anDN6VML3ICHGNyL`.
+- Conversa da POC: `umbler_mensagens` / `umbler_conversas` id `anDkfthp-WoTgdbt`
+  (gerador — imagem do fusível lida por visão). Caso extra pronto p/ transcrição:
+  `alfRp4o4ZyrR2NL9` (valmir, 11 áudios com URL válida).
 - Banco de soluções: Notion **🪛 ASSISTÊNCIA TÉCNICA** (`185bfd20…`), páginas de
-  produto (ex.: **Geladeira 30L** `24716a22…` — DEFEITOS E SOLUÇÕES + TABELA DE
-  ERROS + vídeos).
+  produto — ex.: **⚡ Gerador** (`1ba16a22…` — TABELA DE ERROS E04/E20/E10/E80 +
+  vídeos do YouTube) e **🧊 Geladeira 30L** (`24716a22…` — DEFEITOS E SOLUÇÕES +
+  TABELA DE ERROS + vídeos).
 - Arquitetura da fonte única da Umbler: `bononi-hub/docs/UMBLER-FONTE-UNICA.md`.
 - Regras gerais e anti-rajada: `C:\CLAUDE\instrucoes.md`.
