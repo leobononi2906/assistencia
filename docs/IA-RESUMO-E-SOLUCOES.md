@@ -168,6 +168,30 @@ TABELA DE ERROS     │  embedding do sintoma (pgvector)         │    (produto
 
 ---
 
+## 4b. Onde adicionar instruções para ir otimizando as soluções
+
+Três alavancas, da mais simples à mais poderosa:
+
+1. **Conhecimento por produto → edite no Notion.** Cada página de produto tem
+   DEFEITOS E SOLUÇÕES + TABELA DE ERROS + vídeos. Melhorou uma solução ou achou
+   um vídeo novo? Edita no Notion e a gente **re-sincroniza** para
+   `assist_kb_produto`. (Hoje a sincronização é manual/assistida; vira uma edge
+   function `assist-kb-sync` depois.)
+2. **Regras gerais da IA → tabela `assist_ia_regras` (linha id=1).** É o lugar
+   para regras que valem para TODOS os produtos: tom, quando escalar, "sempre
+   confirmar o código de erro antes de concluir placa/compressor", "priorizar o
+   que o cliente faz sozinho", etc. A função lê isso a cada chamado. Editável por
+   SQL agora e pela tela do painel depois. Exemplo de update:
+   ```sql
+   update public.assist_ia_regras
+     set instrucoes = instrucoes || E'\n- NOVA REGRA: ...',
+         atualizado_em = now(), atualizado_por = 'leo'
+   where id = 1;
+   ```
+3. **Aprender com chamados resolvidos (v2).** Quando um chamado fecha com
+   `defeito_id`/`causa_id`/`solucao_id`, isso é sinal real. Indexar os resolvidos
+   e alimentar as sugestões faz o sistema melhorar sozinho com o histórico.
+
 ## 5. Custo (estimativa)
 
 Volume assistência ≈ **texto 858 · áudio 136 · imagem 40 · vídeo 30** por período
@@ -197,10 +221,14 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
    `resumo_ia_em timestamptz`, `resumo_ia_modelo text` (migration
    `0001_assist_resumo_ia_e_kb_produto.sql`, aditiva).
 2. ✅ Tabela `assist_kb_produto` (cache do Notion por produto, texto puro — sem
-   embeddings). Já populada: **Gerador**, **Geladeira 30L**.
-3. ✅ Edge Function `assist-resumo-ia` (ACTIVE): `POST {chamado_id | id_conversa}`
-   → lê conversa (texto + imagem) + KB → Claude Haiku → grava `resumo_ia*` e
-   devolve `{resumo, solucoes}`.
+   embeddings). Já populada: **Gerador**, **Geladeira 30L**, **Geladeira
+   Adventure (25/40/45/55L)**, **Ar Condicionado G2/G3**, **Ar Condicionado
+   Advantage**.
+3. ✅ Tabela `assist_ia_regras` (linha única id=1) — instruções gerais da IA,
+   editáveis pela equipe; a função injeta no prompt.
+4. ✅ Edge Function `assist-resumo-ia` (ACTIVE, v2): `POST {chamado_id |
+   id_conversa}` → lê conversa (texto + imagem) + KB + regras → Claude Haiku →
+   grava `resumo_ia*` e devolve `{resumo, solucoes}`.
 
 **Falta para rodar ao vivo:**
 - ⏳ Adicionar o segredo **`ANTHROPIC_API_KEY`** (Supabase → Edge Functions →

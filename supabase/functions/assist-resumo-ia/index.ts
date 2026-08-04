@@ -101,6 +101,15 @@ Deno.serve(async (req) => {
       .map((k) => `### PRODUTO: ${k.produto}\n${k.conteudo_md}`)
       .join("\n\n---\n\n") || "(base de conhecimento vazia)";
 
+    // 3b) Regras/instruções da equipe (editáveis em assist_ia_regras) — como a
+    // equipe vai "otimizando" as respostas ao longo do tempo.
+    const { data: regras } = await supabase
+      .from("assist_ia_regras")
+      .select("instrucoes")
+      .eq("id", 1)
+      .maybeSingle();
+    const instrucoesEquipe = (regras?.instrucoes || "").trim();
+
     // 4) Prompt
     const sistema =
       "Você é um analista técnico de assistência/garantia do Grupo Bononi (produtos Stonni). " +
@@ -111,7 +120,8 @@ Deno.serve(async (req) => {
       "sem texto fora do JSON, no formato: " +
       '{"resumo":{"produto":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
       '"solucoes":[{"solucao":"","video_url":null,"confianca":"alta|media|baixa"}]}. ' +
-      "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável.";
+      "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
+      (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "");
 
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
