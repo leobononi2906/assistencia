@@ -186,25 +186,30 @@ Storage é irrisório porque **não guardamos a mídia** — só o texto derivad
 
 ---
 
-## 6. O que precisa ser criado (mudanças propostas — nada aplicado ainda)
+## 6. Estado da v1 (04/08/2026 — JÁ NO AR)
 
-> Seguindo a regra: **schema é mostrado antes de aplicar.** Isto é só o desenho.
+Decisão de simplificar: **sem pgvector/embeddings na v1** — a base do Notion é
+pequena, então o próprio modelo casa reclamação → solução. RAG vetorial fica pra
+v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
 
-1. **Coluna** em `assist_chamados`:
-   `resumo_ia text`, `resumo_ia_em timestamptz`, `resumo_ia_status text`.
-2. **Tabela** `assist_kb_solucoes` (o banco RAG):
-   `id, produto, sintoma, solucao, video_url, fonte ('notion'|'chamado'),
-   fonte_id, embedding vector(1536), atualizado_em`. Extensão `pgvector`.
-3. **Edge Function** `assist-resumo-ia`: recebe `chamado_id`/`id_conversa`, junta
-   as mensagens, transcreve áudio, descreve imagem, chama o Claude, grava
-   `resumo_ia`. **Sequencial, 1 chamado por vez** (regra anti-rajada).
-4. **Edge Function** `assist-kb-sync`: lê o Notion, gera os chunks + embeddings,
-   popula `assist_kb_solucoes`.
-5. **Função de busca** `assist_kb_buscar(resumo, produto)`: retorna top-N
-   soluções + vídeo por similaridade.
-6. **UI** no painel da assistência (`index.html`/`assistencia.js`): mostrar o
-   **Resumo IA** e as **Soluções sugeridas (+vídeo)** no chamado, com botão
-   "gerar/atualizar".
+**Aplicado no Supabase `vishxwdxqiygbxmtpfoy`:**
+1. ✅ Colunas em `assist_chamados`: `resumo_ia jsonb`, `resumo_ia_solucoes jsonb`,
+   `resumo_ia_em timestamptz`, `resumo_ia_modelo text` (migration
+   `0001_assist_resumo_ia_e_kb_produto.sql`, aditiva).
+2. ✅ Tabela `assist_kb_produto` (cache do Notion por produto, texto puro — sem
+   embeddings). Já populada: **Gerador**, **Geladeira 30L**.
+3. ✅ Edge Function `assist-resumo-ia` (ACTIVE): `POST {chamado_id | id_conversa}`
+   → lê conversa (texto + imagem) + KB → Claude Haiku → grava `resumo_ia*` e
+   devolve `{resumo, solucoes}`.
+
+**Falta para rodar ao vivo:**
+- ⏳ Adicionar o segredo **`ANTHROPIC_API_KEY`** (Supabase → Edge Functions →
+  Secrets). Sem ele a função responde 500 "falta o segredo".
+- ⏳ Popular o resto do catálogo do Notion em `assist_kb_produto` (AC, Geladeiras
+  Adventure, etc.).
+- ⏳ **UI** no painel (`index.html`/`assistencia.js`): mostrar Resumo IA +
+  Soluções (+vídeo) no chamado, com botão "gerar/atualizar".
+- ⏳ **Áudio** via Whisper (fast-follow) e disparo automático na criação do chamado.
 
 ---
 
