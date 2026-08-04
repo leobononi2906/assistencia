@@ -40,7 +40,7 @@ Front: **HTML/JS puro** em `erp/` (sem build), consumindo RPCs no schema `public
 | **Relatórios** | **Vendas · Compras · Produtos · Clientes** (cada um com seletor de modelo + filtros + imprimir/CSV), Curva ABC | `erp_rel_vendas`, `erp_rel_compras`, `erp_rel_produtos`, `erp_rel_clientes`, `erp_curva_abc` | ✅ |
 | **Orçamentos** | lista + editor; aprovar → venda + solicitações | `erp_orcamento_salvar/aprovar` | ✅ |
 | **Vendas / OS** | lista, solicitar produto, finalizar, gerar NF-e | `erp_criar_venda/os`, `fn_finalizar_*` | ✅ |
-| **Pátio / Serviços** | grupo próprio (fora do comercial), telas de pátio que cruzam várias OS: **Distribuição** (serviço/produção → técnico), **Precificação** (gestão: soma horas apontadas total × faturável, precifica manual), **Apontamento** (colaborador registra horas — tela simples), **Solicitações** (produto p/ OS) | `os_distribuicao_dados`, `os_distribuir_servico/_producao`, `os_precificacao_dados`, `os_apontamento_salvar`, `os_apontamento_faturavel`, `os_avaliar_servicos`, `os_solicitacoes_listar`, `erp_solicitar_produto` (`erp/servicos.js`) | ✅ |
+| **Pátio / Serviços** | grupo próprio (fora do comercial), telas de pátio que cruzam várias OS. **Processo:** OS abre só com o defeito → pátio **aponta horas por ÁREA** (sem serviço) → o **boca** (precificador) vê os apontamentos soltos agrupados por área e **cria a linha de serviço puxando aqueles apontamentos** (o serviço herda os profissionais e as horas faturáveis; ele digita o valor). Telas: **Distribuição** (serviço/produção → técnico), **Precificação** (blocos por área → cria serviço + marca horas faturáveis + valor manual), **Apontamento** (colaborador: OS + área + horas), **Solicitações** (produto p/ OS) | `os_distribuicao_dados`, `os_distribuir_servico/_producao`, `os_apontamento_dados`, `os_apontamento_salvar` (com `id_area`), `os_precificacao_dados` (blocos soltos), `os_servico_criar_de_apontamentos`, `os_apontamento_faturavel`, `os_avaliar_servicos`, `os_solicitacoes_listar` (`erp/servicos.js`) | ✅ |
 | **Financeiro** | Contas a Receber/Pagar, Caixa, Cobrança, **Acordos** | `titulos`, `fn_baixar_titulo`, caixa, régua, PIX copia-e-cola, renegociação, `erp_cobranca_acordos_listar` | ✅ |
 | **Compras / Entrada** | **Demanda/Sugestão** + **Cotações** + Pedidos + Recebimentos | `erp_demanda_*`, `erp_produto_estoque_limites`, `erp_cotacao_*` (mapa comparativo → pedido), `erp_pedido_compra_*`, `erp_recebimento_*` (estoque + Contas a Pagar) | ✅ |
 | **Estoque** | **Posição** (contábil × não-contábil), Solicitações, Gôndola, Transferências, Inventário (dupla contagem) | `erp_estoque_posicao`, `fn_estoque_*`, `erp_transferencia_*`, `erp_inventario_*` | ✅ |
@@ -105,7 +105,11 @@ venda/orçamento/encomenda voltam a salvar) · `46` baixa de estoque no **fatura
 (trigger + helper `erp_baixar_estoque`: grava kardex, valida saldo, aborta se faltar e é idempotente —
 não baixa 2× se a peça já saiu na separação) ·
 `47` Pátio/Serviços — precificação por horas (`os_apontamentos.faturavel`; `os_precificacao_dados` soma
-horas apontadas total × faturável por serviço; `os_apontamento_faturavel` aprova/reprova; `os_solicitacoes_listar`).
+horas apontadas total × faturável por serviço; `os_apontamento_faturavel` aprova/reprova; `os_solicitacoes_listar`) ·
+`48` OS defeito-first: apontamento **por área** sem serviço (`os_apontamentos.id_servico_os` nullable + `id_area`;
+`os_apontamento_salvar` aceita área/obs; `os_apontamento_dados`), e o **fechamento pelo boca**
+(`os_servico_criar_de_apontamentos`: cria o serviço puxando apontamentos soltos, herda profissional/horas e
+recalcula a OS; `os_precificacao_dados` passa a trazer os **blocos soltos por área**).
 
 ## Relatórios (padrão)
 Motor genérico em `relatorios.js` (`REL_CFG` + `abrirRelatorio`): um relatório por área com **seletor de

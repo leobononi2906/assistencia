@@ -55,7 +55,13 @@
    +'.prec-apts tr.apt-off td{opacity:.42;text-decoration:line-through}'
    +'.prec-apts tr.apt-off td:first-child{text-decoration:none;opacity:1}'
    +'.prec-os-foot{padding:12px 16px;border-top:1px solid hsl(var(--border));display:flex;justify-content:flex-end}'
-   +'.prec-noapt{font-size:12px;margin-top:6px}';
+   +'.prec-noapt{font-size:12px;margin-top:6px}'
+   +'.prec-blocos{padding:12px 16px;background:hsl(var(--warning-bg));border-bottom:1px solid hsl(var(--border))}'
+   +'.prec-blocos-tit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:hsl(var(--warning));margin-bottom:8px}'
+   +'.prec-bloco{background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px}'
+   +'.prec-bloco:last-child{margin-bottom:0}'
+   +'.prec-bloco-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}'
+   +'.pcs-apt{width:18px;height:18px}';
   var st=document.createElement('style'); st.id='svc-css'; st.textContent=css; document.head.appendChild(st);
 })();
 
@@ -146,11 +152,31 @@ function renderPrecificacao(){
 }
 function precOsCard(o){
   var servicos=Array.isArray(o.servicos)?o.servicos:[];
+  var blocos=Array.isArray(o.blocos)?o.blocos:[];
   return '<div class="card prec-os">'+
-    '<div class="prec-os-head"><div><b>OS '+esc(o.numero||'')+'</b> · '+esc(o.cliente||'')+' '+svcStatusBadge(o.status)+'</div>'+
+    '<div class="prec-os-head"><div><b>OS '+esc(o.numero||'')+'</b> · '+esc(o.cliente||'')+' '+svcStatusBadge(o.status)+
+      (o.defeito?'<div class="mut" style="font-size:12px;margin-top:2px">'+esc(o.defeito)+'</div>':'')+'</div>'+
       '<div class="mono">'+fmtFull(o.valor_total)+'</div></div>'+
-    '<div class="prec-svc-list">'+(servicos.length?servicos.map(precSvcRow).join(''):'<div class="empty">Sem serviços.</div>')+'</div>'+
-    '<div class="prec-os-foot"><button class="btn btn-ok" onclick="precSalvar('+o.id_os+')">Salvar valores da OS</button></div>'+
+    (blocos.length
+      ? '<div class="prec-blocos"><div class="prec-blocos-tit">Apontamentos a fechar (por área) — vire cada bloco em serviço</div>'+
+        blocos.map(function(b){return precBloco(o.id_os,b);}).join('')+'</div>'
+      : '')+
+    '<div class="prec-svc-list">'+(servicos.length?servicos.map(precSvcRow).join(''):(blocos.length?'':'<div class="empty">Sem serviços.</div>'))+'</div>'+
+    (servicos.length?'<div class="prec-os-foot"><button class="btn btn-ok" onclick="precSalvar('+o.id_os+')">Salvar valores da OS</button></div>':'')+
+  '</div>';
+}
+function precBloco(idOs,b){
+  var apts=Array.isArray(b.apontamentos)?b.apontamentos:[];
+  var profs=[]; apts.forEach(function(a){ if(a.colaborador && profs.indexOf(a.colaborador)<0) profs.push(a.colaborador); });
+  return '<div class="prec-bloco">'+
+    '<div class="prec-bloco-head">'+
+      '<div>'+svcArea(b.area)+' <b>'+fmtHoras(b.horas_faturaveis)+'</b> <span class="mut">faturáveis · '+esc(profs.join(', '))+'</span></div>'+
+      '<button class="btn btn-sm btn-ok" onclick="precCriarServico('+idOs+','+(b.id_area==null?'null':b.id_area)+')">Criar serviço →</button>'+
+    '</div>'+
+    '<details class="prec-apts"><summary>'+apts.length+' apontamento(s)</summary>'+
+      '<table class="data"><thead><tr><th>Colaborador</th><th>Data</th><th>Início</th><th>Término</th><th class="r">Horas</th></tr></thead><tbody>'+
+      apts.map(function(a){ return '<tr><td>'+esc(a.colaborador||'')+'</td><td>'+fmtDate(a.data)+'</td><td>'+esc(a.hora_inicio||'—')+'</td><td>'+esc(a.hora_termino||'—')+'</td><td class="r mono">'+fmtNum(a.horas)+'</td></tr>'; }).join('')+
+      '</tbody></table></details>'+
   '</div>';
 }
 function precSvcRow(s){
@@ -214,10 +240,61 @@ async function precSalvar(idOs){
 }
 window.precSalvar=precSalvar;
 
+function precFindBloco(idOs, idArea){
+  var d=window.__prec||{}; var o=(d.ordens||[]).find(function(x){return String(x.id_os)===String(idOs);}); if(!o) return null;
+  return (o.blocos||[]).find(function(b){ return (b.id_area==null && (idArea==null||idArea==='null')) || String(b.id_area)===String(idArea); });
+}
+async function precCriarServico(idOs, idArea){
+  try{
+    var b=precFindBloco(idOs, idArea); if(!b){ toast('Bloco não encontrado','err'); return; }
+    var apts=Array.isArray(b.apontamentos)?b.apontamentos:[];
+    var cat=await lookup('servicos');
+    var catItems=(cat||[]).map(function(s){ return {v:s.id, label:s.nome, busca:s.codigo||'', preco:s.preco}; });
+    window.__precCat=catItems;
+    var rows=apts.map(function(a){
+      return '<tr><td><input type="checkbox" class="pcs-apt" value="'+a.id+'" checked></td><td>'+esc(a.colaborador||'')+'</td><td>'+fmtDate(a.data)+'</td><td class="r mono">'+fmtNum(a.horas)+(a.faturavel?'':' <span class="mut">(não fat.)</span>')+'</td></tr>';
+    }).join('');
+    openModal('Criar serviço — '+esc(b.area||'Sem área'),
+      '<div class="form-grid">'+
+        '<div class="field full"><label>Serviço da tabela <span class="mut">(opcional — preenche descrição e valor)</span></label>'+comboHTML('pcs-cat',catItems,'','Escolher da tabela…','precCatPick')+'</div>'+
+        '<div class="field full"><label>Descrição *</label><input type="text" id="pcs-desc" value="'+esc(b.area||'')+'"></div>'+
+        '<div class="field"><label>Valor (R$) *</label><input type="number" step="0.01" id="pcs-val" placeholder="0,00"></div>'+
+        '<div class="field"><label>Horas faturáveis</label><input type="text" value="'+fmtHoras(b.horas_faturaveis)+'" disabled></div>'+
+      '</div>'+
+      '<div class="mut" style="margin:10px 0 4px;font-size:12px">Apontamentos que entram neste serviço (herdam os profissionais):</div>'+
+      '<div class="tbl-wrap"><table class="data"><thead><tr><th></th><th>Colaborador</th><th>Data</th><th class="r">Horas</th></tr></thead><tbody>'+rows+'</tbody></table></div>',
+      '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-ok" onclick="precCriarServicoSalvar('+idOs+','+(idArea==null?'null':idArea)+')">Criar serviço</button>');
+  }catch(e){ toast('Erro ao abrir: '+(e.message||e),'err'); }
+}
+window.precCriarServico=precCriarServico;
+function precCatPick(v){
+  var it=(window.__precCat||[]).find(function(x){return String(x.v)===String(v);}); if(!it) return;
+  var desc=document.getElementById('pcs-desc'); if(desc && it.label) desc.value=it.label;
+  var val=document.getElementById('pcs-val'); if(val && it.preco!=null && (val.value===''||Number(val.value)===0)) val.value=it.preco;
+}
+window.precCatPick=precCatPick;
+async function precCriarServicoSalvar(idOs, idArea){
+  try{
+    var desc=(document.getElementById('pcs-desc').value||'').trim();
+    if(!desc){ toast('Informe a descrição do serviço','err'); return; }
+    var val=Number(document.getElementById('pcs-val').value)||0;
+    var ids=Array.prototype.map.call(document.querySelectorAll('.pcs-apt:checked'),function(c){return Number(c.value);});
+    if(ids.length===0){ toast('Selecione ao menos um apontamento','err'); return; }
+    var cat=comboVal('pcs-cat');
+    var res=await sb.rpc('os_servico_criar_de_apontamentos',{p_id_os:idOs,p_descricao:desc,p_valor_total:val,
+      p_apontamentos:ids,p_id_area:(idArea==null||idArea==='null')?null:Number(idArea),
+      p_id_servico:cat?Number(cat):null,p_id_usuario:UID()});
+    if(res.error) throw res.error;
+    var r=res.data||{}; if(r.ok===false){ toast(r.erro||'Falha ao criar','err'); return; }
+    toast('Serviço criado a partir dos apontamentos','ok'); closeModal(); loadPrecificacao();
+  }catch(e){ toast('Erro: '+(e.message||e),'err'); }
+}
+window.precCriarServicoSalvar=precCriarServicoSalvar;
+
 /* ============ 3) APONTAMENTO (colaborador) ============ */
 async function loadApontamento(){
   try{
-    var res=await sb.rpc('os_distribuicao_dados',{p_id_empresa:null});
+    var res=await sb.rpc('os_apontamento_dados',{p_id_empresa:null});
     if(res.error) throw res.error;
     window.__apt=res.data||{}; window.__aptLog=window.__aptLog||[];
     renderApontamento();
@@ -227,23 +304,28 @@ window.loadApontamento=loadApontamento;
 
 function renderApontamento(){
   var d=window.__apt||{};
-  var servicos=(Array.isArray(d.servicos)?d.servicos:[]).filter(function(s){return s.origem==='SERVICO';});
-  var cols=Array.isArray(d.tecnicos)?d.tecnicos:[];
-  var svcItems=servicos.map(function(s){ return {v:s.id, label:'OS '+(s.numero_os||'')+' — '+(s.descricao||''), busca:(s.cliente||'')+' '+(s.area||'')}; });
+  var ordens=Array.isArray(d.ordens)?d.ordens:[];
+  var areas=Array.isArray(d.areas)?d.areas:[];
+  var cols=Array.isArray(d.colaboradores)?d.colaboradores:[];
+  var osItems=ordens.map(function(o){ return {v:o.id, label:'OS '+(o.numero||('#'+o.id))+' — '+(o.cliente||''), busca:(o.cliente||'')+' '+(o.defeito||'')}; });
   var colItems=cols.map(function(c){ return {v:c.id, label:c.nome}; });
   var hoje=new Date().toISOString().slice(0,10);
   var html='<div class="apt-wrap">'+
     '<div class="card card-pad apt-form">'+
-      '<div class="apt-title">Apontar horas de serviço</div>'+
+      '<div class="apt-title">Apontar horas</div>'+
       '<div class="field"><label>Colaborador *</label>'+comboHTML('apt-col',colItems,'','Quem trabalhou…')+'</div>'+
-      '<div class="field"><label>Serviço (OS) *</label>'+comboHTML('apt-svc',svcItems,'','OS, cliente ou descrição…')+'</div>'+
+      '<div class="field"><label>OS *</label>'+comboHTML('apt-os',osItems,'','Número da OS, cliente ou defeito…')+'</div>'+
+      '<div class="field"><label>Área do serviço *</label><select id="apt-area"><option value="">Selecione a área…</option>'+
+        areas.map(function(a){return '<option value="'+a.id+'">'+esc(a.descricao)+'</option>';}).join('')+'</select></div>'+
       '<div class="apt-row">'+
         '<div class="field"><label>Data</label><input type="date" id="apt-data" value="'+hoje+'"></div>'+
         '<div class="field"><label>Início</label><input type="time" id="apt-ini" oninput="aptCalc()"></div>'+
         '<div class="field"><label>Término</label><input type="time" id="apt-fim" oninput="aptCalc()"></div>'+
         '<div class="field"><label>Horas</label><input type="number" step="0.25" id="apt-horas" placeholder="0,00"></div>'+
       '</div>'+
+      '<div class="field"><label>Observação</label><input type="text" id="apt-obs" placeholder="O que foi feito (opcional)"></div>'+
       '<button class="btn btn-ok btn-block btn-lg" onclick="aptSalvar()">Registrar apontamento</button>'+
+      '<div class="mut" style="font-size:12px;margin-top:8px">O serviço e o valor são definidos depois, no fechamento (Precificação).</div>'+
     '</div>'+
     '<div class="card card-pad">'+
       '<div class="apt-title">Registrados nesta sessão</div>'+
@@ -255,8 +337,8 @@ function renderApontamento(){
 function renderAptLog(){
   var log=window.__aptLog||[];
   if(log.length===0) return '<div class="empty">Nenhum apontamento ainda. Preencha ao lado.</div>';
-  return '<div class="tbl-wrap"><table class="data"><thead><tr><th>Colaborador</th><th>Serviço</th><th>Data</th><th class="r">Horas</th></tr></thead><tbody>'+
-    log.map(function(l){ return '<tr><td>'+esc(l.colaborador)+'</td><td>'+esc(l.servico)+'</td><td>'+fmtDate(l.data)+'</td><td class="r mono">'+fmtNum(l.horas)+'</td></tr>'; }).join('')+
+  return '<div class="tbl-wrap"><table class="data"><thead><tr><th>Colaborador</th><th>OS</th><th>Área</th><th>Data</th><th class="r">Horas</th></tr></thead><tbody>'+
+    log.map(function(l){ return '<tr><td>'+esc(l.colaborador)+'</td><td>'+esc(l.os)+'</td><td>'+esc(l.area)+'</td><td>'+fmtDate(l.data)+'</td><td class="r mono">'+fmtNum(l.horas)+'</td></tr>'; }).join('')+
     '</tbody></table></div>';
 }
 function aptCalc(){
@@ -268,26 +350,29 @@ function aptCalc(){
 window.aptCalc=aptCalc;
 async function aptSalvar(){
   try{
-    var idCol=comboVal('apt-col'), idSvc=comboVal('apt-svc');
+    var idCol=comboVal('apt-col'), idOs=comboVal('apt-os'), idArea=$('#apt-area').value;
     if(!idCol){ toast('Selecione o colaborador','err'); return; }
-    if(!idSvc){ toast('Selecione o serviço','err'); return; }
+    if(!idOs){ toast('Selecione a OS','err'); return; }
+    if(!idArea){ toast('Selecione a área do serviço','err'); return; }
     var ini=$('#apt-ini').value||null, fim=$('#apt-fim').value||null;
     var horas=Number($('#apt-horas').value)||0;
     if(horas<=0 && ini && fim){ var a=ini.split(':').map(Number), b=fim.split(':').map(Number); var m=(b[0]*60+b[1])-(a[0]*60+a[1]); if(m<0)m+=1440; horas=m/60; }
     if(horas<=0){ toast('Informe as horas (ou início e término)','err'); return; }
     var d=window.__apt||{};
-    var svc=(d.servicos||[]).find(function(s){return String(s.id)===String(idSvc);});
-    var col=(d.tecnicos||[]).find(function(c){return String(c.id)===String(idCol);});
+    var os=(d.ordens||[]).find(function(o){return String(o.id)===String(idOs);});
+    var col=(d.colaboradores||[]).find(function(c){return String(c.id)===String(idCol);});
+    var area=(d.areas||[]).find(function(x){return String(x.id)===String(idArea);});
     var data=$('#apt-data').value||new Date().toISOString().slice(0,10);
-    var res=await sb.rpc('os_apontamento_salvar',{p_id:null,p_id_os:svc?svc.id_os:null,p_id_servico_os:Number(idSvc),
+    var res=await sb.rpc('os_apontamento_salvar',{p_id:null,p_id_os:Number(idOs),p_id_servico_os:null,
       p_id_os_peca:null,p_id_colaborador:Number(idCol),p_data_apontamento:data,
-      p_hora_inicio:ini,p_hora_termino:fim,p_horas_trabalhadas:horas,p_fator:1});
+      p_hora_inicio:ini,p_hora_termino:fim,p_horas_trabalhadas:horas,p_fator:1,
+      p_id_area:Number(idArea),p_observacao:($('#apt-obs').value||null)});
     if(res.error) throw res.error;
-    window.__aptLog.unshift({colaborador:col?col.nome:'',servico:'OS '+(svc?svc.numero_os:'')+' — '+(svc?svc.descricao:''),data:data,horas:horas});
+    window.__aptLog.unshift({colaborador:col?col.nome:'',os:'OS '+(os?os.numero:''),area:area?area.descricao:'',data:data,horas:horas});
     toast('Apontamento registrado','ok');
-    $('#apt-ini').value=''; $('#apt-fim').value=''; $('#apt-horas').value=''; comboSet('apt-svc','');
+    $('#apt-ini').value=''; $('#apt-fim').value=''; $('#apt-horas').value=''; $('#apt-obs').value=''; comboSet('apt-os','');
     var lb=document.getElementById('apt-log-body'); if(lb) lb.innerHTML=renderAptLog();
-    var inp=document.getElementById('apt-svc_in'); if(inp) inp.focus();
+    var inp=document.getElementById('apt-os_in'); if(inp) inp.focus();
   }catch(e){ toast('Erro: '+(e.message||e),'err'); }
 }
 window.aptSalvar=aptSalvar;
