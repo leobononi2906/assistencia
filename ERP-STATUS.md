@@ -208,6 +208,11 @@ na Vercel, **mesmo Supabase**, esquema próprio `exp_*` (`exp_documentos`, `exp_
 - ~~Cotações de compra (`cotacoes*`) alimentando o pedido de compra~~ ✅ **entregue** (migration 38, tela Compras → Cotações).
 - Dashboard por empresa (filtro global) e KPIs de estoque/compras.
 - **Lista de acordos** de renegociação (tela de acompanhamento; hoje os títulos aparecem em Contas a Receber).
+- **Comissão de serviço — rateio entre profissionais** (aberto): no fechamento (`os_servico_criar_de_apontamentos`),
+  o serviço hoje herda **um** técnico principal (`id_tecnico` = o de mais horas entre os apontamentos vinculados).
+  Se a comissão precisar **ratear entre todos** os profissionais que apontaram no serviço, falta um passo:
+  distribuir a comissão proporcional às horas de cada `os_apontamentos.id_colaborador` do serviço
+  (tabela/rateio por apontamento) — encaixar quando o módulo de comissão de serviço for construído.
 
 ### 4. Operação / dados
 - Migrar/importar cadastros reais do Firebird (clientes, produtos, saldos) quando validado.
