@@ -253,8 +253,10 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
   como "[não transcrito]" — o resto funciona normal.
 - ⏳ Publicar o painel (`assistencia.js`) em produção para o botão Gerar aparecer.
 - ⏳ Disparo automático do resumo na criação do chamado (hoje é botão manual).
-- ⏳ (Opcional) tela pra editar `assist_ia_regras` pelo painel e re-sincronizar o
-  Notion (`assist-kb-sync`).
+- ✅ **Editor de regras no painel**: botão **⚙️ Regras** na seção Resumo IA abre um
+  modal que lê/salva `assist_ia_regras` (`astAbrirRegrasIA`/`astSalvarRegrasIA`).
+  A equipe edita as instruções da IA sem SQL.
+- ⏳ (Opcional) re-sincronizar o Notion por uma edge function (`assist-kb-sync`).
 - ⏳ (Opcional) **frames de vídeo** (ver o defeito em movimento): o Claude não lê
   vídeo, só a transcrição do áudio. Para o visual, ou extrair frames (precisa de
   ffmpeg/serviço) ou usar um modelo que lê vídeo nativo (ex.: Gemini) só nesse

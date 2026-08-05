@@ -1288,6 +1288,56 @@ window.astGerarResumoIA = async function(id){
   }
 };
 
+// Editor das REGRAS GERAIS da IA (assist_ia_regras, linha id=1). É onde a equipe
+// "otimiza" as respostas para TODOS os produtos. Soluções por produto ficam no Notion.
+window.astAbrirRegrasIA = async function(){
+  const old = document.getElementById('ast-modal-regras'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="ast-modal-regras" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:640px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">⚙️ Regras da IA (assistência)</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Instruções gerais que a IA segue em TODO chamado (tom, quando escalar, o que confirmar antes de concluir). As soluções por produto ficam no Notion.</div>
+        <textarea id="modal-regras-txt" class="ast-form-input" style="width:100%;min-height:280px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical" placeholder="⏳ Carregando...">⏳ Carregando...</textarea>
+        <div id="modal-regras-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-regras').remove()">Fechar</button>
+          <button class="ast-btn ast-btn-primary" id="modal-regras-save" onclick="astSalvarRegrasIA()">Salvar</button>
+        </div>
+      </div>
+    </div>`);
+  try {
+    const { data } = await window.sb.from('assist_ia_regras').select('instrucoes,atualizado_em,atualizado_por').eq('id',1).maybeSingle();
+    const ta = document.getElementById('modal-regras-txt');
+    if(ta) ta.value = (data && data.instrucoes) || '';
+    const msg = document.getElementById('modal-regras-msg');
+    if(msg && data && data.atualizado_em) msg.innerHTML = `<span style="color:var(--text-muted)">Última edição: ${astFmtDate(data.atualizado_em)}${data.atualizado_por?' · '+astEsc(data.atualizado_por):''}</span>`;
+  } catch(e){
+    const ta = document.getElementById('modal-regras-txt'); if(ta) ta.value='';
+    const msg = document.getElementById('modal-regras-msg'); if(msg) msg.innerHTML='<span style="color:var(--red)">Erro ao carregar regras.</span>';
+  }
+};
+
+window.astSalvarRegrasIA = async function(){
+  const ta = document.getElementById('modal-regras-txt');
+  const msg = document.getElementById('modal-regras-msg');
+  const btn = document.getElementById('modal-regras-save');
+  const txt = ta ? ta.value : '';
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+  try {
+    const usuario = window.getUsuario?.();
+    const { error } = await window.sb.from('assist_ia_regras')
+      .update({ instrucoes: txt, atualizado_em: new Date().toISOString(), atualizado_por: usuario?.nome||usuario?.email||null })
+      .eq('id',1);
+    if(error) throw new Error(error.message);
+    if(msg) msg.innerHTML='<span style="color:var(--green)">✅ Salvo. A IA já usa essas regras no próximo “Gerar”.</span>';
+    if(typeof bononiLog==='function') bononiLog('INFO','REGRAS_IA_SALVA',{});
+  } catch(err){
+    if(msg) msg.innerHTML='<span style="color:var(--red)">Erro: '+astEsc(err&&err.message||'')+'</span>';
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Salvar'; }
+  }
+};
+
 window.astAbrirDetalhe = async function(id) {
   _drwChamadoId = id;
   astResetDirty();
@@ -1445,7 +1495,10 @@ window.astAbrirDetalhe = async function(id) {
       <div class="ast-drw-section" id="ast-resumo-ia-box">
         <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
-          <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
+          <div style="display:flex;gap:6px">
+            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirRegrasIA()" title="Editar as regras gerais da IA">⚙️ Regras</button>
+            <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
+          </div>
         </div>
         <div id="ast-resumo-ia-content">${astResumoIAHtml(iaRow)}</div>
       </div>
