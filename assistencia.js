@@ -1298,6 +1298,22 @@ function astResumoIAHtml(iaRow, id){
   `;
 }
 
+// Monta a mensagem de erro do Resumo IA. Se o erro for de créditos esgotados
+// (Anthropic/OpenAI sem saldo), mostra um aviso amigável e acionável em vez do
+// erro técnico.
+function astErroIAHtml(msg){
+  const m = (msg||'').toLowerCase();
+  const semCredito = ['credit','créd','billing','insufficient','insuficiente','quota','saldo','payment','pagamento']
+    .some(k => m.includes(k));
+  if(semCredito){
+    return `<div style="background:#FFF7E6;border:1px solid #F5C46B;border-radius:8px;padding:12px 14px;font-size:13px;color:#8A5A00">
+      <div style="font-weight:700;margin-bottom:3px">⚠️ Créditos da IA esgotados</div>
+      A geração de resumo está temporariamente pausada. Avise a TI / o responsável para recarregar o saldo (Anthropic → console.anthropic.com · Billing). Assim que recarregar, é só clicar em Gerar de novo.
+    </div>`;
+  }
+  return `<div style="background:#FEF0EF;border:1px solid #FECACA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--red)">⚠️ ${astEsc(msg)}</div>`;
+}
+
 // Chama a Edge Function assist-resumo-ia e re-renderiza o bloco.
 window.astGerarResumoIA = async function(id){
   const btn = document.getElementById('ast-btn-resumo-ia');
@@ -1318,7 +1334,7 @@ window.astGerarResumoIA = async function(id){
     if(typeof bononiLog==='function') bononiLog('INFO','RESUMO_IA_OK',{chamado_id:id});
   } catch(err){
     const msg = (err && err.message) || 'Erro ao gerar resumo';
-    if(box) box.innerHTML = `<div style="background:#FEF0EF;border:1px solid #FECACA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--red)">⚠️ ${astEsc(msg)}</div>`;
+    if(box) box.innerHTML = astErroIAHtml(msg);
     if(btn){ btn.disabled=false; btn.textContent='✨ Gerar'; }
     if(typeof bononiLog==='function') bononiLog('ERRO','RESUMO_IA',{chamado_id:id,erro:msg});
   }
