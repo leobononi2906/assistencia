@@ -1216,6 +1216,128 @@ window.astSalvarTudo = async function() {
   }
 };
 
+function astEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Monta o HTML do bloco "Resumo IA & Soluções" a partir das colunas resumo_ia*.
+function astResumoIAHtml(iaRow){
+  const r = iaRow && iaRow.resumo_ia ? iaRow.resumo_ia : null;
+  const sols = iaRow && Array.isArray(iaRow.resumo_ia_solucoes) ? iaRow.resumo_ia_solucoes : [];
+  if(!r){
+    return `<div style="font-size:13px;color:var(--text-muted);padding:6px 0">
+      Nenhum resumo gerado ainda. Clique em <strong>Gerar</strong> — a IA lê a conversa (texto + imagens) e sugere as soluções mais prováveis, com o vídeo pra mandar ao cliente.
+    </div>`;
+  }
+  const linha = (lbl,val)=> val ? `<div class="ast-detail-field"><div class="ast-detail-lbl">${lbl}</div><div class="ast-detail-val">${astEsc(val)}</div></div>` : '';
+  const confBadge = c => {
+    const k=(c||'').toLowerCase();
+    const col = k==='alta'?'var(--green)':k==='media'?'var(--orange)':'var(--text-muted)';
+    return `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:4px;color:${col};border:1px solid ${col};white-space:nowrap">${astEsc(k||'—')}</span>`;
+  };
+  const solsHtml = sols.length ? sols.map((s,i)=>`
+    <div style="padding:8px 0;border-top:1px solid var(--border)">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <span style="font-weight:700;color:var(--blue-mid)">${i+1}.</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px">${astEsc(s.solucao||'')}</div>
+          ${s.video_url?`<a href="${astEsc(s.video_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue-mid);display:inline-flex;align-items:center;gap:4px;margin-top:3px">▶️ vídeo pro cliente</a>`:''}
+        </div>
+        ${confBadge(s.confianca)}
+      </div>
+    </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted)">Sem soluções sugeridas.</div>`;
+  const quando = iaRow.resumo_ia_em ? astFmtDate(iaRow.resumo_ia_em) : '';
+  return `
+    <div class="ast-detail-grid">
+      ${linha('Produto', r.produto)}
+      ${linha('Reclamação', r.reclamacao)}
+      ${linha('Defeito percebido', r.defeito_percebido)}
+      ${linha('Já tentado', r.ja_tentado)}
+      ${linha('Urgência', r.urgencia)}
+      ${linha('Falta info', r.falta_info)}
+    </div>
+    <div style="margin-top:10px">
+      <div class="ast-detail-lbl" style="margin-bottom:2px">Soluções sugeridas</div>
+      ${solsHtml}
+    </div>
+    ${quando?`<div style="font-size:11px;color:var(--text-muted);margin-top:8px">Gerado por IA em ${quando} — confira antes de enviar ao cliente.</div>`:''}
+  `;
+}
+
+// Chama a Edge Function assist-resumo-ia e re-renderiza o bloco.
+window.astGerarResumoIA = async function(id){
+  const btn = document.getElementById('ast-btn-resumo-ia');
+  const box = document.getElementById('ast-resumo-ia-content');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Gerando...'; }
+  if(box){ box.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:10px 0">⏳ A IA está lendo a conversa e as imagens...</div>'; }
+  try {
+    const { data, error } = await window.sb.functions.invoke('assist-resumo-ia', { body: { chamado_id: id } });
+    if (error) throw new Error(error.message || 'Falha ao chamar a função');
+    if (data && data.error) throw new Error(data.error);
+    const iaRow = {
+      resumo_ia: (data && data.resumo) || null,
+      resumo_ia_solucoes: (data && data.solucoes) || [],
+      resumo_ia_em: new Date().toISOString(),
+    };
+    if(box) box.innerHTML = astResumoIAHtml(iaRow);
+    if(btn){ btn.disabled=false; btn.textContent='↻ Atualizar'; }
+    if(typeof bononiLog==='function') bononiLog('INFO','RESUMO_IA_OK',{chamado_id:id});
+  } catch(err){
+    const msg = (err && err.message) || 'Erro ao gerar resumo';
+    if(box) box.innerHTML = `<div style="background:#FEF0EF;border:1px solid #FECACA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--red)">⚠️ ${astEsc(msg)}</div>`;
+    if(btn){ btn.disabled=false; btn.textContent='✨ Gerar'; }
+    if(typeof bononiLog==='function') bononiLog('ERRO','RESUMO_IA',{chamado_id:id,erro:msg});
+  }
+};
+
+// Editor das REGRAS GERAIS da IA (assist_ia_regras, linha id=1). É onde a equipe
+// "otimiza" as respostas para TODOS os produtos. Soluções por produto ficam no Notion.
+window.astAbrirRegrasIA = async function(){
+  const old = document.getElementById('ast-modal-regras'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="ast-modal-regras" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:640px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">⚙️ Regras da IA (assistência)</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Instruções gerais que a IA segue em TODO chamado (tom, quando escalar, o que confirmar antes de concluir). As soluções por produto ficam no Notion.</div>
+        <textarea id="modal-regras-txt" class="ast-form-input" style="width:100%;min-height:280px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical" placeholder="⏳ Carregando...">⏳ Carregando...</textarea>
+        <div id="modal-regras-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-regras').remove()">Fechar</button>
+          <button class="ast-btn ast-btn-primary" id="modal-regras-save" onclick="astSalvarRegrasIA()">Salvar</button>
+        </div>
+      </div>
+    </div>`);
+  try {
+    const { data } = await window.sb.from('assist_ia_regras').select('instrucoes,atualizado_em,atualizado_por').eq('id',1).maybeSingle();
+    const ta = document.getElementById('modal-regras-txt');
+    if(ta) ta.value = (data && data.instrucoes) || '';
+    const msg = document.getElementById('modal-regras-msg');
+    if(msg && data && data.atualizado_em) msg.innerHTML = `<span style="color:var(--text-muted)">Última edição: ${astFmtDate(data.atualizado_em)}${data.atualizado_por?' · '+astEsc(data.atualizado_por):''}</span>`;
+  } catch(e){
+    const ta = document.getElementById('modal-regras-txt'); if(ta) ta.value='';
+    const msg = document.getElementById('modal-regras-msg'); if(msg) msg.innerHTML='<span style="color:var(--red)">Erro ao carregar regras.</span>';
+  }
+};
+
+window.astSalvarRegrasIA = async function(){
+  const ta = document.getElementById('modal-regras-txt');
+  const msg = document.getElementById('modal-regras-msg');
+  const btn = document.getElementById('modal-regras-save');
+  const txt = ta ? ta.value : '';
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+  try {
+    const usuario = window.getUsuario?.();
+    const { error } = await window.sb.from('assist_ia_regras')
+      .update({ instrucoes: txt, atualizado_em: new Date().toISOString(), atualizado_por: usuario?.nome||usuario?.email||null })
+      .eq('id',1);
+    if(error) throw new Error(error.message);
+    if(msg) msg.innerHTML='<span style="color:var(--green)">✅ Salvo. A IA já usa essas regras no próximo “Gerar”.</span>';
+    if(typeof bononiLog==='function') bononiLog('INFO','REGRAS_IA_SALVA',{});
+  } catch(err){
+    if(msg) msg.innerHTML='<span style="color:var(--red)">Erro: '+astEsc(err&&err.message||'')+'</span>';
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Salvar'; }
+  }
+};
+
 window.astAbrirDetalhe = async function(id) {
   _drwChamadoId = id;
   astResetDirty();
@@ -1242,6 +1364,14 @@ window.astAbrirDetalhe = async function(id) {
       window.sb.from('assist_chamado_nfs').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
+
+    // Resumo IA — colunas ficam em assist_chamados (a view de detalhe pode não expô-las)
+    let iaRow = null;
+    try {
+      const { data: iaData } = await window.sb.from('assist_chamados')
+        .select('resumo_ia,resumo_ia_solucoes,resumo_ia_em,resumo_ia_modelo').eq('id',id).maybeSingle();
+      iaRow = iaData || null;
+    } catch(e) {}
 
     const telNorm = det.telefone_normalizado||(det.telefone||'').replace(/\D/g,'');
     const [{ data: historico }, { data: bloqData }, osResp] = await Promise.all([
@@ -1359,6 +1489,18 @@ window.astAbrirDetalhe = async function(id) {
           <div><div style="font-size:13px;font-weight:700;color:var(--red)">Chamado parado há ${det.dias_sem_followup}d sem follow-up</div>
           <div style="font-size:12px;color:var(--text-muted)">Registre um acompanhamento abaixo para atualizar</div></div>
         </div>`:''}
+      </div>
+
+      <!-- ①b RESUMO IA & SOLUÇÕES -->
+      <div class="ast-drw-section" id="ast-resumo-ia-box">
+        <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
+          <div style="display:flex;gap:6px">
+            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirRegrasIA()" title="Editar as regras gerais da IA">⚙️ Regras</button>
+            <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
+          </div>
+        </div>
+        <div id="ast-resumo-ia-content">${astResumoIAHtml(iaRow)}</div>
       </div>
 
       <!-- ② CLIENTE -->
