@@ -212,7 +212,10 @@ const AST_PAGES = {
         <input type="checkbox" id="ast-ver-finalizados" onchange="astAplicarFiltros()"> Finalizados
       </label>
     </div>
-    <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="ast-btn ast-btn-secondary" onclick="astAbrirDicasIA()" title="Dicas de solução em texto livre que a IA usa em todo resumo">📝 Dicas para a IA</button>
+      <button class="ast-btn ast-btn-primary" onclick="astAbrirModalNovo()">+ Novo Chamado</button>
+    </div>
   </div>
   <div id="ast-lista-view" style="display:none">
     <div class="ast-table-card">
@@ -1406,6 +1409,57 @@ window.astSalvarRegrasIA = async function(){
   }
 };
 
+// Caixa de DICAS para a IA (assist_ia_regras.dicas, linha id=1). Texto livre de
+// conhecimento de solução ("quando acontecer X, a melhor solução é Y"); a IA lê
+// em todo resumo. Acessível na home do Kanban e dentro do chamado.
+window.astAbrirDicasIA = async function(){
+  const old = document.getElementById('ast-modal-dicas'); if(old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="ast-modal-dicas" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:640px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">📝 Dicas para a IA</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Conhecimento de solução em texto livre — ex.: <em>“Quando o Ar G3 apresentar barulho ao ligar, verificar primeiro a fixação do compressor.”</em> A IA lê isto em TODO resumo. Dica que se firmar, migre depois para o Notion (base oficial por produto).</div>
+        <textarea id="modal-dicas-txt" class="ast-form-input" style="width:100%;min-height:280px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical" placeholder="⏳ Carregando...">⏳ Carregando...</textarea>
+        <div id="modal-dicas-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-dicas').remove()">Fechar</button>
+          <button class="ast-btn ast-btn-primary" id="modal-dicas-save" onclick="astSalvarDicasIA()">Salvar</button>
+        </div>
+      </div>
+    </div>`);
+  try {
+    const { data } = await window.sb.from('assist_ia_regras').select('dicas,atualizado_em,atualizado_por').eq('id',1).maybeSingle();
+    const ta = document.getElementById('modal-dicas-txt');
+    if(ta) ta.value = (data && data.dicas) || '';
+    const msg = document.getElementById('modal-dicas-msg');
+    if(msg && data && data.atualizado_em) msg.innerHTML = `<span style="color:var(--text-muted)">Última edição: ${astFmtDate(data.atualizado_em)}${data.atualizado_por?' · '+astEsc(data.atualizado_por):''}</span>`;
+  } catch(e){
+    const ta = document.getElementById('modal-dicas-txt'); if(ta) ta.value='';
+    const msg = document.getElementById('modal-dicas-msg'); if(msg) msg.innerHTML='<span style="color:var(--red)">Erro ao carregar as dicas.</span>';
+  }
+};
+
+window.astSalvarDicasIA = async function(){
+  const ta = document.getElementById('modal-dicas-txt');
+  const msg = document.getElementById('modal-dicas-msg');
+  const btn = document.getElementById('modal-dicas-save');
+  const txt = ta ? ta.value : '';
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+  try {
+    const usuario = window.getUsuario?.();
+    const { error } = await window.sb.from('assist_ia_regras')
+      .update({ dicas: txt, atualizado_em: new Date().toISOString(), atualizado_por: usuario?.nome||usuario?.email||null })
+      .eq('id',1);
+    if(error) throw new Error(error.message);
+    if(msg) msg.innerHTML='<span style="color:var(--green)">✅ Salvo. A IA já usa essas dicas no próximo “Gerar”.</span>';
+    if(typeof bononiLog==='function') bononiLog('INFO','DICAS_IA_SALVA',{});
+  } catch(err){
+    if(msg) msg.innerHTML='<span style="color:var(--red)">Erro: '+astEsc(err&&err.message||'')+'</span>';
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Salvar'; }
+  }
+};
+
 window.astAbrirDetalhe = async function(id) {
   _drwChamadoId = id;
   astResetDirty();
@@ -1531,6 +1585,7 @@ window.astAbrirDetalhe = async function(id) {
           <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
             <div style="display:flex;gap:6px">
+              <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirDicasIA()" title="Adicionar dicas de solução que a IA usa">📝 Dicas</button>
               <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirRegrasIA()" title="Editar as regras gerais da IA">⚙️ Regras</button>
               <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
             </div>

@@ -181,10 +181,11 @@ Deno.serve(async (req) => {
     // equipe vai "otimizando" as respostas ao longo do tempo.
     const { data: regras } = await supabase
       .from("assist_ia_regras")
-      .select("instrucoes")
+      .select("instrucoes, dicas")
       .eq("id", 1)
       .maybeSingle();
     const instrucoesEquipe = (regras?.instrucoes || "").trim();
+    const dicasEquipe = (regras?.dicas || "").trim();
 
     // 4) Prompt
     const sistema =
@@ -199,7 +200,8 @@ Deno.serve(async (req) => {
       'O campo "categoria" DEVE ser exatamente um destes valores (classifique pela linha do produto reclamado): ' +
       '"Ar Condicionado", "Geladeira", "Gerador" ou "Outros". Use "Outros" quando não for nenhuma das três linhas ou quando não der para saber. ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
-      (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "");
+      (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "") +
+      (dicasEquipe ? `\n\nDICAS DA EQUIPE (conhecimento de solução em texto livre; use quando fizer sentido, sem contrariar a base do produto):\n${dicasEquipe}` : "");
 
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
