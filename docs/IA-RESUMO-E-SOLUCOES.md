@@ -230,14 +230,17 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
    id_conversa}` → lê conversa (texto + imagem) + KB + regras → Claude Haiku →
    grava `resumo_ia*` e devolve `{resumo, solucoes}`.
 
+5. ✅ **UI no painel** (`assistencia.js`): seção **🤖 Resumo IA & Soluções
+   sugeridas** no drawer do chamado (`astAbrirDetalhe`), com botão
+   Gerar/Atualizar (`astGerarResumoIA` → `sb.functions.invoke`), estados de
+   loading/erro e render das soluções com link de vídeo + badge de confiança.
+
 **Falta para rodar ao vivo:**
 - ⏳ Adicionar o segredo **`ANTHROPIC_API_KEY`** (Supabase → Edge Functions →
   Secrets). Sem ele a função responde 500 "falta o segredo".
-- ⏳ Popular o resto do catálogo do Notion em `assist_kb_produto` (AC, Geladeiras
-  Adventure, etc.).
-- ⏳ **UI** no painel (`index.html`/`assistencia.js`): mostrar Resumo IA +
-  Soluções (+vídeo) no chamado, com botão "gerar/atualizar".
 - ⏳ **Áudio** via Whisper (fast-follow) e disparo automático na criação do chamado.
+- ⏳ (Opcional) tela pra editar `assist_ia_regras` pelo painel e re-sincronizar o
+  Notion (`assist-kb-sync`).
 
 ---
 

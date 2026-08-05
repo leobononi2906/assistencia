@@ -1216,6 +1216,78 @@ window.astSalvarTudo = async function() {
   }
 };
 
+function astEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Monta o HTML do bloco "Resumo IA & Soluções" a partir das colunas resumo_ia*.
+function astResumoIAHtml(iaRow){
+  const r = iaRow && iaRow.resumo_ia ? iaRow.resumo_ia : null;
+  const sols = iaRow && Array.isArray(iaRow.resumo_ia_solucoes) ? iaRow.resumo_ia_solucoes : [];
+  if(!r){
+    return `<div style="font-size:13px;color:var(--text-muted);padding:6px 0">
+      Nenhum resumo gerado ainda. Clique em <strong>Gerar</strong> — a IA lê a conversa (texto + imagens) e sugere as soluções mais prováveis, com o vídeo pra mandar ao cliente.
+    </div>`;
+  }
+  const linha = (lbl,val)=> val ? `<div class="ast-detail-field"><div class="ast-detail-lbl">${lbl}</div><div class="ast-detail-val">${astEsc(val)}</div></div>` : '';
+  const confBadge = c => {
+    const k=(c||'').toLowerCase();
+    const col = k==='alta'?'var(--green)':k==='media'?'var(--orange)':'var(--text-muted)';
+    return `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:4px;color:${col};border:1px solid ${col};white-space:nowrap">${astEsc(k||'—')}</span>`;
+  };
+  const solsHtml = sols.length ? sols.map((s,i)=>`
+    <div style="padding:8px 0;border-top:1px solid var(--border)">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <span style="font-weight:700;color:var(--blue-mid)">${i+1}.</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px">${astEsc(s.solucao||'')}</div>
+          ${s.video_url?`<a href="${astEsc(s.video_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue-mid);display:inline-flex;align-items:center;gap:4px;margin-top:3px">▶️ vídeo pro cliente</a>`:''}
+        </div>
+        ${confBadge(s.confianca)}
+      </div>
+    </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted)">Sem soluções sugeridas.</div>`;
+  const quando = iaRow.resumo_ia_em ? astFmtDate(iaRow.resumo_ia_em) : '';
+  return `
+    <div class="ast-detail-grid">
+      ${linha('Produto', r.produto)}
+      ${linha('Reclamação', r.reclamacao)}
+      ${linha('Defeito percebido', r.defeito_percebido)}
+      ${linha('Já tentado', r.ja_tentado)}
+      ${linha('Urgência', r.urgencia)}
+      ${linha('Falta info', r.falta_info)}
+    </div>
+    <div style="margin-top:10px">
+      <div class="ast-detail-lbl" style="margin-bottom:2px">Soluções sugeridas</div>
+      ${solsHtml}
+    </div>
+    ${quando?`<div style="font-size:11px;color:var(--text-muted);margin-top:8px">Gerado por IA em ${quando} — confira antes de enviar ao cliente.</div>`:''}
+  `;
+}
+
+// Chama a Edge Function assist-resumo-ia e re-renderiza o bloco.
+window.astGerarResumoIA = async function(id){
+  const btn = document.getElementById('ast-btn-resumo-ia');
+  const box = document.getElementById('ast-resumo-ia-content');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Gerando...'; }
+  if(box){ box.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:10px 0">⏳ A IA está lendo a conversa e as imagens...</div>'; }
+  try {
+    const { data, error } = await window.sb.functions.invoke('assist-resumo-ia', { body: { chamado_id: id } });
+    if (error) throw new Error(error.message || 'Falha ao chamar a função');
+    if (data && data.error) throw new Error(data.error);
+    const iaRow = {
+      resumo_ia: (data && data.resumo) || null,
+      resumo_ia_solucoes: (data && data.solucoes) || [],
+      resumo_ia_em: new Date().toISOString(),
+    };
+    if(box) box.innerHTML = astResumoIAHtml(iaRow);
+    if(btn){ btn.disabled=false; btn.textContent='↻ Atualizar'; }
+    if(typeof bononiLog==='function') bononiLog('INFO','RESUMO_IA_OK',{chamado_id:id});
+  } catch(err){
+    const msg = (err && err.message) || 'Erro ao gerar resumo';
+    if(box) box.innerHTML = `<div style="background:#FEF0EF;border:1px solid #FECACA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--red)">⚠️ ${astEsc(msg)}</div>`;
+    if(btn){ btn.disabled=false; btn.textContent='✨ Gerar'; }
+    if(typeof bononiLog==='function') bononiLog('ERRO','RESUMO_IA',{chamado_id:id,erro:msg});
+  }
+};
+
 window.astAbrirDetalhe = async function(id) {
   _drwChamadoId = id;
   astResetDirty();
@@ -1242,6 +1314,14 @@ window.astAbrirDetalhe = async function(id) {
       window.sb.from('assist_chamado_nfs').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
     ]);
     if (!det) throw new Error('Não encontrado');
+
+    // Resumo IA — colunas ficam em assist_chamados (a view de detalhe pode não expô-las)
+    let iaRow = null;
+    try {
+      const { data: iaData } = await window.sb.from('assist_chamados')
+        .select('resumo_ia,resumo_ia_solucoes,resumo_ia_em,resumo_ia_modelo').eq('id',id).maybeSingle();
+      iaRow = iaData || null;
+    } catch(e) {}
 
     const telNorm = det.telefone_normalizado||(det.telefone||'').replace(/\D/g,'');
     const [{ data: historico }, { data: bloqData }, osResp] = await Promise.all([
@@ -1359,6 +1439,15 @@ window.astAbrirDetalhe = async function(id) {
           <div><div style="font-size:13px;font-weight:700;color:var(--red)">Chamado parado há ${det.dias_sem_followup}d sem follow-up</div>
           <div style="font-size:12px;color:var(--text-muted)">Registre um acompanhamento abaixo para atualizar</div></div>
         </div>`:''}
+      </div>
+
+      <!-- ①b RESUMO IA & SOLUÇÕES -->
+      <div class="ast-drw-section" id="ast-resumo-ia-box">
+        <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
+          <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
+        </div>
+        <div id="ast-resumo-ia-content">${astResumoIAHtml(iaRow)}</div>
       </div>
 
       <!-- ② CLIENTE -->
