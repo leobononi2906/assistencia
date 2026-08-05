@@ -181,11 +181,14 @@ Deno.serve(async (req) => {
     // Vídeos com o link pronto pra mandar ao cliente; PDFs/manuais de apoio.
     const { data: materiais } = await supabase
       .from("prt_materiais")
-      .select("titulo, descricao, tipo, url, linha_produto, modelo")
+      .select("titulo, descricao, tipo, url, linha_produto, modelo, resumo_tecnico")
       .eq("ativo", true);
     const listaMateriais = (materiais || [])
       .filter((m) => m.url)
-      .map((m) => `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`)
+      .map((m) => {
+        const cab = `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`;
+        return m.resumo_tecnico ? `${cab}\n  RESUMO DO DOCUMENTO: ${m.resumo_tecnico}` : cab;
+      })
       .join("\n") || "(sem materiais)";
 
     // 3b) Regras/instruções da equipe (editáveis em assist_ia_regras) — como a
