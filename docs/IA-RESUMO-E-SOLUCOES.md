@@ -226,9 +226,11 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
    Advantage**.
 3. ✅ Tabela `assist_ia_regras` (linha única id=1) — instruções gerais da IA,
    editáveis pela equipe; a função injeta no prompt.
-4. ✅ Edge Function `assist-resumo-ia` (ACTIVE, v2): `POST {chamado_id |
-   id_conversa}` → lê conversa (texto + imagem) + KB + regras → Claude Haiku →
-   grava `resumo_ia*` e devolve `{resumo, solucoes}`.
+4. ✅ Edge Function `assist-resumo-ia` (ACTIVE, v4): `POST {chamado_id |
+   id_conversa}` → lê conversa (texto + imagem + **áudio transcrito via Whisper**)
+   + KB + regras → Claude Haiku → grava `resumo_ia*` e devolve `{resumo,
+   solucoes}`. A transcrição fica em cache em `umbler_mensagens.arquivo.Transcription`
+   (não re-transcreve, não repete custo).
 
 5. ✅ **UI no painel** (`assistencia.js`): seção **🤖 Resumo IA & Soluções
    sugeridas** no drawer do chamado (`astAbrirDetalhe`), com botão
@@ -236,9 +238,12 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
    loading/erro e render das soluções com link de vídeo + badge de confiança.
 
 **Falta para rodar ao vivo:**
-- ⏳ Adicionar o segredo **`ANTHROPIC_API_KEY`** (Supabase → Edge Functions →
-  Secrets). Sem ele a função responde 500 "falta o segredo".
-- ⏳ **Áudio** via Whisper (fast-follow) e disparo automático na criação do chamado.
+- ✅ `ANTHROPIC_API_KEY` adicionado (04/08).
+- ⏳ Adicionar o segredo **`OPENAI_API_KEY`** (Supabase → Edge Functions →
+  Secrets) para ligar a transcrição de áudio (Whisper). Sem ele, áudio entra
+  como "[não transcrito]" — o resto funciona normal.
+- ⏳ Publicar o painel (`assistencia.js`) em produção para o botão Gerar aparecer.
+- ⏳ Disparo automático do resumo na criação do chamado (hoje é botão manual).
 - ⏳ (Opcional) tela pra editar `assist_ia_regras` pelo painel e re-sincronizar o
   Notion (`assist-kb-sync`).
 

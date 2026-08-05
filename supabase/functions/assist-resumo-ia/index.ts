@@ -3,14 +3,18 @@
 // de SOLUÇÕES sugeridas casadas com o conhecimento do Notion (assist_kb_produto),
 // incluindo qual vídeo do YouTube mandar ao cliente.
 //
-// v1: texto + imagem (o Claude lê imagem nativo). Áudio NÃO é transcrito aqui
-// (o Claude não ingere áudio) — fica como fast-follow via Whisper. As URLs de
-// imagem vêm do S3 público da Umbler (umbler_mensagens.arquivo->>'Url').
+// Multimodal: texto + imagem (Claude lê imagem nativo) + ÁUDIO transcrito via
+// Whisper (OpenAI) — o Claude não ingere áudio direto. A transcrição fica em
+// cache em umbler_mensagens.arquivo.Transcription (não re-transcreve). As URLs
+// de mídia vêm do S3 público da Umbler (umbler_mensagens.arquivo->>'Url').
 //
 // Entrada:  POST { chamado_id }  ou  { id_conversa }
 // Saída:    { ok, resumo, solucoes } e grava em assist_chamados.resumo_ia*
 //
-// Segredo necessário (Supabase → Edge Functions → Secrets): ANTHROPIC_API_KEY.
+// Segredos (Supabase → Edge Functions → Secrets):
+//   ANTHROPIC_API_KEY (obrigatório) — resumo/soluções.
+//   OPENAI_API_KEY    (opcional)    — transcrição de áudio (Whisper); sem ele,
+//                                     áudio entra como "[não transcrito]".
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -29,11 +33,35 @@ function json(body: unknown, status = 200) {
 
 const MODELO = "claude-haiku-4-5-20251001"; // barato e com visão; suficiente p/ o resumo
 const MAX_IMAGENS = 6;                       // teto de imagens por chamado (custo)
+const MAX_AUDIOS = 15;                       // teto de áudios transcritos por chamado (custo)
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
+
+// Transcreve um áudio (URL pública) via Whisper. Retorna o texto ou null.
+async function transcreverAudio(url: string, openaiKey: string): Promise<string | null> {
+  try {
+    const a = await fetch(url);
+    if (!a.ok) return null;
+    const buf = await a.arrayBuffer();
+    const fd = new FormData();
+    fd.append("file", new File([buf], "audio.mp3", { type: "audio/mpeg" }));
+    fd.append("model", "whisper-1");
+    fd.append("language", "pt");
+    fd.append("response_format", "text");
+    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + openaiKey },
+      body: fd,
+    });
+    if (!r.ok) return null;
+    return (await r.text()).trim() || null;
+  } catch (_e) {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -42,6 +70,7 @@ Deno.serve(async (req) => {
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) return json({ error: "falta o segredo ANTHROPIC_API_KEY" }, 500);
+    const openaiKey = Deno.env.get("OPENAI_API_KEY"); // opcional — habilita transcrição de áudio
 
     const { chamado_id, id_conversa } = await req.json().catch(() => ({}));
     if (!chamado_id && !id_conversa) {
@@ -64,28 +93,53 @@ Deno.serve(async (req) => {
     // 2) Mensagens da conversa (ordem cronológica)
     const { data: msgs, error: eMsg } = await supabase
       .from("umbler_mensagens")
-      .select("enviado_em, direcao, tipo_mensagem, conteudo, arquivo")
+      .select("event_id, enviado_em, direcao, tipo_mensagem, conteudo, arquivo")
       .eq("id_conversa", conversaId)
       .order("enviado_em", { ascending: true });
     if (eMsg) return json({ error: `erro ao ler mensagens: ${eMsg.message}` }, 500);
     if (!msgs || msgs.length === 0) return json({ error: "conversa sem mensagens" }, 404);
 
-    // Transcreve a conversa em texto e coleta URLs de imagem válidas.
+    // Monta o histórico. Áudio: usa cache (arquivo.Transcription) ou transcreve
+    // via Whisper se OPENAI_API_KEY existir; imagem: coleta a URL p/ a visão.
     const linhas: string[] = [];
     const imagens: string[] = [];
-    let audios = 0;
+    let audiosTranscritos = 0;
+    let audiosSemTranscricao = 0;
+
     for (const m of msgs) {
       const quem = m.direcao === "empresa" ? "EMPRESA" : "CLIENTE";
       const tipo = m.tipo_mensagem;
-      const url = (m.arquivo as Record<string, unknown> | null)?.["Url"] as string | undefined;
+      const arq = (m.arquivo as Record<string, any> | null) || null;
+      const url = arq?.["Url"] as string | undefined;
+
       if (tipo === "Text" && m.conteudo) {
         linhas.push(`${quem}: ${m.conteudo}`);
       } else if (tipo === "Image") {
         if (url && imagens.length < MAX_IMAGENS) imagens.push(url);
         linhas.push(`${quem}: [imagem${url ? "" : " (sem url)"}]`);
       } else if (tipo === "Audio") {
-        audios++;
-        linhas.push(`${quem}: [áudio — não transcrito nesta versão]`);
+        const cache = (arq?.["Transcription"] as string | null) || null;
+        if (cache) {
+          audiosTranscritos++;
+          linhas.push(`${quem} (áudio): ${cache}`);
+        } else if (openaiKey && url && audiosTranscritos < MAX_AUDIOS) {
+          const tx = await transcreverAudio(url, openaiKey);
+          if (tx) {
+            audiosTranscritos++;
+            linhas.push(`${quem} (áudio): ${tx}`);
+            try {
+              await supabase.from("umbler_mensagens")
+                .update({ arquivo: { ...(arq || {}), Transcription: tx } })
+                .eq("event_id", m.event_id); // cache best-effort
+            } catch (_e) { /* ignora falha de cache */ }
+          } else {
+            audiosSemTranscricao++;
+            linhas.push(`${quem}: [áudio — falha ao transcrever]`);
+          }
+        } else {
+          audiosSemTranscricao++;
+          linhas.push(`${quem}: [áudio${url ? "" : " (sem url)"} — não transcrito]`);
+        }
       } else if (m.conteudo) {
         linhas.push(`${quem}: [${tipo}] ${m.conteudo}`);
       } else {
@@ -126,7 +180,7 @@ Deno.serve(async (req) => {
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
       `- Descrição inicial: ${chamado.descricao_inicial || "—"}\n` +
-      `- Áudios não transcritos nesta conversa: ${audios}\n\n` +
+      `- Áudios transcritos: ${audiosTranscritos}; sem transcrição: ${audiosSemTranscricao}\n\n` +
       `CONVERSA:\n${linhas.join("\n")}\n\n` +
       `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}`;
 
@@ -183,7 +237,8 @@ Deno.serve(async (req) => {
       ok: true,
       chamado_id: chamado.id,
       imagens_lidas: imagens.length,
-      audios_ignorados: audios,
+      audios_transcritos: audiosTranscritos,
+      audios_sem_transcricao: audiosSemTranscricao,
       resumo: parsed.resumo,
       solucoes: parsed.solucoes,
     });
