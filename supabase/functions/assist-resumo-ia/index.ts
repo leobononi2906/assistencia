@@ -194,8 +194,10 @@ Deno.serve(async (req) => {
       "BASE DE CONHECIMENTO fornecida. Use SOMENTE soluções coerentes com a base; se sugerir vídeo, " +
       "use apenas os links presentes na base do produto correspondente. Responda SOMENTE com JSON válido, " +
       "sem texto fora do JSON, no formato: " +
-      '{"resumo":{"produto":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
+      '{"resumo":{"produto":"","categoria":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
       '"solucoes":[{"solucao":"","video_url":null,"confianca":"alta|media|baixa"}]}. ' +
+      'O campo "categoria" DEVE ser exatamente um destes valores (classifique pela linha do produto reclamado): ' +
+      '"Ar Condicionado", "Geladeira", "Gerador" ou "Outros". Use "Outros" quando não for nenhuma das três linhas ou quando não der para saber. ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
       (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "");
 

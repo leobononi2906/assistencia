@@ -1219,7 +1219,30 @@ window.astSalvarTudo = async function() {
 function astEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // Monta o HTML do bloco "Resumo IA & Soluções" a partir das colunas resumo_ia*.
-function astResumoIAHtml(iaRow){
+// Metadados das categorias que a IA sugere (cor do chip + termo p/ buscar no catálogo).
+const AST_CATEGORIAS_IA = {
+  'ar condicionado': { rotulo:'Ar Condicionado', emoji:'❄️', cor:'#0EA5E9', termo:'condic' },
+  'geladeira':       { rotulo:'Geladeira',       emoji:'🧊', cor:'#2563EB', termo:'geladeira' },
+  'gerador':         { rotulo:'Gerador',         emoji:'⚡', cor:'#F59E0B', termo:'gerador' },
+  'outros':          { rotulo:'Outros',          emoji:'📦', cor:'#6B7280', termo:'' },
+};
+function astCatMeta(cat){
+  const k=(cat||'').trim().toLowerCase();
+  return AST_CATEGORIAS_IA[k] || (k?{rotulo:cat,emoji:'📦',cor:'#6B7280',termo:cat}:null);
+}
+// Preenche a busca de produto do drawer com o termo da categoria sugerida pela IA
+// e dispara a busca no catálogo — o humano confirma o SKU (IA sugere, humano marca).
+window.astUsarCategoriaProduto = function(cat, id){
+  const meta = astCatMeta(cat); if(!meta) return;
+  const inp = document.getElementById('info-prod-busca'); if(!inp) return;
+  inp.value = meta.termo || meta.rotulo;
+  if(typeof astMarcarAlterado==='function') astMarcarAlterado();
+  if(typeof astBuscarProdDrawer==='function') astBuscarProdDrawer(id);
+  inp.scrollIntoView({behavior:'smooth',block:'center'});
+  inp.focus();
+};
+
+function astResumoIAHtml(iaRow, id){
   const r = iaRow && iaRow.resumo_ia ? iaRow.resumo_ia : null;
   const sols = iaRow && Array.isArray(iaRow.resumo_ia_solucoes) ? iaRow.resumo_ia_solucoes : [];
   if(!r){
@@ -1245,7 +1268,17 @@ function astResumoIAHtml(iaRow){
       </div>
     </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted)">Sem soluções sugeridas.</div>`;
   const quando = iaRow.resumo_ia_em ? astFmtDate(iaRow.resumo_ia_em) : '';
+  const cm = astCatMeta(r.categoria);
+  const catHtml = cm ? `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:${cm.cor}14;border:1px solid ${cm.cor}55;border-radius:8px">
+      <span style="font-size:12px;font-weight:700;color:${cm.cor};display:inline-flex;align-items:center;gap:5px">
+        ${cm.emoji} ${astEsc(cm.rotulo)}
+      </span>
+      <span style="font-size:11px;color:var(--text-muted)">categoria sugerida pela IA</span>
+      <button class="ast-btn ast-btn-secondary ast-btn-sm" style="margin-left:auto" onclick="astUsarCategoriaProduto('${astEsc(r.categoria)}',${id})" title="Preenche a busca de Produto reclamado com esta categoria">📌 Usar como produto</button>
+    </div>` : '';
   return `
+    ${catHtml}
     <div class="ast-detail-grid">
       ${linha('Produto', r.produto)}
       ${linha('Reclamação', r.reclamacao)}
@@ -1277,7 +1310,7 @@ window.astGerarResumoIA = async function(id){
       resumo_ia_solucoes: (data && data.solucoes) || [],
       resumo_ia_em: new Date().toISOString(),
     };
-    if(box) box.innerHTML = astResumoIAHtml(iaRow);
+    if(box) box.innerHTML = astResumoIAHtml(iaRow, id);
     if(btn){ btn.disabled=false; btn.textContent='↻ Atualizar'; }
     if(typeof bononiLog==='function') bononiLog('INFO','RESUMO_IA_OK',{chamado_id:id});
   } catch(err){
@@ -1458,7 +1491,19 @@ window.astAbrirDetalhe = async function(id) {
 
       <!-- ABA: ATENDIMENTO -->
       <div class="ast-drw-pane active" id="ast-pane-atendimento">
-        <!-- ① NATUREZA + STATUS -->
+        <!-- ① RESUMO IA & SOLUÇÕES (topo do drawer) -->
+        <div class="ast-drw-section" id="ast-resumo-ia-box">
+          <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
+            <div style="display:flex;gap:6px">
+              <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirRegrasIA()" title="Editar as regras gerais da IA">⚙️ Regras</button>
+              <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
+            </div>
+          </div>
+          <div id="ast-resumo-ia-content">${astResumoIAHtml(iaRow, id)}</div>
+        </div>
+
+        <!-- ② NATUREZA + STATUS -->
       <div class="ast-drw-section">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
           <button class="ast-btn ast-btn-sm ${det.natureza==='nao_garantia'?'ast-btn-danger':'ast-btn-secondary'}"
@@ -1489,18 +1534,6 @@ window.astAbrirDetalhe = async function(id) {
           <div><div style="font-size:13px;font-weight:700;color:var(--red)">Chamado parado há ${det.dias_sem_followup}d sem follow-up</div>
           <div style="font-size:12px;color:var(--text-muted)">Registre um acompanhamento abaixo para atualizar</div></div>
         </div>`:''}
-      </div>
-
-      <!-- ①b RESUMO IA & SOLUÇÕES -->
-      <div class="ast-drw-section" id="ast-resumo-ia-box">
-        <div class="ast-drw-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span>🤖 Resumo IA &amp; Soluções sugeridas</span>
-          <div style="display:flex;gap:6px">
-            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astAbrirRegrasIA()" title="Editar as regras gerais da IA">⚙️ Regras</button>
-            <button class="ast-btn ast-btn-primary ast-btn-sm" id="ast-btn-resumo-ia" onclick="astGerarResumoIA(${id})">${iaRow&&iaRow.resumo_ia?'↻ Atualizar':'✨ Gerar'}</button>
-          </div>
-        </div>
-        <div id="ast-resumo-ia-content">${astResumoIAHtml(iaRow)}</div>
       </div>
 
       <!-- ② CLIENTE -->
