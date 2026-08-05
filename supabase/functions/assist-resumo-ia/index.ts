@@ -40,14 +40,18 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-// Transcreve um áudio (URL pública) via Whisper. Retorna o texto ou null.
-async function transcreverAudio(url: string, openaiKey: string): Promise<string | null> {
+// Transcreve mídia (áudio OU vídeo) via Whisper — o Whisper extrai o áudio do
+// mp4 sozinho, sem ffmpeg. Limite prático da API: 25MB. Retorna texto ou null.
+async function transcreverMidia(
+  url: string, openaiKey: string, filename: string, mime: string,
+): Promise<string | null> {
   try {
     const a = await fetch(url);
     if (!a.ok) return null;
     const buf = await a.arrayBuffer();
+    if (buf.byteLength > 25 * 1024 * 1024) return null; // acima do limite do Whisper
     const fd = new FormData();
-    fd.append("file", new File([buf], "audio.mp3", { type: "audio/mpeg" }));
+    fd.append("file", new File([buf], filename, { type: mime }));
     fd.append("model", "whisper-1");
     fd.append("language", "pt");
     fd.append("response_format", "text");
@@ -93,20 +97,35 @@ Deno.serve(async (req) => {
     // 2) Mensagens da conversa (ordem cronológica)
     const { data: msgs, error: eMsg } = await supabase
       .from("umbler_mensagens")
-      .select("event_id, enviado_em, direcao, tipo_mensagem, conteudo, arquivo")
+      .select("event_id, id_mensagem, enviado_em, direcao, tipo_mensagem, conteudo, arquivo")
       .eq("id_conversa", conversaId)
       .order("enviado_em", { ascending: true });
     if (eMsg) return json({ error: `erro ao ler mensagens: ${eMsg.message}` }, 500);
     if (!msgs || msgs.length === 0) return json({ error: "conversa sem mensagens" }, 404);
 
-    // Monta o histórico. Áudio: usa cache (arquivo.Transcription) ou transcreve
-    // via Whisper se OPENAI_API_KEY existir; imagem: coleta a URL p/ a visão.
+    // Dedup por id_mensagem: a URL da mídia costuma chegar num evento POSTERIOR
+    // (outra linha do mesmo id_mensagem). Consolida preferindo a linha que já
+    // tem Url/Transcription, sem perder as mensagens sem id.
+    const scoreRow = (x: any) =>
+      ((x?.arquivo?.Url) ? 2 : 0) + ((x?.arquivo?.Transcription) ? 1 : 0);
+    const byId = new Map<string, any>();
+    const soltas: any[] = [];
+    for (const m of msgs) {
+      if (!m.id_mensagem) { soltas.push(m); continue; }
+      const prev = byId.get(m.id_mensagem);
+      if (!prev || scoreRow(m) > scoreRow(prev)) byId.set(m.id_mensagem, m);
+    }
+    const msgsDedup = [...byId.values(), ...soltas]
+      .sort((a, b) => String(a.enviado_em).localeCompare(String(b.enviado_em)));
+
+    // Monta o histórico. Áudio/Vídeo: usa cache (arquivo.Transcription) ou
+    // transcreve via Whisper se OPENAI_API_KEY existir; imagem: URL p/ a visão.
     const linhas: string[] = [];
     const imagens: string[] = [];
     let audiosTranscritos = 0;
     let audiosSemTranscricao = 0;
 
-    for (const m of msgs) {
+    for (const m of msgsDedup) {
       const quem = m.direcao === "empresa" ? "EMPRESA" : "CLIENTE";
       const tipo = m.tipo_mensagem;
       const arq = (m.arquivo as Record<string, any> | null) || null;
@@ -117,16 +136,19 @@ Deno.serve(async (req) => {
       } else if (tipo === "Image") {
         if (url && imagens.length < MAX_IMAGENS) imagens.push(url);
         linhas.push(`${quem}: [imagem${url ? "" : " (sem url)"}]`);
-      } else if (tipo === "Audio") {
+      } else if (tipo === "Audio" || tipo === "Video") {
+        const label = tipo === "Video" ? "vídeo" : "áudio";
         const cache = (arq?.["Transcription"] as string | null) || null;
         if (cache) {
           audiosTranscritos++;
-          linhas.push(`${quem} (áudio): ${cache}`);
+          linhas.push(`${quem} (${label}): ${cache}`);
         } else if (openaiKey && url && audiosTranscritos < MAX_AUDIOS) {
-          const tx = await transcreverAudio(url, openaiKey);
+          const fn = tipo === "Video" ? "media.mp4" : "audio.mp3";
+          const mime = (arq?.["ContentType"] as string) || (tipo === "Video" ? "video/mp4" : "audio/mpeg");
+          const tx = await transcreverMidia(url, openaiKey, fn, mime);
           if (tx) {
             audiosTranscritos++;
-            linhas.push(`${quem} (áudio): ${tx}`);
+            linhas.push(`${quem} (${label}): ${tx}`);
             try {
               await supabase.from("umbler_mensagens")
                 .update({ arquivo: { ...(arq || {}), Transcription: tx } })
@@ -134,11 +156,11 @@ Deno.serve(async (req) => {
             } catch (_e) { /* ignora falha de cache */ }
           } else {
             audiosSemTranscricao++;
-            linhas.push(`${quem}: [áudio — falha ao transcrever]`);
+            linhas.push(`${quem}: [${label} — não transcrito (falha/limite 25MB)]`);
           }
         } else {
           audiosSemTranscricao++;
-          linhas.push(`${quem}: [áudio${url ? "" : " (sem url)"} — não transcrito]`);
+          linhas.push(`${quem}: [${label}${url ? "" : " (sem url)"} — não transcrito]`);
         }
       } else if (m.conteudo) {
         linhas.push(`${quem}: [${tipo}] ${m.conteudo}`);
@@ -180,7 +202,7 @@ Deno.serve(async (req) => {
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
       `- Descrição inicial: ${chamado.descricao_inicial || "—"}\n` +
-      `- Áudios transcritos: ${audiosTranscritos}; sem transcrição: ${audiosSemTranscricao}\n\n` +
+      `- Áudios/vídeos transcritos: ${audiosTranscritos}; sem transcrição: ${audiosSemTranscricao}\n\n` +
       `CONVERSA:\n${linhas.join("\n")}\n\n` +
       `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}`;
 
@@ -237,8 +259,8 @@ Deno.serve(async (req) => {
       ok: true,
       chamado_id: chamado.id,
       imagens_lidas: imagens.length,
-      audios_transcritos: audiosTranscritos,
-      audios_sem_transcricao: audiosSemTranscricao,
+      midias_transcritas: audiosTranscritos,
+      midias_sem_transcricao: audiosSemTranscricao,
       resumo: parsed.resumo,
       solucoes: parsed.solucoes,
     });

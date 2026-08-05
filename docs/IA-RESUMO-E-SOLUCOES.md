@@ -226,11 +226,20 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
    Advantage**.
 3. ✅ Tabela `assist_ia_regras` (linha única id=1) — instruções gerais da IA,
    editáveis pela equipe; a função injeta no prompt.
-4. ✅ Edge Function `assist-resumo-ia` (ACTIVE, v4): `POST {chamado_id |
-   id_conversa}` → lê conversa (texto + imagem + **áudio transcrito via Whisper**)
+4. ✅ Edge Function `assist-resumo-ia` (ACTIVE, v5): `POST {chamado_id |
+   id_conversa}` → lê conversa (texto + imagem + **áudio E vídeo transcritos via
+   Whisper** — o Whisper extrai o áudio do mp4 sozinho, sem ffmpeg; limite 25MB)
    + KB + regras → Claude Haiku → grava `resumo_ia*` e devolve `{resumo,
-   solucoes}`. A transcrição fica em cache em `umbler_mensagens.arquivo.Transcription`
-   (não re-transcreve, não repete custo).
+   solucoes}`. Transcrição em cache em `umbler_mensagens.arquivo.Transcription`
+   (não re-transcreve). Faz **dedup por `id_mensagem`** preferindo a linha com
+   URL (a URL da mídia chega num evento posterior — ver nota abaixo).
+
+> **Captura de mídia (achado 04/08):** a Umbler dispara o webhook da mídia com
+> `Url: null` (a mídia é processada depois) e manda um SEGUNDO webhook com a URL,
+> em outro `event_id` → vira outra linha. Em 101 mídias multi-evento, 97 têm URL
+> numa das linhas. A função já resolve isso na leitura (dedup). O que fica no ar:
+> mídias cujo 2º evento não chegou (ex.: alguns áudios antigos) — só recuperáveis
+> via **API da Umbler por id_mensagem** (enriquecimento), se quisermos 100%.
 
 5. ✅ **UI no painel** (`assistencia.js`): seção **🤖 Resumo IA & Soluções
    sugeridas** no drawer do chamado (`astAbrirDetalhe`), com botão
@@ -246,6 +255,12 @@ v2 (buscar em todos os chamados resolvidos). Áudio entra depois (Whisper).
 - ⏳ Disparo automático do resumo na criação do chamado (hoje é botão manual).
 - ⏳ (Opcional) tela pra editar `assist_ia_regras` pelo painel e re-sincronizar o
   Notion (`assist-kb-sync`).
+- ⏳ (Opcional) **frames de vídeo** (ver o defeito em movimento): o Claude não lê
+  vídeo, só a transcrição do áudio. Para o visual, ou extrair frames (precisa de
+  ffmpeg/serviço) ou usar um modelo que lê vídeo nativo (ex.: Gemini) só nesse
+  passo. Hoje o vídeo entra pelo que o cliente FALA (transcrição).
+- ⏳ (Opcional) **enriquecimento via API da Umbler** para as poucas mídias sem o
+  2º evento de URL.
 
 ---
 
