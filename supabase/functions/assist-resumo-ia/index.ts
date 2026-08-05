@@ -177,6 +177,17 @@ Deno.serve(async (req) => {
       .map((k) => `### PRODUTO: ${k.produto}\n${k.conteudo_md}`)
       .join("\n\n---\n\n") || "(base de conhecimento vazia)";
 
+    // Materiais técnicos & vídeos (prt_materiais) — mesma base, leitura ao vivo.
+    // Vídeos com o link pronto pra mandar ao cliente; PDFs/manuais de apoio.
+    const { data: materiais } = await supabase
+      .from("prt_materiais")
+      .select("titulo, descricao, tipo, url, linha_produto, modelo")
+      .eq("ativo", true);
+    const listaMateriais = (materiais || [])
+      .filter((m) => m.url)
+      .map((m) => `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`)
+      .join("\n") || "(sem materiais)";
+
     // 3b) Regras/instruções da equipe (editáveis em assist_ia_regras) — como a
     // equipe vai "otimizando" as respostas ao longo do tempo.
     const { data: regras } = await supabase
@@ -193,7 +204,7 @@ Deno.serve(async (req) => {
       "Leia a conversa de WhatsApp entre CLIENTE e EMPRESA (e as imagens anexas) e produza: " +
       "(1) um RESUMO estruturado da reclamação e (2) as SOLUÇÕES mais prováveis, casando com a " +
       "BASE DE CONHECIMENTO fornecida. Use SOMENTE soluções coerentes com a base; se sugerir vídeo, " +
-      "use apenas os links presentes na base do produto correspondente. Responda SOMENTE com JSON válido, " +
+      "use apenas links presentes na BASE DE CONHECIMENTO ou na lista de MATERIAIS TÉCNICOS & VÍDEOS. Responda SOMENTE com JSON válido, " +
       "sem texto fora do JSON, no formato: " +
       '{"resumo":{"produto":"","categoria":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
       '"solucoes":[{"solucao":"","video_url":null,"confianca":"alta|media|baixa"}]}. ' +
@@ -208,7 +219,8 @@ Deno.serve(async (req) => {
       `- Descrição inicial: ${chamado.descricao_inicial || "—"}\n` +
       `- Áudios/vídeos transcritos: ${audiosTranscritos}; sem transcrição: ${audiosSemTranscricao}\n\n` +
       `CONVERSA:\n${linhas.join("\n")}\n\n` +
-      `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}`;
+      `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}\n\n` +
+      `MATERIAIS TÉCNICOS & VÍDEOS DISPONÍVEIS (indique o link ao cliente quando ajudar):\n${listaMateriais}`;
 
     const content: unknown[] = [{ type: "text", text: contexto }];
     for (const u of imagens) {

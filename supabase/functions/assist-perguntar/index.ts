@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
       .map((k) => `### PRODUTO: ${k.produto}\n${k.conteudo_md}`)
       .join("\n\n---\n\n") || "(base de conhecimento vazia)";
 
+    // Materiais técnicos & vídeos (prt_materiais) — leitura ao vivo.
+    const { data: materiais } = await supabase
+      .from("prt_materiais")
+      .select("titulo, descricao, tipo, url, linha_produto, modelo")
+      .eq("ativo", true);
+    const listaMateriais = (materiais || [])
+      .filter((m) => m.url)
+      .map((m) => `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`)
+      .join("\n") || "(sem materiais)";
+
     const { data: regras } = await supabase
       .from("assist_ia_regras")
       .select("instrucoes, dicas")
@@ -61,7 +71,7 @@ Deno.serve(async (req) => {
       "Um ATENDENTE faz uma pergunta; responda com base SOMENTE na BASE DE CONHECIMENTO fornecida " +
       "(e nas regras/dicas). Produza uma resposta CORDIAL e OBJETIVA, pronta para o atendente copiar e " +
       "mandar ao cliente no WhatsApp (linguagem simples; passo a passo quando fizer sentido). " +
-      "Se houver vídeo pertinente na base, inclua o link em 'videos' (use apenas links presentes na base). " +
+      "Se houver vídeo pertinente, inclua o link em 'videos' (use apenas links presentes na BASE ou nos MATERIAIS TÉCNICOS). " +
       "Se a base NÃO cobrir a dúvida, seja honesto: diga que precisa confirmar e peça o dado que falta " +
       "(ex.: código de erro no display). NÃO invente solução. Responda SOMENTE com JSON válido, sem texto fora do JSON, " +
       'no formato: {"resposta":"","videos":[],"confianca":"alta|media|baixa"}. Português do Brasil.' +
@@ -71,7 +81,8 @@ Deno.serve(async (req) => {
     const contexto =
       `PERGUNTA DO ATENDENTE: ${String(pergunta).trim()}\n\n` +
       (produto ? `PRODUTO (dica do atendente): ${produto}\n\n` : "") +
-      `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}`;
+      `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}\n\n` +
+      `MATERIAIS TÉCNICOS & VÍDEOS DISPONÍVEIS (indique o link ao cliente quando ajudar):\n${listaMateriais}`;
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
