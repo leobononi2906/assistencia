@@ -4214,4 +4214,94 @@ window.ModuloAssistencia = {
   }
 };
 
+// ══════════════════════════════════════════
+// WIDGET FLUTUANTE — 🤖 PERGUNTAR À IA (tira-dúvidas)
+// Pergunta livre → resposta pronta pro cliente (Notion + Dicas + Regras) + vídeos.
+// ══════════════════════════════════════════
+function astPergBubbleUser(q){
+  return `<div style="align-self:flex-end;max-width:85%;background:var(--blue-mid,#2563EB);color:#fff;padding:8px 11px;border-radius:12px 12px 3px 12px;font-size:13px;white-space:pre-wrap;word-break:break-word">${astEsc(q)}</div>`;
+}
+function astPergBubbleResposta(d){
+  const conf=(d.confianca||'').toLowerCase();
+  const col=conf==='alta'?'var(--green)':conf==='media'?'var(--orange)':'var(--text-muted)';
+  const vids=(Array.isArray(d.videos)?d.videos:[]).filter(Boolean);
+  const vidsHtml=vids.length?`<div style="margin-top:7px;display:flex;flex-direction:column;gap:3px">`+vids.map(u=>`<a href="${astEsc(u)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue-mid);word-break:break-all">▶️ ${astEsc(u)}</a>`).join('')+`</div>`:'';
+  const resp=d.resposta||'(sem resposta)';
+  return `<div style="align-self:flex-start;max-width:90%;background:var(--surface);border:1px solid var(--border);padding:10px 12px;border-radius:12px 12px 12px 3px">
+    <div style="font-size:13px;white-space:pre-wrap;word-break:break-word;color:var(--text-primary)">${astEsc(resp)}</div>
+    ${vidsHtml}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${col};border:1px solid ${col};padding:1px 6px;border-radius:4px">${astEsc(conf||'—')}</span>
+      <button class="ast-btn ast-btn-secondary ast-btn-sm" data-resp="${encodeURIComponent(resp)}" onclick="astCopiarResposta(this)">📋 Copiar</button>
+    </div>
+  </div>`;
+}
+window.astCopiarResposta=function(btn){
+  const t=decodeURIComponent(btn.getAttribute('data-resp')||'');
+  if(navigator.clipboard){ navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='✅ Copiado';setTimeout(()=>{btn.textContent=o;},1500);}).catch(()=>{}); }
+};
+window.astTogglePerguntar=function(force){
+  const p=document.getElementById('ast-perg-panel'); if(!p) return;
+  const show = force===true ? true : force===false ? false : (p.style.display==='none');
+  p.style.display = show?'flex':'none';
+  if(show){ const i=document.getElementById('ast-perg-input'); setTimeout(()=>{i&&i.focus();},50); }
+};
+window.astPerguntarKeydown=function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); astPerguntarIA(); } };
+window.astPerguntarIA=async function(){
+  const inp=document.getElementById('ast-perg-input');
+  const sel=document.getElementById('ast-perg-produto');
+  const msgs=document.getElementById('ast-perg-msgs');
+  const q=(inp?.value||'').trim(); if(!q||!msgs) return;
+  const produto=sel?sel.value:'';
+  document.getElementById('ast-perg-empty')?.remove();
+  msgs.insertAdjacentHTML('beforeend', astPergBubbleUser(q));
+  if(inp){ inp.value=''; inp.style.height='auto'; }
+  const lid='ast-perg-l'+Date.now();
+  msgs.insertAdjacentHTML('beforeend', `<div id="${lid}" style="align-self:flex-start;font-size:12px;color:var(--text-muted);padding:4px 2px">⏳ consultando a base...</div>`);
+  msgs.scrollTop=msgs.scrollHeight;
+  const btn=document.getElementById('ast-perg-send'); if(btn) btn.disabled=true;
+  try{
+    const {data,error}=await window.sb.functions.invoke('assist-perguntar',{body:{pergunta:q,produto:produto||undefined}});
+    if(error) throw new Error(error.message||'Falha ao chamar a função');
+    if(data&&data.error) throw new Error(data.error);
+    document.getElementById(lid)?.remove();
+    msgs.insertAdjacentHTML('beforeend', astPergBubbleResposta(data||{}));
+    if(typeof bononiLog==='function') bononiLog('INFO','PERGUNTAR_IA_OK',{});
+  }catch(err){
+    const m=(err&&err.message)||'Erro ao consultar';
+    document.getElementById(lid)?.remove();
+    msgs.insertAdjacentHTML('beforeend', `<div style="align-self:flex-start;max-width:90%">${astErroIAHtml(m)}</div>`);
+    if(typeof bononiLog==='function') bononiLog('ERRO','PERGUNTAR_IA',{erro:m});
+  }finally{
+    if(btn) btn.disabled=false;
+    msgs.scrollTop=msgs.scrollHeight;
+  }
+};
+function astInitPerguntarWidget(){
+  if(typeof document==='undefined' || !document.body) return;
+  if(document.getElementById('ast-perg-fab')) return;
+  const opts=['Ar Condicionado','Geladeira','Gerador','Outros'].map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.body.insertAdjacentHTML('beforeend', `
+    <button id="ast-perg-fab" onclick="astTogglePerguntar()" title="Perguntar à IA"
+      style="position:fixed;right:20px;bottom:20px;z-index:9990;background:var(--blue-mid,#2563EB);color:#fff;border:none;border-radius:99px;padding:12px 18px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);display:flex;align-items:center;gap:7px">🤖 Perguntar à IA</button>
+    <div id="ast-perg-panel" style="display:none;position:fixed;right:20px;bottom:74px;z-index:9990;width:400px;max-width:calc(100vw - 40px);height:560px;max-height:calc(100vh - 110px);background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.3);flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 15px;border-bottom:1px solid var(--border);background:var(--surface-2,#f6f8fa)">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">🤖 Perguntar à IA</div>
+        <button onclick="astTogglePerguntar(false)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);line-height:1">×</button>
+      </div>
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Produto:</span>
+        <select id="ast-perg-produto" class="ast-form-select" style="flex:1;font-size:12px;padding:4px 8px"><option value="">A IA identifica</option>${opts}</select>
+      </div>
+      <div id="ast-perg-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div id="ast-perg-empty" style="margin:auto;text-align:center;color:var(--text-muted);font-size:13px;padding:0 16px;line-height:1.5">Faça uma pergunta sobre um defeito ou dúvida técnica.<br>A IA responde com base no Notion + Dicas, num texto pronto pra mandar ao cliente.</div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">
+        <textarea id="ast-perg-input" onkeydown="astPerguntarKeydown(event)" rows="1" placeholder="Ex.: Ar G3 pingando água na cabine, o que faço?" class="ast-form-input" style="flex:1;resize:none;font-family:inherit;font-size:13px;max-height:90px"></textarea>
+        <button id="ast-perg-send" class="ast-btn ast-btn-primary" onclick="astPerguntarIA()">Perguntar</button>
+      </div>
+    </div>`);
+}
+try { astInitPerguntarWidget(); } catch(_e) {}
+
 })();
