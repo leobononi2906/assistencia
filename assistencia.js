@@ -1321,6 +1321,33 @@ window.astGerarResumoIA = async function(id){
   }
 };
 
+// Sincroniza a base de conhecimento (assist_kb_produto) a partir das páginas do
+// Notion, via edge function assist-kb-sync. É como a edição no Notion "chega" na IA.
+window.astSincronizarKB = async function(){
+  const btn = document.getElementById('modal-kb-sync');
+  const msg = document.getElementById('modal-kb-msg');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Sincronizando...'; }
+  if(msg){ msg.style.color='var(--text-muted)'; msg.textContent='Lendo as páginas do Notion...'; }
+  try {
+    const { data, error } = await window.sb.functions.invoke('assist-kb-sync', { body: {} });
+    if(error) throw new Error(error.message || 'Falha ao chamar a função');
+    if(data && data.error) throw new Error(data.error + (data.ajuda ? ' — ' + data.ajuda : ''));
+    const okN = (data.sincronizados||[]).length, erN = (data.erros||[]).length;
+    if(msg){
+      msg.style.color = erN ? 'var(--orange)' : 'var(--green)';
+      msg.textContent = `✅ ${okN} produto(s) atualizado(s)` + (erN ? ` · ⚠️ ${erN} com erro (ver console)` : '');
+    }
+    if(erN) console.warn('assist-kb-sync — erros:', data.erros);
+    if(typeof bononiLog==='function') bononiLog(erN?'ERRO':'INFO','KB_SYNC',{ok:okN,erros:erN});
+  } catch(err){
+    const m = (err && err.message) || 'Erro ao sincronizar';
+    if(msg){ msg.style.color='var(--red)'; msg.textContent='⚠️ ' + m; }
+    if(typeof bononiLog==='function') bononiLog('ERRO','KB_SYNC',{erro:m});
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Sincronizar do Notion'; }
+  }
+};
+
 // Editor das REGRAS GERAIS da IA (assist_ia_regras, linha id=1). É onde a equipe
 // "otimiza" as respostas para TODOS os produtos. Soluções por produto ficam no Notion.
 window.astAbrirRegrasIA = async function(){
@@ -1332,7 +1359,15 @@ window.astAbrirRegrasIA = async function(){
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Instruções gerais que a IA segue em TODO chamado (tom, quando escalar, o que confirmar antes de concluir). As soluções por produto ficam no Notion.</div>
         <textarea id="modal-regras-txt" class="ast-form-input" style="width:100%;min-height:280px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical" placeholder="⏳ Carregando...">⏳ Carregando...</textarea>
         <div id="modal-regras-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">📚 Base de conhecimento (Notion)</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:9px">As soluções por produto vêm do Notion. Editou lá (defeitos/soluções, tabela de erros, vídeos)? Clique para a IA passar a usar.</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="ast-btn ast-btn-secondary" id="modal-kb-sync" onclick="astSincronizarKB()">🔄 Sincronizar do Notion</button>
+            <span id="modal-kb-msg" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
           <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-regras').remove()">Fechar</button>
           <button class="ast-btn ast-btn-primary" id="modal-regras-save" onclick="astSalvarRegrasIA()">Salvar</button>
         </div>
