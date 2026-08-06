@@ -1507,72 +1507,37 @@ window.astAbrirDetalhe = async function(id) {
       astData[localIdx].visualizado = true;
     }
 
-    const [{ data: det }, { data: fups }, { data: pecas }, { data: nfsVinculadas }] = await Promise.all([
+    // ONDA 1 — tudo que depende só do id do chamado (uma ida à rede)
+    const [{ data: det }, { data: fups }, { data: pecas }, { data: nfsVinculadas }, iaWrap] = await Promise.all([
       window.sb.from('assist_chamados_detalhe').select('*').eq('id',id).single(),
       window.sb.from('assist_followups').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).range(0,99),
       window.sb.from('assist_chamado_pecas').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(100).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
       window.sb.from('assist_chamado_nfs').select('*').eq('chamado_id',id).order('criado_em',{ascending:false}).limit(50).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_chamados').select('resumo_ia,resumo_ia_solucoes,resumo_ia_em,resumo_ia_modelo').eq('id',id).maybeSingle().then(r=>({data:r.data||null})).catch(()=>({data:null})),
     ]);
     if (!det) throw new Error('Não encontrado');
+    const iaRow = iaWrap?.data || null; // Resumo IA fica em assist_chamados (a view de detalhe pode não expor)
 
-    // Resumo IA — colunas ficam em assist_chamados (a view de detalhe pode não expô-las)
-    let iaRow = null;
-    try {
-      const { data: iaData } = await window.sb.from('assist_chamados')
-        .select('resumo_ia,resumo_ia_solucoes,resumo_ia_em,resumo_ia_modelo').eq('id',id).maybeSingle();
-      iaRow = iaData || null;
-    } catch(e) {}
-
+    // ONDA 2 — tudo que depende do chamado já carregado (histórico, ERP, frete) em paralelo
     const telNorm = det.telefone_normalizado||(det.telefone||'').replace(/\D/g,'');
-    const [{ data: historico }, { data: bloqData }, osResp] = await Promise.all([
-      window.sb.from('assist_kanban').select('id,data_abertura,produto_nome,status_nome,concluido,natureza,dias_aberto').eq('telefone_normalizado',telNorm).neq('id',id).order('data_abertura',{ascending:false}).range(0,9),
-      window.sb.from('assist_numeros_bloqueados').select('id,motivo,bloqueado_por').eq('telefone_norm',telNorm).eq('ativo',true).maybeSingle(),
-      det.id_os ? window.sb.from('assist_os_garantia').select('*').eq('id_os',det.id_os).maybeSingle() : Promise.resolve({ data: null }),
+    const cidErp  = det.cliente_id_erp;
+    const nfNums  = (nfsVinculadas||[]).map(n=>n.num_nf).filter(Boolean);
+    const [{ data: historico }, { data: bloqData }, osResp, { data: docsErpData }, { data: osClienteData }, { data: ctesRaw }] = await Promise.all([
+      window.sb.from('assist_kanban').select('id,data_abertura,produto_nome,status_nome,concluido,natureza,dias_aberto').eq('telefone_normalizado',telNorm).neq('id',id).order('data_abertura',{ascending:false}).range(0,9).then(r=>({data:r.data||[]})).catch(()=>({data:[]})),
+      window.sb.from('assist_numeros_bloqueados').select('id,motivo,bloqueado_por').eq('telefone_norm',telNorm).eq('ativo',true).maybeSingle().then(r=>({data:r.data||null})).catch(()=>({data:null})),
+      det.id_os ? window.sb.from('assist_os_garantia').select('*').eq('id_os',det.id_os).maybeSingle().then(r=>({data:r.data||null})).catch(()=>({data:null})) : Promise.resolve({ data: null }),
+      cidErp ? window.sb.from('vw_comercial_docs_faturados').select('id,id_doc,tipo_doc,num_nf,data_faturamento,tipo_saida,empresa,faturamento_doc').eq('id_cliente',cidErp).order('data_faturamento',{ascending:false}).range(0,199).then(r=>({data:r.data||[]})).catch(()=>({data:[]})) : Promise.resolve({ data: [] }),
+      cidErp ? window.sb.from('assist_os_garantia').select('id_os,empresa,status_os,tipo_os,data_entrada,vl_total,situacao_label').eq('id_cliente',cidErp).order('data_entrada',{ascending:false}).range(0,99).then(r=>({data:r.data||[]})).catch(()=>({data:[]})) : Promise.resolve({ data: [] }),
+      nfNums.length ? window.sb.from('frt_conhecimentos').select('id,nome_transportadora,valor_frete_cte,status_auditoria,criado_em,notas_fiscais').range(0,99).then(r=>({data:r.data||[]})).catch(()=>({data:[]})) : Promise.resolve({ data: [] }),
     ]);
-    const osData = osResp.data;
+    const osData = osResp?.data || null;
 
-    // Todos os docs ERP do cliente (vendas + OS)
-    let docsErp = [];
-    let osCliente = [];
-    if (det.cliente_id_erp) {
-      try {
-        const [{ data: docsErpData }, { data: osClienteData }] = await Promise.all([
-          window.sb
-            .from('vw_comercial_docs_faturados')
-            .select('id,id_doc,tipo_doc,num_nf,data_faturamento,tipo_saida,empresa,faturamento_doc')
-            .eq('id_cliente', det.cliente_id_erp)
-            .order('data_faturamento', {ascending:false})
-            .range(0,199),
-          window.sb
-            .from('assist_os_garantia')
-            .select('id_os,empresa,status_os,tipo_os,data_entrada,vl_total,situacao_label')
-            .eq('id_cliente', det.cliente_id_erp)
-            .order('data_entrada', {ascending:false})
-            .range(0,99)
-        ]);
-        const seen = new Set();
-        (docsErpData||[]).forEach(r => { if (!seen.has(r.id_doc+'-'+r.tipo_doc)) { seen.add(r.id_doc+'-'+r.tipo_doc); docsErp.push(r); } });
-        osCliente = osClienteData || [];
-      } catch(e) {}
-    }
-
-    // CTes do frete vinculados às NFs manuais do chamado
-    let ctesMap = {};
-    if (nfsVinculadas?.length) {
-      try {
-        const nums = nfsVinculadas.map(n=>n.num_nf).filter(Boolean);
-        if (nums.length) {
-          const { data: ctes } = await window.sb
-            .from('frt_conhecimentos')
-            .select('id,nome_transportadora,valor_frete_cte,status_auditoria,criado_em,notas_fiscais')
-            .range(0,99);
-          (ctes||[]).forEach(cte => {
-            const nfs = Array.isArray(cte.notas_fiscais) ? cte.notas_fiscais : [];
-            nfs.forEach(nf => { if (nums.includes(String(nf.num_nf||''))) ctesMap[nf.num_nf] = cte; });
-          });
-        }
-      } catch(e) {}
-    }
+    // Dedup docs ERP + monta mapa de CTes por NF (pós-processamento local)
+    const docsErp = [];
+    { const seen = new Set(); (docsErpData||[]).forEach(r => { const k=r.id_doc+'-'+r.tipo_doc; if(!seen.has(k)){ seen.add(k); docsErp.push(r); } }); }
+    const osCliente = osClienteData || [];
+    const ctesMap = {};
+    (ctesRaw||[]).forEach(cte => { const nfs = Array.isArray(cte.notas_fiscais)?cte.notas_fiscais:[]; nfs.forEach(nf => { if (nfNums.includes(String(nf.num_nf||''))) ctesMap[nf.num_nf] = cte; }); });
 
     const fupsList  = fups||[];
     const pecasList = pecas||[];
