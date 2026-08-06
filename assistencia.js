@@ -2100,6 +2100,8 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   // Verificar se status mudou para atualizar data_status_alterado
   const chamadoAtual = astData.find(r=>r.id===id)||astFiltrados.find(r=>r.id===id);
   const statusMudou = !chamadoAtual || String(chamadoAtual.status_id) !== String(statusId);
+  // Se o humano mudou o Setor à mão, trava o override (automação IA/etiqueta não encosta mais)
+  const setorMudou = chamadoAtual && String(chamadoAtual.setor_responsavel_id||'') !== String(setorId||'');
   const payload = {
     status_id:            statusId ? parseInt(statusId) : null,
     setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
@@ -2107,6 +2109,7 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
     atualizado_em:        new Date().toISOString(),
     concluido:            statusObj?.finaliza_chamado||false,
     ...(statusMudou ? { data_status_alterado: new Date().toISOString() } : {}),
+    ...(setorMudou ? { setor_manual: true } : {}),
   };
   if (statusObj?.finaliza_chamado) {
     // Modal SEMPRE aparece ao concluir — mesmo via astSalvarTudo

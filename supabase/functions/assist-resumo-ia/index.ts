@@ -226,8 +226,9 @@ Deno.serve(async (req) => {
       'Use "Operacoes" SOMENTE quando a demanda PRINCIPAL for exclusivamente administrativa/logística, SEM nenhum defeito técnico a resolver: ' +
       'emissão de nota fiscal (NF), devolução de mercadoria, troca/reenvio/entrega de produto já acordada, faturamento ou cobrança. ' +
       'Se houver QUALQUER defeito, mau funcionamento, reclamação técnica ou pedido de conserto/garantia — mesmo que NF, reembolso ou logística ' +
-      'também sejam citados — o setor é "Garantia". Se a conversa não tiver informação suficiente para decidir (ex.: áudios/vídeos não transcritos, ' +
-      'sem texto útil), use "Garantia". ' +
+      'também sejam citados — o setor é "Garantia". Dúvidas de USO, MANUTENÇÃO ou COMO-FAZER (ex.: como limpar/higienizar, troca de filtro, como instalar/usar) ' +
+      'SEM defeito e SEM pedido administrativo também são "Garantia" (atendimento técnico), NÃO "Operacoes". Se a conversa não tiver informação suficiente para ' +
+      'decidir (ex.: áudios/vídeos não transcritos, sem texto útil), use "Garantia". ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
       (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "") +
       (dicasEquipe ? `\n\nDICAS DA EQUIPE (conhecimento de solução em texto livre; use quando fizer sentido, sem contrariar a base do produto):\n${dicasEquipe}` : "");
@@ -298,27 +299,8 @@ Deno.serve(async (req) => {
       };
     }
 
-    // 6) Roteamento por setor (só quando o chamado ainda está em "Novo" = ninguém
-    // mexeu). Se a IA classificou como "Operacoes" (NF/devolução/entrega/logística),
-    // move o setor para Operações e o card para a coluna "Operacoes" do Kanban.
-    const setorIA = String((parsed.resumo as any)?.setor || "").toLowerCase();
-    const emNovo = Number(chamado.status_id) === 1; // 1 = "Novo"
-    const routing: Record<string, unknown> = {};
-    if (emNovo && setorIA.startsWith("opera")) {
-      const { data: stOp } = await supabase
-        .from("assist_status").select("id").ilike("nome", "opera%")
-        .eq("finaliza_chamado", false).limit(1).maybeSingle();
-      const { data: seOp } = await supabase
-        .from("assist_setores").select("id").ilike("nome", "opera%").limit(1).maybeSingle();
-      if (seOp?.id) routing.setor_responsavel_id = seOp.id;
-      if (stOp?.id) { routing.status_id = stOp.id; routing.data_status_alterado = new Date().toISOString(); }
-    } else if (emNovo && setorIA.startsWith("garant") && !chamado.setor_responsavel_id) {
-      const { data: seGa } = await supabase
-        .from("assist_setores").select("id").ilike("nome", "garant%").limit(1).maybeSingle();
-      if (seGa?.id) routing.setor_responsavel_id = seGa.id;
-    }
-
-    // 7) Grava no chamado
+    // 6) Grava o resumo
+    const setorIA = String((parsed.resumo as any)?.setor || "");
     const { error: eUp } = await supabase
       .from("assist_chamados")
       .update({
@@ -326,16 +308,20 @@ Deno.serve(async (req) => {
         resumo_ia_solucoes: parsed.solucoes ?? null,
         resumo_ia_em: new Date().toISOString(),
         resumo_ia_modelo: MODELO,
-        ...routing,
       })
       .eq("id", chamado.id);
     if (eUp) return json({ error: `erro ao gravar resumo: ${eUp.message}` }, 500);
+
+    // 7) Precedência de setor (MANUAL > ETIQUETA "Operação" > IA) — fonte única no banco.
+    // A função respeita override manual e etiqueta consumida; a IA só roteia no "Novo".
+    try {
+      await supabase.rpc("assist_resolver_setor", { p_chamado_id: chamado.id, p_ia_setor: setorIA });
+    } catch (_e) { /* não bloqueia o resumo se a resolução de setor falhar */ }
 
     return json({
       ok: true,
       chamado_id: chamado.id,
       setor_ia: (parsed.resumo as any)?.setor ?? null,
-      roteado: Object.keys(routing).length ? routing : null,
       imagens_lidas: imagens.length,
       midias_transcritas: audiosTranscritos,
       midias_sem_transcricao: midiaNaoTranscrita,
