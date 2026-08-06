@@ -123,7 +123,9 @@ Deno.serve(async (req) => {
     const linhas: string[] = [];
     const imagens: string[] = [];
     let audiosTranscritos = 0;
-    let audiosSemTranscricao = 0;
+    let midiaSemUrl = 0;   // áudio/vídeo sem URL de mídia (evento da Umbler não capturado)
+    let midiaFalha = 0;    // tinha URL mas falhou (download/API/limite 25MB)
+    let midiaSemChave = 0; // sem OPENAI_API_KEY configurada
 
     for (const m of msgsDedup) {
       const quem = m.direcao === "empresa" ? "EMPRESA" : "CLIENTE";
@@ -142,7 +144,14 @@ Deno.serve(async (req) => {
         if (cache) {
           audiosTranscritos++;
           linhas.push(`${quem} (${label}): ${cache}`);
-        } else if (openaiKey && url && audiosTranscritos < MAX_AUDIOS) {
+        } else if (!url) {
+          // A URL da mídia chega num evento posterior da Umbler; se não veio, não há o que transcrever.
+          midiaSemUrl++;
+          linhas.push(`${quem}: [${label} — mídia indisponível (sem URL salva)]`);
+        } else if (!openaiKey) {
+          midiaSemChave++;
+          linhas.push(`${quem}: [${label} — não transcrito (falta OPENAI_API_KEY)]`);
+        } else if (audiosTranscritos < MAX_AUDIOS) {
           const fn = tipo === "Video" ? "media.mp4" : "audio.mp3";
           const mime = (arq?.["ContentType"] as string) || (tipo === "Video" ? "video/mp4" : "audio/mpeg");
           const tx = await transcreverMidia(url, openaiKey, fn, mime);
@@ -155,12 +164,12 @@ Deno.serve(async (req) => {
                 .eq("event_id", m.event_id); // cache best-effort
             } catch (_e) { /* ignora falha de cache */ }
           } else {
-            audiosSemTranscricao++;
-            linhas.push(`${quem}: [${label} — não transcrito (falha/limite 25MB)]`);
+            midiaFalha++;
+            linhas.push(`${quem}: [${label} — falha na transcrição (download/API ou > 25MB)]`);
           }
         } else {
-          audiosSemTranscricao++;
-          linhas.push(`${quem}: [${label}${url ? "" : " (sem url)"} — não transcrito]`);
+          midiaFalha++;
+          linhas.push(`${quem}: [${label} — não transcrito (limite de ${MAX_AUDIOS} por chamado)]`);
         }
       } else if (m.conteudo) {
         linhas.push(`${quem}: [${tipo}] ${m.conteudo}`);
@@ -226,7 +235,7 @@ Deno.serve(async (req) => {
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
       `- Descrição inicial: ${chamado.descricao_inicial || "—"}\n` +
-      `- Áudios/vídeos transcritos: ${audiosTranscritos}; sem transcrição: ${audiosSemTranscricao}\n\n` +
+      `- Áudios/vídeos transcritos: ${audiosTranscritos}; não transcritos: ${midiaSemUrl + midiaFalha + midiaSemChave}\n\n` +
       `CONVERSA:\n${linhas.join("\n")}\n\n` +
       `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}\n\n` +
       `MATERIAIS TÉCNICOS & VÍDEOS DISPONÍVEIS (indique o link ao cliente quando ajudar):\n${listaMateriais}`;
@@ -277,6 +286,18 @@ Deno.serve(async (req) => {
       return json({ error: "resposta do modelo não veio em JSON", bruto: ultimoBruto }, 502);
     }
 
+    // Anexa o status de transcrição das mídias ao resumo (o drawer mostra o aviso).
+    const midiaNaoTranscrita = midiaSemUrl + midiaFalha + midiaSemChave;
+    if (parsed.resumo && typeof parsed.resumo === "object") {
+      (parsed.resumo as any).midias = {
+        transcritas: audiosTranscritos,
+        sem_url: midiaSemUrl,
+        falha: midiaFalha,
+        sem_chave: midiaSemChave,
+        nao_transcritas: midiaNaoTranscrita,
+      };
+    }
+
     // 6) Roteamento por setor (só quando o chamado ainda está em "Novo" = ninguém
     // mexeu). Se a IA classificou como "Operacoes" (NF/devolução/entrega/logística),
     // move o setor para Operações e o card para a coluna "Operacoes" do Kanban.
@@ -317,7 +338,10 @@ Deno.serve(async (req) => {
       roteado: Object.keys(routing).length ? routing : null,
       imagens_lidas: imagens.length,
       midias_transcritas: audiosTranscritos,
-      midias_sem_transcricao: audiosSemTranscricao,
+      midias_sem_transcricao: midiaNaoTranscrita,
+      midias_sem_url: midiaSemUrl,
+      midias_falha: midiaFalha,
+      midias_sem_chave: midiaSemChave,
       resumo: parsed.resumo,
       solucoes: parsed.solucoes,
     });

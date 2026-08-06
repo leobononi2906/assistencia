@@ -1283,6 +1283,26 @@ function astResumoIAHtml(iaRow, id){
       </div>
     </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted)">Sem soluções sugeridas.</div>`;
   const quando = iaRow.resumo_ia_em ? astFmtDate(iaRow.resumo_ia_em) : '';
+  // Aviso de transcrição de áudio/vídeo (a IA só "ouve" o que foi transcrito)
+  const mid = r.midias || null;
+  let midHtml = '';
+  if(mid){
+    const nt = mid.nao_transcritas||0;
+    if(nt>0){
+      const partes=[];
+      if(mid.sem_url)   partes.push(`${mid.sem_url} sem mídia salva (não veio da Umbler)`);
+      if(mid.sem_chave) partes.push(`${mid.sem_chave} sem chave de transcrição (OPENAI_API_KEY)`);
+      if(mid.falha)     partes.push(`${mid.falha} com falha (arquivo indisponível ou &gt; 25MB)`);
+      midHtml = `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;padding:8px 10px;background:#FFF7E6;border:1px solid #F5C46B;border-radius:8px;font-size:12px;color:#8A5A00">
+        <span>🎙️</span>
+        <div><strong>${nt} áudio/vídeo não transcrito${nt>1?'s':''}</strong> — a IA não "ouviu" ${nt>1?'esses trechos':'esse trecho'}, então o resumo pode estar incompleto.
+        ${partes.length?`<div style="margin-top:2px">${partes.join(' · ')}</div>`:''}
+        ${mid.transcritas?`<div style="margin-top:2px;color:#3f7d00">✔️ ${mid.transcritas} transcrito${mid.transcritas>1?'s':''} com sucesso.</div>`:''}</div>
+      </div>`;
+    } else if(mid.transcritas>0){
+      midHtml = `<div style="margin-bottom:10px;font-size:11px;color:var(--green)">🎙️ ${mid.transcritas} áudio/vídeo transcrito${mid.transcritas>1?'s':''} e considerado${mid.transcritas>1?'s':''} no resumo.</div>`;
+    }
+  }
   const cm = astCatMeta(r.categoria);
   const catHtml = cm ? `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:${cm.cor}14;border:1px solid ${cm.cor}55;border-radius:8px">
@@ -1294,6 +1314,7 @@ function astResumoIAHtml(iaRow, id){
     </div>` : '';
   return `
     ${catHtml}
+    ${midHtml}
     <div class="ast-detail-grid">
       ${linha('Produto', r.produto)}
       ${linha('Reclamação', r.reclamacao)}
