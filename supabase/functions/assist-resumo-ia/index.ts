@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     // 1) Chamado
     let q = supabase
       .from("assist_chamados")
-      .select("id, umbler_conversa_id, produto_nome, produto_codigo, descricao_inicial, nome_contato")
+      .select("id, umbler_conversa_id, produto_nome, produto_codigo, descricao_inicial, nome_contato, status_id, setor_responsavel_id")
       .limit(1);
     q = chamado_id ? q.eq("id", chamado_id) : q.eq("umbler_conversa_id", id_conversa);
     const { data: chamado, error: eCh } = await q.maybeSingle();
@@ -209,10 +209,16 @@ Deno.serve(async (req) => {
       "BASE DE CONHECIMENTO fornecida. Use SOMENTE soluções coerentes com a base; se sugerir vídeo, " +
       "use apenas links presentes na BASE DE CONHECIMENTO ou na lista de MATERIAIS TÉCNICOS & VÍDEOS. Responda SOMENTE com JSON válido, " +
       "sem texto fora do JSON, no formato: " +
-      '{"resumo":{"produto":"","categoria":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
+      '{"resumo":{"produto":"","categoria":"","setor":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
       '"solucoes":[{"solucao":"","video_url":null,"confianca":"alta|media|baixa"}]}. ' +
       'O campo "categoria" DEVE ser exatamente um destes valores (classifique pela linha do produto reclamado): ' +
       '"Ar Condicionado", "Geladeira", "Gerador" ou "Outros". Use "Outros" quando não for nenhuma das três linhas ou quando não der para saber. ' +
+      'O campo "setor" DEVE ser exatamente "Garantia" ou "Operacoes". REGRA: o padrão é "Garantia". ' +
+      'Use "Operacoes" SOMENTE quando a demanda PRINCIPAL for exclusivamente administrativa/logística, SEM nenhum defeito técnico a resolver: ' +
+      'emissão de nota fiscal (NF), devolução de mercadoria, troca/reenvio/entrega de produto já acordada, faturamento ou cobrança. ' +
+      'Se houver QUALQUER defeito, mau funcionamento, reclamação técnica ou pedido de conserto/garantia — mesmo que NF, reembolso ou logística ' +
+      'também sejam citados — o setor é "Garantia". Se a conversa não tiver informação suficiente para decidir (ex.: áudios/vídeos não transcritos, ' +
+      'sem texto útil), use "Garantia". ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
       (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "") +
       (dicasEquipe ? `\n\nDICAS DA EQUIPE (conhecimento de solução em texto livre; use quando fizer sentido, sem contrariar a base do produto):\n${dicasEquipe}` : "");
@@ -230,39 +236,68 @@ Deno.serve(async (req) => {
       content.push({ type: "image", source: { type: "url", url: u } });
     }
 
-    // 5) Claude
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: MODELO,
-        max_tokens: 1200,
-        system: sistema,
-        messages: [{ role: "user", content }],
-      }),
-    });
-
-    if (!resp.ok) {
-      const t = await resp.text();
-      return json({ error: `Anthropic ${resp.status}: ${t}` }, 502);
+    // 5) Claude — até 2 tentativas (o Haiku às vezes devolve texto fora do JSON).
+    let parsed: { resumo?: unknown; solucoes?: unknown } | null = null;
+    let ultimoBruto = "";
+    for (let tentativa = 1; tentativa <= 2 && !parsed; tentativa++) {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: MODELO,
+          max_tokens: 1200,
+          system: sistema,
+          messages: [{ role: "user", content }],
+        }),
+      });
+      if (!resp.ok) {
+        const t = await resp.text();
+        return json({ error: `Anthropic ${resp.status}: ${t}` }, 502);
+      }
+      const data = await resp.json();
+      const texto = (data?.content?.[0]?.text || "").trim();
+      ultimoBruto = texto;
+      try {
+        const jstart = texto.indexOf("{");
+        const jend = texto.lastIndexOf("}");
+        parsed = JSON.parse(texto.slice(jstart, jend + 1));
+      } catch (_e) { parsed = null; }
     }
-    const data = await resp.json();
-    const texto = (data?.content?.[0]?.text || "").trim();
-
-    let parsed: { resumo?: unknown; solucoes?: unknown } = {};
-    try {
-      const jstart = texto.indexOf("{");
-      const jend = texto.lastIndexOf("}");
-      parsed = JSON.parse(texto.slice(jstart, jend + 1));
-    } catch (_e) {
-      return json({ error: "resposta do modelo não veio em JSON", bruto: texto }, 502);
+    if (!parsed) {
+      // Falhou nas 2 tentativas: carimba resumo_ia_em (sem resumo) para o cron
+      // NÃO re-tentar em loop; só volta a tentar quando houver mensagem nova.
+      // O botão manual continua funcionando (passa chamado_id direto).
+      await supabase.from("assist_chamados")
+        .update({ resumo_ia_em: new Date().toISOString(), resumo_ia_modelo: MODELO })
+        .eq("id", chamado.id);
+      return json({ error: "resposta do modelo não veio em JSON", bruto: ultimoBruto }, 502);
     }
 
-    // 6) Grava no chamado
+    // 6) Roteamento por setor (só quando o chamado ainda está em "Novo" = ninguém
+    // mexeu). Se a IA classificou como "Operacoes" (NF/devolução/entrega/logística),
+    // move o setor para Operações e o card para a coluna "Operacoes" do Kanban.
+    const setorIA = String((parsed.resumo as any)?.setor || "").toLowerCase();
+    const emNovo = Number(chamado.status_id) === 1; // 1 = "Novo"
+    const routing: Record<string, unknown> = {};
+    if (emNovo && setorIA.startsWith("opera")) {
+      const { data: stOp } = await supabase
+        .from("assist_status").select("id").ilike("nome", "opera%")
+        .eq("finaliza_chamado", false).limit(1).maybeSingle();
+      const { data: seOp } = await supabase
+        .from("assist_setores").select("id").ilike("nome", "opera%").limit(1).maybeSingle();
+      if (seOp?.id) routing.setor_responsavel_id = seOp.id;
+      if (stOp?.id) { routing.status_id = stOp.id; routing.data_status_alterado = new Date().toISOString(); }
+    } else if (emNovo && setorIA.startsWith("garant") && !chamado.setor_responsavel_id) {
+      const { data: seGa } = await supabase
+        .from("assist_setores").select("id").ilike("nome", "garant%").limit(1).maybeSingle();
+      if (seGa?.id) routing.setor_responsavel_id = seGa.id;
+    }
+
+    // 7) Grava no chamado
     const { error: eUp } = await supabase
       .from("assist_chamados")
       .update({
@@ -270,6 +305,7 @@ Deno.serve(async (req) => {
         resumo_ia_solucoes: parsed.solucoes ?? null,
         resumo_ia_em: new Date().toISOString(),
         resumo_ia_modelo: MODELO,
+        ...routing,
       })
       .eq("id", chamado.id);
     if (eUp) return json({ error: `erro ao gravar resumo: ${eUp.message}` }, 500);
@@ -277,6 +313,8 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       chamado_id: chamado.id,
+      setor_ia: (parsed.resumo as any)?.setor ?? null,
+      roteado: Object.keys(routing).length ? routing : null,
       imagens_lidas: imagens.length,
       midias_transcritas: audiosTranscritos,
       midias_sem_transcricao: audiosSemTranscricao,

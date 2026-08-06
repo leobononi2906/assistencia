@@ -538,7 +538,7 @@ const AST_PAGES = {
 let _container = null, _iniciado = false, _pagina = null;
 let astData = [], astFiltrados = [], astView = 'kanban', astOrdem = 'antigo';
 let astProdAll = [];
-let _statusList = [], _setoresList = [];
+let _statusList = [], _setoresList = [], _prioridadesList = [];
 let _defeitos = [], _causas = [], _procedencias = [];
 
 const astFmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
@@ -566,6 +566,17 @@ function astPriorBadge(nome) {
 function astNaturezaBadge(n) {
   if (!n || n === 'garantia') return '<span class="ast-badge ast-badge-garantia">🔴 Garantia</span>';
   return '<span class="ast-badge ast-badge-nao">⚫ Não-Garantia</span>';
+}
+// Selo de prioridade para o card do Kanban (mostra todos os níveis; Normal fica discreto)
+function astPrioridadeBadge(nome) {
+  if (!nome) return '';
+  const n = String(nome).toLowerCase();
+  let bg, fg, ico;
+  if (n.startsWith('crít') || n.startsWith('crit')) { bg = 'var(--red)';    fg = '#fff'; ico = '🔴'; }
+  else if (n.startsWith('alta'))                     { bg = 'var(--orange)'; fg = '#fff'; ico = '🟠'; }
+  else if (n.startsWith('baix'))                     { bg = 'var(--surface2)'; fg = 'var(--text-muted)'; ico = '⚪'; }
+  else { bg = 'var(--surface2)'; fg = 'var(--text-muted)'; ico = '•'; } // Normal
+  return `<span style="display:inline-flex;align-items:center;gap:3px;background:${bg};color:${fg};font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap">${ico} ${nome}</span>`;
 }
 function astAlertasBadges(r) {
   const bits = [];
@@ -599,6 +610,7 @@ async function astCarregarLookups() {
   ]);
   _statusList    = s.status  ==='fulfilled'?(s.value.data ||[]):[];
   _setoresList   = se.status ==='fulfilled'?(se.value.data||[]):[];
+  _prioridadesList = p.status ==='fulfilled'?(p.value.data||[]):[];
   _defeitos      = d.status  ==='fulfilled'?(d.value.data ||[]):[];
   _causas        = c.status  ==='fulfilled'?(c.value.data ||[]):[];
   _procedencias  = pr.status ==='fulfilled'?(pr.value.data||[]):[];
@@ -971,7 +983,7 @@ function astRenderKanban() {
               ${r.id_os?`<span style="font-size:10px;color:var(--blue-mid);font-weight:600">OS #${r.id_os}</span>`:''}
             </div>
             <div class="ast-kanban-card-foot">
-              <div style="display:flex;gap:3px;flex-wrap:wrap">${astAlertasBadges(r)}${slaVencido?`<span class="ast-alerta-parado">⏰ SLA ${Math.round(horasNoStatus)}h</span>`:''}</div>
+              <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">${astPrioridadeBadge(r.prioridade)}${astAlertasBadges(r)}${slaVencido?`<span class="ast-alerta-parado">⏰ SLA ${Math.round(horasNoStatus)}h</span>`:''}</div>
             </div>
           </div>`;
         }).join('')}
@@ -1625,7 +1637,10 @@ window.astAbrirDetalhe = async function(id) {
             <label class="ast-form-lbl">Setor</label>
             <select class="ast-form-select" id="drw-sel-setor" onchange="astMarcarAlterado()"><option value="">Sem setor</option>${astSelectOptions(_setoresList,det.setor_responsavel_id)}</select>
           </div>
-
+          <div class="ast-form-field" style="flex:1;min-width:120px">
+            <label class="ast-form-lbl">Prioridade</label>
+            <select class="ast-form-select" id="drw-sel-prioridade" onchange="astMarcarAlterado()"><option value="">—</option>${astSelectOptions(_prioridadesList,det.prioridade_id)}</select>
+          </div>
         </div>
         <div class="ast-stat-row" style="margin-top:12px">
           <div class="ast-stat-item"><div class="ast-stat-label">Aberto em</div><div class="ast-stat-val">${astFmtDate(det.data_abertura)}</div></div>
@@ -2094,6 +2109,7 @@ function astModalResolucao(chamadoId) {
 window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   const statusId = document.getElementById('drw-sel-status')?.value;
   const setorId  = document.getElementById('drw-sel-setor')?.value;
+  const prioridadeId = document.getElementById('drw-sel-prioridade')?.value;
   const statusObj = _statusList.find(s=>s.id==statusId);
   // Verificar se status mudou para atualizar data_status_alterado
   const chamadoAtual = astData.find(r=>r.id===id)||astFiltrados.find(r=>r.id===id);
@@ -2101,6 +2117,7 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
   const payload = {
     status_id:            statusId ? parseInt(statusId) : null,
     setor_responsavel_id: setorId  ? parseInt(setorId)  : null,
+    prioridade_id:        prioridadeId ? parseInt(prioridadeId) : null,
     atualizado_em:        new Date().toISOString(),
     concluido:            statusObj?.finaliza_chamado||false,
     ...(statusMudou ? { data_status_alterado: new Date().toISOString() } : {}),
@@ -2144,6 +2161,13 @@ window.astSalvarEdicao = async function(id, _silent) { var silent=!!_silent;
       } else {
         astData[idx].setor_responsavel_id=null;
         astData[idx].setor_responsavel=null;
+      }
+      if(prioridadeId){
+        astData[idx].prioridade_id=parseInt(prioridadeId);
+        astData[idx].prioridade=_prioridadesList.find(p=>p.id==prioridadeId)?.nome||astData[idx].prioridade;
+      } else {
+        astData[idx].prioridade_id=null;
+        astData[idx].prioridade=null;
       }
       astAplicarFiltros();
     }
