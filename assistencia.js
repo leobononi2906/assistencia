@@ -1467,45 +1467,83 @@ window.astAbrirDicasIA = async function(){
     <div id="ast-modal-dicas" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center">
       <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:640px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">
         <div style="font-size:15px;font-weight:700;margin-bottom:6px">📝 Dicas para a IA</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Conhecimento de solução em texto livre — ex.: <em>“Quando o Ar G3 apresentar barulho ao ligar, verificar primeiro a fixação do compressor.”</em> A IA lê isto em TODO resumo. Dica que se firmar, migre depois para o Notion (base oficial por produto).</div>
-        <textarea id="modal-dicas-txt" class="ast-form-input" style="width:100%;min-height:280px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical" placeholder="⏳ Carregando...">⏳ Carregando...</textarea>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Conhecimento de solução em texto livre — ex.: <em>“Quando o Ar G3 apresentar barulho ao ligar, verificar primeiro a fixação do compressor.”</em> A IA lê TODAS as dicas em cada resumo. Dica que se firmar, migre depois para o Notion (base oficial).</div>
+        <div id="ast-dicas-bloco-atuais">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">Dicas já cadastradas <span style="color:var(--text-muted);font-weight:400">(a IA usa todas)</span></span>
+            <button class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astDicasEditarTudo()" title="Editar ou remover dicas já cadastradas">✏️ Editar/limpar tudo</button>
+          </div>
+          <div id="modal-dicas-atuais" style="font-size:12px;color:var(--text-secondary);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;max-height:170px;overflow:auto;white-space:pre-wrap;line-height:1.5;margin-bottom:14px">⏳ Carregando...</div>
+        </div>
+        <label id="ast-dicas-lbl" style="font-size:12px;font-weight:600;color:var(--text-secondary)">Nova dica</label>
+        <textarea id="modal-dicas-txt" class="ast-form-input" style="width:100%;min-height:100px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;margin-top:4px" placeholder="Escreva uma nova dica e clique em Adicionar..."></textarea>
         <div id="modal-dicas-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
           <button class="ast-btn ast-btn-secondary" onclick="document.getElementById('ast-modal-dicas').remove()">Fechar</button>
-          <button class="ast-btn ast-btn-primary" id="modal-dicas-save" onclick="astSalvarDicasIA()">Salvar</button>
+          <button class="ast-btn ast-btn-primary" id="modal-dicas-save" data-modo="add" onclick="astSalvarDicasIA()">➕ Adicionar</button>
         </div>
       </div>
     </div>`);
   try {
     const { data } = await window.sb.from('assist_ia_regras').select('dicas,atualizado_em,atualizado_por').eq('id',1).maybeSingle();
-    const ta = document.getElementById('modal-dicas-txt');
-    if(ta) ta.value = (data && data.dicas) || '';
+    const box = document.getElementById('modal-dicas-atuais');
+    const atual = ((data && data.dicas) || '').trim();
+    if(box) box.textContent = atual ? atual : 'Nenhuma dica cadastrada ainda.';
     const msg = document.getElementById('modal-dicas-msg');
     if(msg && data && data.atualizado_em) msg.innerHTML = `<span style="color:var(--text-muted)">Última edição: ${astFmtDate(data.atualizado_em)}${data.atualizado_por?' · '+astEsc(data.atualizado_por):''}</span>`;
   } catch(e){
-    const ta = document.getElementById('modal-dicas-txt'); if(ta) ta.value='';
-    const msg = document.getElementById('modal-dicas-msg'); if(msg) msg.innerHTML='<span style="color:var(--red)">Erro ao carregar as dicas.</span>';
+    const box = document.getElementById('modal-dicas-atuais'); if(box) box.textContent='Erro ao carregar as dicas.';
   }
 };
 
-window.astSalvarDicasIA = async function(){
+// Modo "editar tudo": carrega o texto completo no campo para podar/reorganizar (salva substituindo)
+window.astDicasEditarTudo = async function(){
   const ta = document.getElementById('modal-dicas-txt');
+  const btn = document.getElementById('modal-dicas-save');
+  const lbl = document.getElementById('ast-dicas-lbl');
+  const bloco = document.getElementById('ast-dicas-bloco-atuais');
+  let atual = '';
+  try { const { data } = await window.sb.from('assist_ia_regras').select('dicas').eq('id',1).maybeSingle(); atual = (data&&data.dicas)||''; } catch(e){}
+  if(ta){ ta.value = atual; ta.focus(); }
+  if(bloco) bloco.style.display='none';
+  if(lbl) lbl.textContent='Editando TODAS as dicas (pode apagar/reorganizar livremente)';
+  if(btn){ btn.dataset.modo='all'; btn.textContent='💾 Salvar tudo'; }
+};
+
+window.astSalvarDicasIA = async function(){
+  const ta  = document.getElementById('modal-dicas-txt');
   const msg = document.getElementById('modal-dicas-msg');
   const btn = document.getElementById('modal-dicas-save');
-  const txt = ta ? ta.value : '';
+  const modo = btn ? (btn.dataset.modo||'add') : 'add';
+  const txt = ta ? ta.value.trim() : '';
+  if(modo==='add' && !txt){ if(msg) msg.innerHTML='<span style="color:var(--orange)">Escreva uma dica antes de adicionar.</span>'; return; }
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
   try {
     const usuario = window.getUsuario?.();
+    let novo = txt;
+    if(modo==='add'){
+      // acrescenta a nova dica às existentes (relê o valor atual para não perder edições paralelas)
+      const { data } = await window.sb.from('assist_ia_regras').select('dicas').eq('id',1).maybeSingle();
+      const atual = ((data&&data.dicas)||'').trim();
+      novo = atual ? (atual + '\n' + txt) : txt;
+    }
     const { error } = await window.sb.from('assist_ia_regras')
-      .update({ dicas: txt, atualizado_em: new Date().toISOString(), atualizado_por: usuario?.nome||usuario?.email||null })
+      .update({ dicas: novo, atualizado_em: new Date().toISOString(), atualizado_por: usuario?.nome||usuario?.email||null })
       .eq('id',1);
     if(error) throw new Error(error.message);
-    if(msg) msg.innerHTML='<span style="color:var(--green)">✅ Salvo. A IA já usa essas dicas no próximo “Gerar”.</span>';
-    if(typeof bononiLog==='function') bononiLog('INFO','DICAS_IA_SALVA',{});
+    // Atualiza a visão e LIMPA o campo (não deixa no front o que já foi mandado)
+    const box = document.getElementById('modal-dicas-atuais');
+    if(box) box.textContent = novo.trim() ? novo : 'Nenhuma dica cadastrada ainda.';
+    const bloco = document.getElementById('ast-dicas-bloco-atuais'); if(bloco) bloco.style.display='';
+    const lbl = document.getElementById('ast-dicas-lbl'); if(lbl) lbl.textContent='Nova dica';
+    if(ta) ta.value='';
+    if(btn) btn.dataset.modo='add';
+    if(msg) msg.innerHTML='<span style="color:var(--green)">✅ Salvo. A IA já usa no próximo “Gerar”.</span>';
+    if(typeof bononiLog==='function') bononiLog('INFO','DICAS_IA_SALVA',{modo});
   } catch(err){
     if(msg) msg.innerHTML='<span style="color:var(--red)">Erro: '+astEsc(err&&err.message||'')+'</span>';
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Salvar'; }
+    if(btn){ btn.disabled=false; btn.textContent = (btn.dataset.modo==='all') ? '💾 Salvar tudo' : '➕ Adicionar'; }
   }
 };
 
