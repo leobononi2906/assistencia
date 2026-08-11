@@ -178,24 +178,32 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Data curta DD/MM/AAAA (UTC) para carimbar a recência das fontes.
+    const fmtData = (ts: string | null) => {
+      if (!ts) return "sem data";
+      const d = new Date(ts);
+      return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+    };
+
     // 3) Conhecimento do Notion (base pequena → manda tudo; modelo escolhe o produto)
     const { data: kb } = await supabase
       .from("assist_kb_produto")
-      .select("produto, conteudo_md");
+      .select("produto, conteudo_md, atualizado_em");
     const baseConhecimento = (kb || [])
-      .map((k) => `### PRODUTO: ${k.produto}\n${k.conteudo_md}`)
+      .map((k) => `### PRODUTO: ${k.produto} (atualizado em ${fmtData(k.atualizado_em)})\n${k.conteudo_md}`)
       .join("\n\n---\n\n") || "(base de conhecimento vazia)";
 
-    // Materiais técnicos & vídeos (prt_materiais) — mesma base, leitura ao vivo.
-    // Vídeos com o link pronto pra mandar ao cliente; PDFs/manuais de apoio.
+    // Materiais técnicos & vídeos (prt_materiais) — mesma base, leitura ao vivo,
+    // do mais NOVO ao mais antigo. Vídeos com link pronto; PDFs/manuais de apoio.
     const { data: materiais } = await supabase
       .from("prt_materiais")
-      .select("titulo, descricao, tipo, url, linha_produto, modelo, resumo_tecnico")
-      .eq("ativo", true);
+      .select("titulo, descricao, tipo, url, linha_produto, modelo, resumo_tecnico, criado_em")
+      .eq("ativo", true)
+      .order("criado_em", { ascending: false });
     const listaMateriais = (materiais || [])
       .filter((m) => m.url)
       .map((m) => {
-        const cab = `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`;
+        const cab = `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}, doc de ${fmtData(m.criado_em)}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`;
         return m.resumo_tecnico ? `${cab}\n  RESUMO DO DOCUMENTO: ${m.resumo_tecnico}` : cab;
       })
       .join("\n") || "(sem materiais)";
@@ -230,8 +238,13 @@ Deno.serve(async (req) => {
       'SEM defeito e SEM pedido administrativo também são "Garantia" (atendimento técnico), NÃO "Operacoes". Se a conversa não tiver informação suficiente para ' +
       'decidir (ex.: áudios/vídeos não transcritos, sem texto útil), use "Garantia". ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
+      "\n\nPRIORIDADE POR RECÊNCIA: quando duas fontes se contradisserem sobre o MESMO tema, vale SEMPRE a mais recente. " +
+      "Ordem de prioridade: (1) DICAS DA EQUIPE — correções mais recentes, sempre prevalecem; " +
+      "(2) DOCUMENTOS/MATERIAIS mais recentes — compare a data 'doc de DD/MM/AAAA'; " +
+      "(3) BASE DE CONHECIMENTO do Notion — veja 'atualizado em DD/MM/AAAA'. " +
+      "Uma informação mais nova sobre o mesmo assunto SUBSTITUI a mais antiga." +
       (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE (têm prioridade; editadas em assist_ia_regras):\n${instrucoesEquipe}` : "") +
-      (dicasEquipe ? `\n\nDICAS DA EQUIPE (conhecimento de solução em texto livre; use quando fizer sentido, sem contrariar a base do produto):\n${dicasEquipe}` : "");
+      (dicasEquipe ? `\n\nDICAS DA EQUIPE (conhecimento de solução em texto livre e MAIS RECENTE; prevalecem em caso de conflito com a base do produto):\n${dicasEquipe}` : "");
 
     const contexto =
       `DADOS DO CHAMADO:\n- Produto (ERP): ${chamado.produto_nome || chamado.produto_codigo || "não informado"}\n` +
