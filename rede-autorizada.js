@@ -77,7 +77,7 @@ var RA_PAGES = {
   <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;overflow-x:auto">
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--primary);color:#fff" id="ra-cfg-tab-servicos" onclick="raCfgTab('servicos')">🔧 Serviços</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-pecas" onclick="raCfgTab('pecas')">⚙ Peças</button>
-    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-materiais" onclick="raCfgTab('materiais')">📚 Materiais</button>
+    <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-materiais" onclick="raCfgTab('materiais')">📚 Materiais Técnicos</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-linhas" onclick="raCfgTab('linhas')">📦 Linhas e Modelos</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-financeiro" onclick="raCfgTab('financeiro')">💰 Financeiro</button>
     <button class="btn btn-sm" style="border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2)" id="ra-cfg-tab-empresa" onclick="raCfgTab('empresa')">🏢 Empresa</button>
@@ -1318,19 +1318,49 @@ function raPintarMateriais() {
   grid.innerHTML = lista.map(raMaterialCard).join('');
 }
 
+// Extrai o ID de um vídeo do YouTube (watch, youtu.be, embed, shorts)
+function raYoutubeId(url) {
+  if (!url) return null;
+  var m = String(url).match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// Selo do status na IA (foco em PDF: extração/OCR; demais tipos = entram no prompt)
+function raMatIaBadge(m) {
+  var pill = function(txt, bg, color) {
+    return '<span title="Status na base da IA" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:' + bg + ';color:' + color + ';border:1px solid ' + color + '33">' + txt + '</span>';
+  };
+  if (m.tipo === 'pdf') {
+    if (!m.processado_em) return pill('⏳ Processando p/ IA', 'rgba(234,179,8,.12)', '#a16207');
+    var semTexto = !m.resumo_tecnico || /sem texto|ocr/i.test(String(m.texto_extraido || m.resumo_tecnico || ''));
+    if (semTexto) return pill('⚠️ PDF sem texto (OCR)', 'rgba(234,179,8,.12)', '#a16207');
+    return pill('🤖 IA lê o PDF', 'rgba(16,185,129,.12)', '#059669');
+  }
+  // vídeo / imagem / link: título+descrição+URL já entram no prompt da IA
+  return pill('🤖 Na IA', 'rgba(59,130,246,.12)', '#2563eb');
+}
+
 // Card individual de material
 function raMaterialCard(m) {
   var t = RA_MAT_TIPOS[m.tipo] || { icon:'📎', label:m.tipo||'', bg:'var(--surface2)', color:'var(--text-muted)' };
   var titulo = raEsc(m.titulo || 'Sem título');
   var linha = m.linha_produto ? raLinhaNome(m.linha_produto) : 'Geral';
   var badge = function(txt, extra){ return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);' + (extra||'') + '">' + raEsc(txt) + '</span>'; };
-  var badges = badge('📦 ' + linha);
+  var badges = raMatIaBadge(m);
+  badges += ' ' + badge('📦 ' + linha);
   if (m.categoria) badges += ' ' + badge(m.categoria);
   if (m.modelo)    badges += ' ' + badge('🔧 ' + m.modelo);
-  // Cabeçalho: miniatura para imagem, senão bloco de ícone colorido
-  var head = (m.tipo === 'imagem' && m.url)
-    ? '<div style="height:104px;background:var(--surface2) center/cover no-repeat url(\'' + raEsc(m.url) + '\');border-radius:10px 10px 0 0"></div>'
-    : '<div style="height:104px;display:flex;align-items:center;justify-content:center;background:' + t.bg + ';border-radius:10px 10px 0 0"><span style="font-size:40px">' + t.icon + '</span></div>';
+  // Cabeçalho: miniatura real quando dá (YouTube ou imagem), senão ícone colorido
+  var ytId = m.tipo === 'video' ? raYoutubeId(m.url) : null;
+  var head;
+  if (ytId) {
+    head = '<div style="position:relative;height:104px;background:#000 center/cover no-repeat url(\'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg\');border-radius:10px 10px 0 0">' +
+      '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶️</span></div>';
+  } else if (m.tipo === 'imagem' && m.url) {
+    head = '<div style="height:104px;background:var(--surface2) center/cover no-repeat url(\'' + raEsc(m.url) + '\');border-radius:10px 10px 0 0"></div>';
+  } else {
+    head = '<div style="height:104px;display:flex;align-items:center;justify-content:center;background:' + t.bg + ';border-radius:10px 10px 0 0"><span style="font-size:40px">' + t.icon + '</span></div>';
+  }
   var tituloEsc = String(m.titulo || '').replace(/'/g, "\\'").replace(/\\/g, '\\\\');
   return '<div class="ra-mat-card" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column">' +
     // ações (aparecem no hover via CSS abaixo)
