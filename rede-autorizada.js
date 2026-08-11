@@ -1248,16 +1248,52 @@ window.raMarcarPago = async function(id) {
 // 6. MATERIAIS TÉCNICOS — CRUD
 // ═══════════════════════════════════════
 var _raMateriais = [];
+var _raMatTipo = ''; // filtro de tipo ativo ('' = todos)
+// Estilo por tipo de material (ícone + cor do cabeçalho do card)
+var RA_MAT_TIPOS = {
+  video:  { icon:'🎥', label:'Vídeo',  bg:'rgba(239,68,68,.12)',  color:'#ef4444' },
+  pdf:    { icon:'📄', label:'PDF',    bg:'rgba(59,130,246,.12)', color:'#3b82f6' },
+  imagem: { icon:'🖼️', label:'Imagem', bg:'rgba(16,185,129,.12)', color:'#10b981' },
+  link:   { icon:'🔗', label:'Link',   bg:'rgba(168,85,247,.12)', color:'#a855f7' }
+};
 // ═══ MATERIAIS (agora dentro de Configurações) ═══
 function raCfgMateriais(box) {
+  if (!document.getElementById('ra-mat-style')) {
+    var st = document.createElement('style');
+    st.id = 'ra-mat-style';
+    st.textContent = '.ra-mat-card{transition:box-shadow .15s,transform .15s}.ra-mat-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-2px)}.ra-mat-actions{opacity:0;transition:opacity .15s}.ra-mat-card:hover .ra-mat-actions{opacity:1}';
+    document.head.appendChild(st);
+  }
   box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
     '<div style="font-weight:600">Materiais Técnicos</div>' +
-    '<div style="display:flex;gap:8px">' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+    '<div id="ra-mat-tipos" style="display:flex;gap:4px"></div>' +
     '<select class="filter-select" id="ra-mat-linha" onchange="raCarregarMateriais()"><option value="">Todas as linhas</option></select>' +
     '<button class="btn btn-primary btn-sm" onclick="raNovoMaterial()">+ Novo material</button></div></div>' +
-    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Título</th><th>Tipo</th><th>Linha</th><th>Modelo</th><th></th></tr></thead><tbody id="ra-mat-tbody"><tr><td colspan="5" class="loading-row"><div class="module-placeholder" style="height:auto;padding:20px"><div class="spinner"></div></div></td></tr></tbody></table></div></div>';
+    '<div id="ra-mat-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">' +
+    '<div class="module-placeholder" style="grid-column:1/-1;height:auto;padding:24px"><div class="spinner"></div></div></div>';
+  raRenderMatTipos();
   raCarregarMateriais();
 }
+
+// Chips de filtro por tipo
+function raRenderMatTipos() {
+  var host = document.getElementById('ra-mat-tipos');
+  if (!host) return;
+  var chip = function(val, txt) {
+    var on = _raMatTipo === val;
+    return '<button class="btn btn-sm" onclick="raFiltrarMatTipo(\'' + val + '\')" style="padding:4px 10px;border:1px solid var(--border);border-radius:14px;font-size:12px;' +
+      (on ? 'background:var(--blue-mid);color:#fff;border-color:var(--blue-mid)' : 'background:var(--surface2);color:var(--text-muted)') + '">' + txt + '</button>';
+  };
+  host.innerHTML = chip('', 'Todos') +
+    Object.keys(RA_MAT_TIPOS).map(function(k){ return chip(k, RA_MAT_TIPOS[k].icon + ' ' + RA_MAT_TIPOS[k].label); }).join('');
+}
+
+window.raFiltrarMatTipo = function(val) {
+  _raMatTipo = (_raMatTipo === val) ? '' : val;
+  raRenderMatTipos();
+  raPintarMateriais();
+};
 
 window.raCarregarMateriais = async function() {
   await raPopularSelectLinhas('ra-mat-linha', 'Todas as linhas');
@@ -1266,19 +1302,55 @@ window.raCarregarMateriais = async function() {
   if (linha) url += '&linha_produto=eq.' + linha;
   _raMateriais = await raFetch(url);
   if (!Array.isArray(_raMateriais)) _raMateriais = [];
-  var tbody = document.getElementById('ra-mat-tbody');
-  var tipoIcon = {video:'🎥',pdf:'📄',imagem:'🖼️',link:'🔗'};
-  if (!_raMateriais.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum material cadastrado</td></tr>'; return; }
-  tbody.innerHTML = _raMateriais.map(function(m) {
-    var modelos = m.modelo || 'Todos';
-    return '<tr>' +
-      '<td><a href="' + m.url + '" target="_blank" style="color:var(--blue-mid)">' + m.titulo + '</a></td>' +
-      '<td>' + (tipoIcon[m.tipo] || '') + ' ' + m.tipo + '</td>' +
-      '<td>' + (m.linha_produto ? raLinhaNome(m.linha_produto) : 'Geral') + '</td>' +
-      '<td style="font-size:12px">' + modelos + '</td>' +
-      '<td><button class="btn-icon" onclick="raEditarMaterial(' + m.id + ')">✏️</button> <button class="btn-icon" title="Excluir" onclick="raExcluirMaterial(' + m.id + ',\'' + raEsc(m.titulo).replace(/'/g, "\\'") + '\')">🗑️</button></td></tr>';
-  }).join('');
+  raPintarMateriais();
 };
+
+// Desenha o grid de cards (aplica o filtro de tipo em memória)
+function raPintarMateriais() {
+  var grid = document.getElementById('ra-mat-grid');
+  if (!grid) return;
+  var lista = _raMatTipo ? _raMateriais.filter(function(m){ return m.tipo === _raMatTipo; }) : _raMateriais;
+  if (!lista.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-muted)">' +
+      (_raMateriais.length ? 'Nenhum material desse tipo.' : 'Nenhum material cadastrado.') + '</div>';
+    return;
+  }
+  grid.innerHTML = lista.map(raMaterialCard).join('');
+}
+
+// Card individual de material
+function raMaterialCard(m) {
+  var t = RA_MAT_TIPOS[m.tipo] || { icon:'📎', label:m.tipo||'', bg:'var(--surface2)', color:'var(--text-muted)' };
+  var titulo = raEsc(m.titulo || 'Sem título');
+  var linha = m.linha_produto ? raLinhaNome(m.linha_produto) : 'Geral';
+  var badge = function(txt, extra){ return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);' + (extra||'') + '">' + raEsc(txt) + '</span>'; };
+  var badges = badge('📦 ' + linha);
+  if (m.categoria) badges += ' ' + badge(m.categoria);
+  if (m.modelo)    badges += ' ' + badge('🔧 ' + m.modelo);
+  // Cabeçalho: miniatura para imagem, senão bloco de ícone colorido
+  var head = (m.tipo === 'imagem' && m.url)
+    ? '<div style="height:104px;background:var(--surface2) center/cover no-repeat url(\'' + raEsc(m.url) + '\');border-radius:10px 10px 0 0"></div>'
+    : '<div style="height:104px;display:flex;align-items:center;justify-content:center;background:' + t.bg + ';border-radius:10px 10px 0 0"><span style="font-size:40px">' + t.icon + '</span></div>';
+  var tituloEsc = String(m.titulo || '').replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+  return '<div class="ra-mat-card" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column">' +
+    // ações (aparecem no hover via CSS abaixo)
+    '<div class="ra-mat-actions" style="position:absolute;top:6px;right:6px;display:flex;gap:4px">' +
+      '<button class="btn-icon" title="Editar" onclick="event.stopPropagation();raEditarMaterial(' + m.id + ')" style="background:var(--surface);border:1px solid var(--border);border-radius:6px">✏️</button>' +
+      '<button class="btn-icon" title="Excluir" onclick="event.stopPropagation();raExcluirMaterial(' + m.id + ',\'' + tituloEsc + '\')" style="background:var(--surface);border:1px solid var(--border);border-radius:6px">🗑️</button>' +
+    '</div>' +
+    '<a href="' + raEsc(m.url || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;flex:1">' +
+      head +
+      '<div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex:1">' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          '<span style="font-size:11px;font-weight:700;color:' + t.color + '">' + t.icon + ' ' + t.label.toUpperCase() + '</span>' +
+        '</div>' +
+        '<div style="font-weight:600;font-size:14px;line-height:1.25">' + titulo + '</div>' +
+        (m.descricao ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + raEsc(m.descricao) + '</div>' : '') +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;padding-top:4px">' + badges + '</div>' +
+      '</div>' +
+    '</a>' +
+  '</div>';
+}
 
 window.raNovoMaterial = async function(prefill) {
   var m = prefill || {};
