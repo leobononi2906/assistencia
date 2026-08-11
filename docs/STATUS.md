@@ -24,7 +24,9 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 - **Prioridade no card** (`assist_prioridades` 1–4, selo + seletor no drawer).
 - **Fecha na Umbler → conclui no dash** (sinal `umbler_conversas.aberta` = `ChatClosed`; reabre se voltar).
 - **Perguntar à IA** — FAB global + edge `assist-perguntar` (base Notion `assist_kb_produto` + `prt_materiais` ao vivo + Dicas + Regras). PDFs de material processados por `assist-material-pdf` (unpdf + resumo Claude).
-- **Sincronizar base do Notion** (edge `assist-kb-sync`, requer `NOTION_API_KEY`).
+- **Prioridade por recência** (`assist-perguntar` v4, `assist-resumo-ia` v16) — cada fonte é carimbada com data (Notion "atualizado em", Materiais "doc de") e ordenada do mais novo ao mais antigo; regra no prompt: **Dicas > documento mais recente > Notion**; info nova sobre o mesmo tema substitui a antiga.
+- **Materiais Técnicos** (Rede Autorizada → Configurações) — grid de cards (antes tabela): vídeo com thumbnail real do YouTube, selo de status na IA por card (PDF "IA lê o PDF" / OCR / "Na IA"), chips de filtro por tipo. Já cadastrados os PDFs oficiais **Gerador** (id 20) e **Ar** (id 21), extraídos.
+- **Sincronizar base do Notion** (edge `assist-kb-sync`, requer `NOTION_API_KEY`) — botão dentro do chamado: seção "🤖 Resumo IA & Soluções" → **⚙️ Regras** → **🔄 Sincronizar do Notion** (manual).
 - **Cron do resumo** — `assist-resumo-cron-30min` (jobid 51, inteligente, teto 20/rodada). **PAUSADO em 07/08** pelo Leo até a equipe começar a usar (reativar: `cron.alter_job(51, active:=true)`). Botão manual sempre funciona.
 
 ## Dados
@@ -44,5 +46,6 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 - Umbler fecha por inatividade → pode concluir caso com peça em trânsito (Leo aceitou o risco).
 
 ## Dev-log
+- 2026-08-11 — Prioridade por recência nas 2 funções de IA (Dicas > doc novo > Notion; carimbo de data) — `assist-perguntar` v4, `assist-resumo-ia` v16. Materiais virou grid de cards (thumbnail YouTube + selo IA); aba renomeada "Materiais Técnicos". Cadastrados os PDFs oficiais Gerador (id 20) e Ar (id 21). Commits ba57639, 3241ef6, 560e836.
 - 2026-08-06/07 — v15 (precedência de setor + etiqueta consumida), fecha-na-Umbler, prioridade no card, cron inteligente reintroduzido e depois pausado, Materiais/PDF alimentando a IA.
 - 2026-07-31 — Índice único FULL corrigiu a parada de chamados; produção reiniciada limpa (482 concluídos).
