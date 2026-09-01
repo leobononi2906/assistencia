@@ -109,6 +109,7 @@ window.ModuloRedeAutorizada = {
     slot.innerHTML = html;
     switch(paginaId) {
       case 'ra-aprovar':    raCarregarOS(); break;
+      case 'ra-servicos':   raCfgServicos(slot); break;
       case 'ra-pecas':      raPecTab('reposicao'); break;
       case 'ra-pagamentos': raCarregarPagamentos(); break;
       case 'ra-config':     raCfgTab('servicos'); break;
