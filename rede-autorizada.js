@@ -632,10 +632,44 @@ window.raConfirmarServicoOS = async function(osId, codigo, valor) {
   raCarregarOS();
 };
 
+// Acumula a OS aprovada no fechamento PENDENTE do parceiro (agrupado por mês da OS).
+// Aprovar já joga a OS no fluxo de Pagamentos — sem depender de clicar "Gerar fechamento".
+// Vai somando: cada nova OS aprovada do mesmo parceiro/mês incrementa o mesmo fechamento pendente.
+window.raLancarPagamentoOS = async function(o) {
+  if (!o || !o.parceiro_id) return;
+  if (o.pagamento_id) return; // já vinculada a um fechamento
+  var valor = parseFloat(o.valor_servico) || 0;
+  var mes = (o.data_servico ? String(o.data_servico) : new Date().toISOString()).slice(0, 7);
+  // já existe fechamento pendente aberto para este parceiro neste mês?
+  var abertos = await raFetch('prt_pagamentos?parceiro_id=eq.' + o.parceiro_id + '&mes_referencia=eq.' + mes + '&status=eq.pendente&select=id,qtd_os,valor_servicos,valor_total&limit=1');
+  var pag = (Array.isArray(abertos) && abertos.length) ? abertos[0] : null;
+  if (pag) {
+    await raPatch('prt_pagamentos', 'id=eq.' + pag.id, {
+      qtd_os: (pag.qtd_os || 0) + 1,
+      valor_servicos: (parseFloat(pag.valor_servicos) || 0) + valor,
+      valor_total: (parseFloat(pag.valor_total) || 0) + valor
+    });
+  } else {
+    var novo = await raPost('prt_pagamentos', {
+      parceiro_id: o.parceiro_id, mes_referencia: mes, qtd_os: 1,
+      valor_servicos: valor, valor_pecas: 0, valor_total: valor, status: 'pendente'
+    });
+    pag = Array.isArray(novo) ? novo[0] : novo;
+  }
+  if (pag && pag.id) {
+    await raPatch('prt_ordens_servico', 'id=eq.' + o.id, { pagamento_id: pag.id });
+    o.pagamento_id = pag.id;
+    raLog('ACAO', 'pagamento', 'LANCAR_PAGAMENTO', String(pag.id), mes, { os_id: o.id, parceiro_id: o.parceiro_id, valor: valor });
+  }
+};
+
 window.raAprovarOS = async function(id) {
   if (!confirm('Confirma aprovação desta OS?')) return;
   var o = _raOS.find(function(x) { return x.id === id; }) || {};
   await raPatch('prt_ordens_servico', 'id=eq.' + id, { status: 'aprovada', data_aprovacao: new Date().toISOString(), aprovado_por: (window.getUsuario() || {}).nome || 'gestor' });
+  // Lança/acumula no fluxo de Pagamentos (fechamento pendente do parceiro no mês da OS)
+  try { await raLancarPagamentoOS(o); }
+  catch (e) { console.error('Lançar pagamento falhou:', e); raLog('ERRO', 'pagamento', 'LANCAR_PAGAMENTO_FALHOU', String(id), null, {erro: String(e)}); }
   // baixar estoque do parceiro: incrementa quantidade_usada das peças da OS
   // + criar reposição automática na fila
   try {
@@ -1187,7 +1221,7 @@ window.raCarregarPagamentos = async function() {
     '<div class="card"><div class="card-label">Total pago</div><div class="card-value blue">' + raFmt(totalPago) + '</div></div>';
   var tbody = document.getElementById('ra-pag-tbody');
   var statusBadge = function(s) { return s === 'pago' ? '<span class="badge badge-green">Pago</span>' : s === 'aprovado' ? '<span class="badge badge-blue">Aprovado</span>' : '<span class="badge badge-orange">Pendente</span>'; };
-  if (!pags.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento registrado. Use "Gerar fechamento" para consolidar as OS aprovadas.</td></tr>'; return; }
+  if (!pags.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento neste mês. As OS aprovadas entram aqui automaticamente (acumulam por autorizada). "Gerar fechamento" é só pra recuperar OS antigas.</td></tr>'; return; }
   tbody.innerHTML = pags.map(function(p) {
     var parc = p.assist_parceiros ? p.assist_parceiros.nome : '#' + p.parceiro_id;
     return '<tr><td>' + parc + '</td><td class="mono right">' + p.qtd_os + '</td><td class="mono right">' + raFmt(p.valor_servicos) + '</td><td class="mono right">' + raFmt(p.valor_pecas) + '</td><td class="mono right" style="font-weight:700">' + raFmt(p.valor_total) + '</td><td>' + (p.nf_parceiro || '—') + '</td><td>' + statusBadge(p.status) + '</td>' +
