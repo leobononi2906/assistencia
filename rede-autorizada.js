@@ -1225,7 +1225,7 @@ window.raCarregarPagamentos = async function() {
   tbody.innerHTML = pags.map(function(p) {
     var parc = p.assist_parceiros ? p.assist_parceiros.nome : '#' + p.parceiro_id;
     return '<tr><td>' + parc + '</td><td class="mono right">' + p.qtd_os + '</td><td class="mono right">' + raFmt(p.valor_servicos) + '</td><td class="mono right">' + raFmt(p.valor_pecas) + '</td><td class="mono right" style="font-weight:700">' + raFmt(p.valor_total) + '</td><td>' + (p.nf_parceiro || '—') + '</td><td>' + statusBadge(p.status) + '</td>' +
-      '<td>' + (p.status === 'pendente' ? '<button class="btn btn-sm btn-success" onclick="raMarcarPago(' + p.id + ')">💰 Pagar</button>' : '') + '</td></tr>';
+      '<td style="white-space:nowrap"><button class="btn btn-sm btn-secondary" onclick="raDocPagamento(' + p.id + ')" title="Requisição de pagamento / solicitação de NF">📄 NF / Requisição</button> ' + (p.status === 'pendente' ? '<button class="btn btn-sm btn-success" onclick="raMarcarPago(' + p.id + ')">💰 Pagar</button>' : '') + '</td></tr>';
   }).join('');
 };
 
@@ -1276,6 +1276,102 @@ window.raMarcarPago = async function(id) {
   await raPatch('prt_ordens_servico', 'pagamento_id=eq.' + id, { status: 'paga', data_pagamento: agora });
   raLog('ACAO', 'pagamento', 'MARCAR_PAGO', String(id));
   raCarregarPagamentos();
+};
+
+// Documento do fechamento — serve pra 2 coisas:
+//  1) enviar ao PARCEIRO pra ele emitir a NF de serviço no valor do fechamento;
+//  2) enviar ao FINANCEIRO como requisição de pagamento (favorecido + valor + OS que compõem).
+window.raDocPagamento = async function(id) {
+  var pags = await raFetch('prt_pagamentos?id=eq.' + id + '&select=*,assist_parceiros(nome,cnpj,cidade,uf,endereco,telefone,whatsapp,email)');
+  var p = (Array.isArray(pags) && pags.length) ? pags[0] : null;
+  if (!p) { alert('Fechamento não encontrado'); return; }
+  var parc = p.assist_parceiros || {};
+  var oss = await raFetch('prt_ordens_servico?pagamento_id=eq.' + id + '&order=data_servico.asc&select=id,protocolo,cliente_nome,produto_linha,produto_modelo,codigo_servico,valor_servico,data_servico');
+  if (!Array.isArray(oss)) oss = [];
+  var cfgRows = await raFetch('prt_configuracoes?select=chave,valor');
+  var cfg = {}; (Array.isArray(cfgRows) ? cfgRows : []).forEach(function(c) { cfg[c.chave] = c.valor || ''; });
+
+  var mesTxt = (function(m) { if (!m) return '—'; var pp = String(m).split('-'); return pp.length === 2 ? pp[1] + '/' + pp[0] : m; })(p.mes_referencia);
+  var brl = function(v) { return 'R$ ' + (parseFloat(v) || 0).toFixed(2).replace('.', ','); };
+  var pago = p.status === 'pago';
+
+  var linhasOS = oss.map(function(o, i) {
+    var prod = [o.produto_linha, o.produto_modelo].filter(Boolean).join(' / ');
+    return '<tr><td style="text-align:center">' + (i + 1) + '</td><td class="mono">' + (o.protocolo || '#' + o.id) + '</td><td>' + raDate(o.data_servico) + '</td><td>' + raEsc(o.cliente_nome || '—') + '</td><td>' + raEsc(prod || '—') + '</td><td class="mono">' + raEsc(o.codigo_servico || '—') + '</td><td class="valor">' + brl(o.valor_servico) + '</td></tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Requisição de Pagamento — ' + raEsc(parc.nome || '') + ' — ' + mesTxt + '</title><style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#222;padding:22px 26px}' +
+    '@page{size:A4;margin:14mm 12mm}' +
+    '.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0B1426;padding-bottom:12px;margin-bottom:6px}' +
+    '.header h1{font-size:20px;color:#0B1426;letter-spacing:1px}.header p{font-size:10px;color:#666}' +
+    '.doc-title{text-align:right}.doc-title .t{font-size:15px;font-weight:700;color:#0B1426}.doc-title .s{font-size:10px;color:#666;margin-top:2px}' +
+    '.status{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700}' +
+    '.st-pend{background:#fff3cd;color:#8a6d00}.st-pago{background:#d1fae5;color:#065F46}' +
+    '.parties{display:flex;gap:12px;margin:14px 0}' +
+    '.party{flex:1;border:1px solid #ccc;border-radius:6px;padding:10px 12px}' +
+    '.party .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#888;font-weight:700;margin-bottom:4px}' +
+    '.party .nome{font-size:13px;font-weight:700;color:#0B1426}.party .row{font-size:10.5px;color:#444;margin-top:2px}' +
+    '.ref{background:#E8EDF3;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;margin-bottom:10px}' +
+    '.ref b{color:#0B1426}' +
+    'table.os{width:100%;border-collapse:collapse;margin-bottom:6px}' +
+    'table.os th{background:#0B1426;color:#fff;text-align:left;padding:6px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.4px}' +
+    'table.os td{padding:5px 8px;border-bottom:1px solid #eee;font-size:10.5px}' +
+    '.mono{font-family:Consolas,monospace;font-size:10px}.valor{text-align:right;font-weight:700;color:#0B1426;white-space:nowrap}' +
+    '.total-box{border:2px solid #0B1426;border-radius:6px;padding:12px 16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}' +
+    '.total-box .lbl{font-size:11px;font-weight:700;text-transform:uppercase;color:#0B1426}.total-box .amt{font-size:24px;font-weight:800;color:#0B1426}' +
+    '.instr{margin-top:16px;border:1px dashed #0B1426;border-radius:6px;padding:12px 14px;font-size:11px;line-height:1.5}' +
+    '.instr h3{font-size:11px;color:#0B1426;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}' +
+    '.fields{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}' +
+    '.field{flex:1;min-width:160px;border-bottom:1px solid #999;padding-bottom:2px;font-size:11px;color:#666}' +
+    '.assinaturas{display:flex;gap:24px;margin-top:34px}' +
+    '.assin{flex:1;text-align:center;border-top:1px solid #333;padding-top:4px;font-size:10px;color:#444}' +
+    '.footer{margin-top:24px;text-align:center;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:8px}' +
+    '@media print{body{padding:0}}' +
+  '</style></head><body>';
+
+  html += '<div class="header"><div><h1>' + raEsc(cfg.empresa_nome_fantasia || 'STONNI') + '</h1><p>' + raEsc(cfg.empresa_razao_social || 'Grupo Bononi Acessórios') + '</p></div>' +
+    '<div class="doc-title"><div class="t">Requisição de Pagamento</div><div class="s">Autorização de emissão de NF · Rede Autorizada</div>' +
+    '<div class="status ' + (pago ? 'st-pago' : 'st-pend') + '">' + (pago ? 'PAGO em ' + raDate(p.data_pagamento) : 'A PAGAR') + '</div></div></div>';
+
+  // Partes: prestador (autorizada, emite NF) x tomador (empresa, paga)
+  html += '<div class="parties">' +
+    '<div class="party"><div class="lbl">Prestador — emite a NF</div>' +
+      '<div class="nome">' + raEsc(parc.nome || 'Autorizada') + '</div>' +
+      (parc.cnpj ? '<div class="row">CNPJ: ' + raEsc(parc.cnpj) + '</div>' : '') +
+      ((parc.endereco || parc.cidade) ? '<div class="row">' + raEsc([parc.endereco, [parc.cidade, parc.uf].filter(Boolean).join('/')].filter(Boolean).join(' — ')) + '</div>' : '') +
+      (parc.telefone || parc.whatsapp ? '<div class="row">Tel: ' + raEsc(parc.telefone || parc.whatsapp) + '</div>' : '') +
+      (parc.email ? '<div class="row">' + raEsc(parc.email) + '</div>' : '') +
+    '</div>' +
+    '<div class="party"><div class="lbl">Tomador / Pagador</div>' +
+      '<div class="nome">' + raEsc(cfg.empresa_razao_social || cfg.empresa_nome_fantasia || 'Grupo Bononi Acessórios') + '</div>' +
+      (cfg.empresa_cnpj ? '<div class="row">CNPJ: ' + raEsc(cfg.empresa_cnpj) + '</div>' : '') +
+      (cfg.empresa_endereco ? '<div class="row">' + raEsc(cfg.empresa_endereco) + '</div>' : '') +
+      (cfg.empresa_telefone ? '<div class="row">Tel: ' + raEsc(cfg.empresa_telefone) + '</div>' : '') +
+    '</div></div>';
+
+  html += '<div class="ref"><span><b>Referência:</b> ' + mesTxt + '</span><span><b>Fechamento nº:</b> ' + p.id + '</span><span><b>Qtd. OS:</b> ' + (p.qtd_os || oss.length) + '</span>' + (p.nf_parceiro ? '<span><b>NF do parceiro:</b> ' + raEsc(p.nf_parceiro) + '</span>' : '') + '</div>';
+
+  html += '<table class="os"><thead><tr><th style="width:24px">#</th><th>Protocolo</th><th style="width:78px">Data</th><th>Cliente</th><th>Produto</th><th>Serviço</th><th style="width:88px;text-align:right">Valor</th></tr></thead><tbody>' +
+    (linhasOS || '<tr><td colspan="7" style="text-align:center;color:#999;padding:12px">Sem OS vinculadas</td></tr>') + '</tbody></table>';
+
+  html += '<div class="total-box"><div class="lbl">Valor total a pagar / emitir NF</div><div class="amt">' + brl(p.valor_total) + '</div></div>';
+
+  html += '<div class="instr"><h3>Ao parceiro</h3>' +
+    'Favor emitir <b>Nota Fiscal de Serviço</b> no valor de <b>' + brl(p.valor_total) + '</b>, referente aos atendimentos em garantia listados acima (competência ' + mesTxt + '), tendo como tomador ' + raEsc(cfg.empresa_razao_social || 'Grupo Bononi Acessórios') + (cfg.empresa_cnpj ? ' (CNPJ ' + raEsc(cfg.empresa_cnpj) + ')' : '') + '.' +
+    '<div class="fields"><div class="field">NF nº: &nbsp;</div><div class="field">Data emissão: &nbsp;</div><div class="field">Chave / PIX p/ pagamento: &nbsp;</div></div>' +
+    '</div>';
+
+  html += '<div class="assinaturas"><div class="assin">Aprovação — Gestão Rede Autorizada</div><div class="assin">Autorizado — Financeiro</div></div>';
+
+  html += '<div class="footer">' + raEsc(cfg.empresa_nome_fantasia || 'Stonni') + ' — Requisição de pagamento gerada em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + ' · uso interno</div>';
+  html += '</body></html>';
+
+  var w = window.open('', '_blank');
+  w.document.write(html); w.document.close();
+  setTimeout(function() { w.print(); }, 600);
+  raLog('ACAO', 'pagamento', 'DOC_REQUISICAO', String(id));
 };
 
 // ═══════════════════════════════════════
@@ -2224,7 +2320,7 @@ window.raGerarPdfServicos = async function() {
   w.document.write(html);
   w.document.close();
   setTimeout(function() { w.print(); }, 600);
-  raLog('ACAO', 'servico', 'GERAR_PDF_SERVICOS', linhaFiltro || 'todas');
+  raLog('ACAO', 'servico', 'GERAR_PDF_SERVICOS', titulo || 'todas');
 };
 
 // ═══════════════════════════════════════
