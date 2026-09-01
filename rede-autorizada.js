@@ -1225,8 +1225,8 @@ window.raCarregarPagamentos = async function() {
   if (!pags.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento neste mês. As OS aprovadas entram aqui automaticamente (acumulam por autorizada). "Gerar fechamento" é só pra recuperar OS antigas.</td></tr>'; return; }
   tbody.innerHTML = pags.map(function(p) {
     var parc = p.assist_parceiros ? p.assist_parceiros.nome : '#' + p.parceiro_id;
-    return '<tr><td>' + parc + '</td><td class="mono right">' + p.qtd_os + '</td><td class="mono right">' + raFmt(p.valor_servicos) + '</td><td class="mono right">' + raFmt(p.valor_pecas) + '</td><td class="mono right" style="font-weight:700">' + raFmt(p.valor_total) + '</td><td>' + (p.nf_parceiro || '—') + '</td><td>' + statusBadge(p.status) + '</td>' +
-      '<td style="white-space:nowrap"><button class="btn btn-sm btn-secondary" onclick="raDocPagamento(' + p.id + ')" title="Requisição de pagamento / solicitação de NF">📄 NF / Requisição</button> ' + (p.status === 'pendente' ? '<button class="btn btn-sm btn-success" onclick="raMarcarPago(' + p.id + ')">💰 Pagar</button>' : '') + '</td></tr>';
+    return '<tr><td style="cursor:pointer;color:var(--blue-mid);font-weight:600" title="Ver as OS deste fechamento" onclick="raVerOSPagamento(' + p.id + ')">' + parc + '</td><td class="mono right">' + p.qtd_os + '</td><td class="mono right">' + raFmt(p.valor_servicos) + '</td><td class="mono right">' + raFmt(p.valor_pecas) + '</td><td class="mono right" style="font-weight:700">' + raFmt(p.valor_total) + '</td><td>' + (p.nf_parceiro || '—') + '</td><td>' + statusBadge(p.status) + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn btn-sm" onclick="raVerOSPagamento(' + p.id + ')" title="Ver as OS deste fechamento">👁 Ver OS</button> <button class="btn btn-sm btn-secondary" onclick="raDocPagamento(' + p.id + ')" title="Requisição de pagamento / solicitação de NF">📄 NF / Requisição</button> ' + (p.status === 'pendente' ? '<button class="btn btn-sm btn-success" onclick="raMarcarPago(' + p.id + ')">💰 Pagar</button>' : '') + '</td></tr>';
   }).join('');
 };
 
@@ -1277,6 +1277,33 @@ window.raMarcarPago = async function(id) {
   await raPatch('prt_ordens_servico', 'pagamento_id=eq.' + id, { status: 'paga', data_pagamento: agora });
   raLog('ACAO', 'pagamento', 'MARCAR_PAGO', String(id));
   raCarregarPagamentos();
+};
+
+// Lista as OS que compõem um fechamento; clicar numa OS abre o detalhe completo (raDetalheOS).
+window.raVerOSPagamento = async function(pagId) {
+  var oss = await raFetch('prt_ordens_servico?pagamento_id=eq.' + pagId + '&order=data_servico.asc&select=*,assist_parceiros(nome,cidade,uf)');
+  if (!Array.isArray(oss)) oss = [];
+  // garante que raDetalheOS encontre as OS (ele busca em _raOS)
+  oss.forEach(function(o) { if (!_raOS.find(function(x) { return x.id === o.id; })) _raOS.push(o); });
+  var parcNome = oss.length && oss[0].assist_parceiros ? oss[0].assist_parceiros.nome : '';
+  var total = oss.reduce(function(s, o) { return s + (parseFloat(o.valor_servico) || 0); }, 0);
+  var linhas = oss.map(function(o) {
+    return '<tr style="cursor:pointer" onclick="document.getElementById(\'ra-modal\').remove();raDetalheOS(' + o.id + ')">' +
+      '<td class="mono" style="font-weight:600;color:var(--blue-mid)">' + (o.protocolo || '#' + o.id) + '</td>' +
+      '<td>' + raEsc(o.cliente_nome || '—') + '</td>' +
+      '<td>' + (o.produto_linha || '—') + '</td>' +
+      '<td>' + raDate(o.data_servico) + '</td>' +
+      '<td class="mono right" style="font-weight:600">' + raFmt(o.valor_servico) + '</td></tr>';
+  }).join('');
+  var body = (parcNome ? '<div style="font-weight:600;margin-bottom:8px">' + raEsc(parcNome) + '</div>' : '') +
+    '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Protocolo</th><th>Cliente</th><th>Produto</th><th>Data</th><th class="right">Valor</th></tr></thead><tbody>' +
+    (linhas || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:16px">Sem OS vinculadas</td></tr>') +
+    '</tbody></table></div>' +
+    '<div style="text-align:right;font-weight:700;margin-top:10px">Total: ' + raFmt(total) + ' · ' + oss.length + ' OS</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-top:6px">👆 Clique numa OS para ver todos os detalhes.</p>';
+  raModal('OS do fechamento', body,
+    '<button class="btn btn-secondary" onclick="raDocPagamento(' + pagId + ')">📄 NF / Requisição</button>' +
+    '<button class="btn btn-secondary" onclick="document.getElementById(\'ra-modal\').remove()">Fechar</button>', 'lg');
 };
 
 // Documento do fechamento — serve pra 2 coisas:
