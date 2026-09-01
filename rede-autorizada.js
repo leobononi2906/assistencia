@@ -1810,10 +1810,13 @@ window.raCfgTab = function(tab) {
 };
 
 function raCfgServicos(box) {
-  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+  box.innerHTML = '<div style="background:var(--blue-pale,#eaf4fb);border:1px solid var(--blue-mid,#4FC3F7);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--blue-dark,#0B1426)">' +
+      '💰 <b>Estes são os valores que pagamos à autorizada</b> por cada serviço. <b>Valor</b> = o que a autorizada recebe ao executar o serviço; <b>Teto</b> = limite por categoria. Edite no ✏️ de cada linha.' +
+    '</div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
     '<div style="display:flex;gap:8px"><select class="filter-select" id="ra-srv-linha" onchange="raCarregarServicos()"><option value="">Todas as linhas</option></select></div>' +
     '<div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="raCfgCarregarCategorias()">📂 Categorias</button><button class="btn btn-secondary btn-sm" onclick="raAbrirModalPdfServicos()">📄 Gerar PDF</button><button class="btn btn-primary btn-sm" onclick="raNovoServico()">+ Novo serviço</button></div></div>' +
-    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor</th><th>Teto</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
+    '<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Descrição</th><th>Linha</th><th>Categoria</th><th>Valor pago à autorizada</th><th>Teto (categoria)</th><th>Ativo</th><th></th></tr></thead><tbody id="ra-srv-tbody"></tbody></table></div></div>';
   raCarregarServicos();
 }
 
