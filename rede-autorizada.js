@@ -2442,7 +2442,9 @@ window.raFiltrarParceiros = function() {
 
 window.raCredenciarNovo = async function() {
   // Buscar parceiros NÃO credenciados
-  var todos = await raFetch('assist_parceiros?credenciado=eq.false&status=eq.ativo&order=nome.asc&select=id,nome,cidade,uf,email,responsavel');
+  // Mostra ATIVOS e EM TESTE (todo parceiro novo entra como "teste"): são justamente
+  // os candidatos a receber login. Só ficam de fora os inativos/suspensos.
+  var todos = await raFetch('assist_parceiros?credenciado=eq.false&status=in.(ativo,teste)&order=nome.asc&select=id,nome,cidade,uf,email,responsavel');
   if (!Array.isArray(todos)) todos = [];
   
   var listaHtml = todos.length
@@ -2451,7 +2453,7 @@ window.raCredenciarNovo = async function() {
           '<div><strong>' + p.nome + '</strong><br><span style="font-size:11px;color:var(--text-muted)">' + (p.cidade||'') + '/' + (p.uf||'') + ' · ' + (p.responsavel||'') + '</span></div>' +
           '<button class="btn btn-primary btn-sm" style="font-size:11px">⭐ Credenciar</button></div>';
       }).join('') + '</div>'
-    : '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nenhum parceiro ativo disponível para credenciamento</div>';
+    : '<div style="padding:20px;text-align:center;color:var(--text-muted)">Nenhum parceiro disponível para credenciamento (todos já credenciados ou inativos)</div>';
 
   raModal('Credenciar Parceiro', 
     '<div class="field"><label>Buscar</label><input class="search-input" id="ra-cred-busca" style="width:100%" placeholder="Nome do parceiro..." oninput="raFiltrarCredBusca()"></div>' +
