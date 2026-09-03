@@ -3560,8 +3560,11 @@ window.astParceiros = {
               <input class="ast-form-input" id="par-f-end-${id}" value="${p.endereco||''}" placeholder="Rua, nº, bairro" style="width:100%"></div>
             <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">RAIO ATENDIMENTO (km)</label>
               <input class="ast-form-input" id="par-f-raio-${id}" value="${p.raio_km||''}" placeholder="100" type="number" style="width:100%"></div>
-            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">COORDS <span id="par-f-coords-label-${id}" style="font-weight:400">${p.lat?`${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`:'não definida'}</span></label>
-              <div id="par-f-geo-status-${id}" style="font-size:11px;color:var(--text-muted)"></div></div>
+            <div><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">COORDS <span id="par-f-coords-label-${id}" style="font-weight:400;${p.lat?'':'color:var(--red)'}">${p.lat?`${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`:'⚠️ não definida — não aparece no mapa'}</span></label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button type="button" class="ast-btn ast-btn-secondary ast-btn-sm" onclick="astParceiros.geocodificarCidadeUF(${id})">📍 Corrigir localização</button>
+                <div id="par-f-geo-status-${id}" style="font-size:11px;color:var(--text-muted)"></div>
+              </div></div>
             <div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">OBSERVAÇÃO</label>
               <textarea class="ast-form-input" id="par-f-obs-${id}" placeholder="Observações..." rows="2" style="width:100%;resize:vertical">${p.observacao||''}</textarea></div>
           </div>
@@ -4067,6 +4070,13 @@ window.astParceiros = {
 
     const { data, error } = await window.sb.from('assist_parceiros').insert(payload).select('id').single();
     if (error) { document.getElementById('novo-par-erro').textContent = 'Erro: ' + error.message; document.getElementById('novo-par-erro').style.display='block'; return; }
+
+    // Avisa se ficou SEM localização (senão o parceiro some do mapa sem o usuário saber)
+    if (!window._novoParLat || !window._novoParLng) {
+      alert('⚠️ Parceiro salvo, mas NÃO consegui localizar no mapa automaticamente.\n\n' +
+            'Ele NÃO vai aparecer no Mapa da Rede até você definir a localização.\n\n' +
+            'Vou abrir o cadastro dele — clique em "📍 Corrigir localização".');
+    }
 
     // Tags selecionadas
     const tagsChecked = [...document.querySelectorAll('#novo-par-tags input:checked')].map(i => i.value);
