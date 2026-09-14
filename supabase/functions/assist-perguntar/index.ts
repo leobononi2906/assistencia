@@ -55,7 +55,7 @@ const supabase = createClient(
 function normalizar(s: string): string {
   return String(s || "")
     .toLowerCase()
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // tira acento
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")   // tira acento
     .replace(/[^a-z0-9\s]/g, " ")                        // tira pontuação
     .replace(/\s+/g, " ")
     .trim();
