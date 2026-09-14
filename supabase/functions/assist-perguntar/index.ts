@@ -1,12 +1,34 @@
 // assist-perguntar — Tira-dúvidas da assistência. O atendente faz uma PERGUNTA
 // livre e a IA responde com base na base de conhecimento (assist_kb_produto) +
 // regras + dicas (assist_ia_regras), num formato pronto para mandar ao cliente,
-// com os links de vídeo pertinentes. Stateless (não grava nada).
+// com os links de vídeo pertinentes.
 //
-// Entrada:  POST { pergunta: string, produto?: string }
-// Saída:    { ok, resposta, videos:[url], confianca }
+// Entrada:  POST { pergunta: string, produto?: string, email?: string }
+// Saída:    { ok, resposta, videos:[url], confianca, cache }
 //
 // Segredo: ANTHROPIC_API_KEY (obrigatório).
+//
+// ---------------------------------------------------------------------------
+// REGISTRO E CACHE (14/09/2026)
+//
+// Antes nada era gravado: nem a pergunta, nem a resposta. E cada pergunta
+// mandava a base INTEIRA para a Anthropic (11 produtos, ~34 mil caracteres,
+// ~12 mil tokens de entrada). Perguntar duas vezes a mesma coisa custava duas
+// vezes.
+//
+// Agora a resposta fica em assist_ia_perguntas, com chave na pergunta
+// NORMALIZADA + produto. Repetida, sai de lá e a IA não é chamada.
+//
+// O que impede o cache de mentir: fonte_versao. O prompt manda a IA priorizar
+// a informação mais recente, então um cache cego serviria procedimento velho
+// depois de uma correção -- e ninguém perceberia, porque a resposta continua
+// parecendo boa. Cada linha guarda a impressão digital das fontes; se a base
+// mudar, o cache deixa de valer e a pergunta vai para a IA de novo.
+//
+// A ordem aqui importa: a impressão digital é lida com uma consulta BARATA (só
+// carimbos e contagens) ANTES de montar o prompt. Num acerto de cache os 34 mil
+// caracteres nem chegam a ser lidos do banco.
+// ---------------------------------------------------------------------------
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -28,6 +50,47 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// "Como mudar o Ar-Condicionado para GRAUS?" e "como mudar o ar condicionado
+// para graus" são a mesma pergunta. Sem isto o cache quase nunca acertaria.
+function normalizar(s: string): string {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")   // tira acento
+    .replace(/[^a-z0-9\s]/g, " ")                        // tira pontuação
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Impressão digital das fontes. Consulta barata de propósito: só carimbos e
+// contagens, nunca o conteúdo. É o que permite decidir pelo cache sem ler os
+// 34 mil caracteres da base.
+async function fonteVersao(): Promise<string> {
+  const [kb, mat, reg] = await Promise.all([
+    supabase.from("assist_kb_produto").select("atualizado_em"),
+    supabase.from("prt_materiais").select("criado_em, processado_em").eq("ativo", true),
+    supabase.from("assist_ia_regras").select("atualizado_em").eq("id", 1).maybeSingle(),
+  ]);
+  const maior = (xs: (string | null)[]) => xs.filter(Boolean).sort().pop() || "0";
+  const kbRows = kb.data || [];
+  const matRows = mat.data || [];
+  return [
+    `kb:${maior(kbRows.map((r) => r.atualizado_em))}:${kbRows.length}`,
+    `mat:${maior(matRows.flatMap((r) => [r.criado_em, r.processado_em]))}:${matRows.length}`,
+    `reg:${(reg.data && reg.data.atualizado_em) || "0"}`,
+  ].join("|");
+}
+
+// Busca a pergunta guardada. produto é opcional, e no banco a chave usa
+// coalesce(produto,'') -- aqui o null precisa ser tratado com .is(), porque
+// em SQL null não é igual a nada, nem a null.
+async function buscarGuardada(norm: string, prod: string | null) {
+  const q = supabase.from("assist_ia_perguntas")
+    .select("id, resposta, fonte_versao, usos")
+    .eq("pergunta_norm", norm);
+  const { data } = await (prod === null ? q.is("produto", null) : q.eq("produto", prod)).maybeSingle();
+  return data;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "método não permitido" }, 405);
@@ -36,10 +99,32 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) return json({ error: "falta o segredo ANTHROPIC_API_KEY" }, 500);
 
-    const { pergunta, produto } = await req.json().catch(() => ({}));
+    const { pergunta, produto, email } = await req.json().catch(() => ({}));
     if (!pergunta || !String(pergunta).trim()) {
       return json({ error: "informe a pergunta" }, 400);
     }
+
+    const norm = normalizar(pergunta);
+    const prod = produto ? String(produto) : null;
+    const versao = await fonteVersao();
+    const achada = await buscarGuardada(norm, prod);
+
+    // --------------------------------------------- já perguntaram, e a base é a mesma
+    if (achada && achada.fonte_versao === versao) {
+      await supabase.from("assist_ia_perguntas")
+        .update({ usos: (achada.usos || 1) + 1, ultimo_uso: new Date().toISOString() })
+        .eq("id", achada.id);
+      const r = achada.resposta || {};
+      return json({
+        ok: true,
+        resposta: r.resposta || "",
+        videos: Array.isArray(r.videos) ? r.videos : [],
+        confianca: r.confianca || "media",
+        cache: true,
+      });
+    }
+
+    // ------------------------------ não tinha, ou a base mudou: pergunta à IA
 
     // Data curta DD/MM/AAAA (UTC) para carimbar recência das fontes.
     const fmtData = (ts: string | null) => {
@@ -131,12 +216,34 @@ Deno.serve(async (req) => {
       parsed = { resposta: texto, videos: [], confianca: "media" };
     }
 
-    return json({
-      ok: true,
+    const saida = {
       resposta: parsed.resposta || "",
       videos: Array.isArray(parsed.videos) ? parsed.videos : [],
       confianca: parsed.confianca || "media",
-    });
+    };
+
+    // ------------------------------------------------ guarda para a próxima vez
+    // Falha aqui NÃO pode derrubar a resposta: a pessoa já esperou pela IA, e
+    // não conseguir gravar o cache é problema nosso, não dela.
+    try {
+      if (achada) {
+        // já existia, mas a base mudou: a resposta velha é substituída
+        await supabase.from("assist_ia_perguntas")
+          .update({ resposta: saida, fonte_versao: versao, ultimo_uso: new Date().toISOString() })
+          .eq("id", achada.id);
+      } else {
+        await supabase.from("assist_ia_perguntas").insert({
+          pergunta_norm: norm,
+          produto: prod,
+          pergunta: String(pergunta).trim(),
+          resposta: saida,
+          fonte_versao: versao,
+          usuario_email: email || null,
+        });
+      }
+    } catch (_e) { /* silencioso de propósito -- ver comentário acima */ }
+
+    return json({ ok: true, ...saida, cache: false });
   } catch (err) {
     return json({ error: (err as Error).message }, 500);
   }
