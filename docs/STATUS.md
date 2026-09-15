@@ -82,6 +82,13 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 - Créditos: Anthropic acabando → erro visível no Gerar; OpenAI → áudio "[não transcrito]" silencioso.
 - Umbler fecha por inatividade → pode concluir caso com peça em trânsito (Leo aceitou o risco).
 
+## Documentação
+
+| Arquivo | Conteúdo |
+|---|---|
+| `docs/IA-RESUMO-E-SOLUCOES.md` | como a IA lê o chamado que entra pela Umbler (texto, imagem, áudio e vídeo) e produz o resumo da reclamação + sugestão de solução. **Leia antes de mexer em prompt, crédito de API ou no `assist-resumo-ia`.** |
+| `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
+
 ## Dev-log
 - 2026-08-11 — Prioridade por recência nas 2 funções de IA (Dicas > doc novo > Notion; carimbo de data) — `assist-perguntar` v4, `assist-resumo-ia` v16. Materiais virou grid de cards (thumbnail YouTube + selo IA); aba renomeada "Materiais Técnicos". Cadastrados os PDFs oficiais Gerador (id 20) e Ar (id 21). Commits ba57639, 3241ef6, 560e836.
 - 2026-08-06/07 — v15 (precedência de setor + etiqueta consumida), fecha-na-Umbler, prioridade no card, cron inteligente reintroduzido e depois pausado, Materiais/PDF alimentando a IA.
