@@ -1,6 +1,43 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-08-11
+> Atualizado: 2026-09-15
+
+> ## ⛔ ESTA INTERFACE FOI APOSENTADA EM 14/09/2026
+>
+> `assistencia.vercel.app` **não é mais o app da Assistência.** A raiz virou uma
+> página de redirecionamento para **`stonni-assistencia.vercel.app`**, que reúne
+> os dois módulos que existiam aqui (Assistência e Rede Autorizada) e tem o ciclo
+> novo de pagamento (orçamento → aceite → NFS-e → PIX). `assistencia.js` e
+> `rede-autorizada.js` saíram do deploy — seguem no histórico do Git,
+> commit `74a226b`. `git revert` devolve tudo.
+>
+> **O QUE FOI CONFERIDO ANTES DE DESLIGAR.** Auditoria das duas interfaces pelas
+> tabelas que cada uma toca (tabela usada só aqui = função não portada): deu 10.
+> Medido no banco, sobre 1.497 chamados: abrir chamado a mão **0**, vincular
+> cliente do ERP **0**, vincular OS **0**, causa **0**, solução **0**, peças do
+> chamado **tabela vazia**, NF no chamado **1**, produto do chamado **13**,
+> procedência **8**, follow-up de parceiro **5 registros**, tags **4 nomes**.
+> Telas construídas que a equipe nunca adotou.
+>
+> A **única** que importava — o editor das **Regras da IA**
+> (`assist_ia_regras.instrucoes`, campo vivo que as Edge Functions leem) — foi
+> portada para a Assistência Stonni **antes** da remoção.
+>
+> Última ação real por aqui: **10/09/2026**.
+>
+> ### ⚠️ ESTE REPOSITÓRIO TEM MAIS DOIS INQUILINOS — NÃO APAGUE
+> - **`/erp`** — "ERP Bononi", outro app, **vivo** no mesmo endereço. Apagar o
+>   projeto na Vercel derrubaria ele junto.
+> - **`/supabase/functions`** — fonte das **7 Edge Functions em produção**:
+>   `assist-perguntar`, `assist-resumo-ia`, `assist-kb-sync`,
+>   `assist-material-pdf`, `assist-resumo-cron`, `credenciar-parceiro`,
+>   `emitir-nfe`. Apagar o repositório apagaria a fonte delas — e Edge Function
+>   publicada não devolve o código.
+>
+> **Aposentar app antigo é por ARQUIVO, nunca por projeto ou repositório.**
+>
+> O que está abaixo desta linha descreve a interface como ela era até 14/09/2026,
+> e fica como registro.
 
 ## O que é
 Kanban de chamados de assistência técnica (garantia Stonni), alimentado pela Umbler (WhatsApp). Tem **Resumo IA** por chamado, roteamento automático por setor, categoria por IA e um assistente "Perguntar à IA" que responde sobre os equipamentos.
