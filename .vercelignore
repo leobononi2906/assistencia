@@ -1,0 +1,13 @@
+# A Vercel publica o repo INTEIRO, não só o que o app carrega. Sem isto,
+# /supabase/functions/*/index.ts, as migrations e os ERP-*.md respondiam 200
+# em assistencia.vercel.app, sem login (pente fino de 24/09/2026).
+#
+# NÃO PODE ENTRAR AQUI: index.html (redirecionamento) e erp/ (o ERP vivo).
+#
+# Edge Function sobe pelo painel do Supabase e nunca precisa estar no deploy
+# do site. Isto não apaga nada do git, só deixa de mandar para o deploy.
+
+docs/
+supabase/
+*.md
+.claude/

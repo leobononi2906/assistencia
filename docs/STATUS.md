@@ -1,6 +1,10 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-09-15
+> Atualizado: 2026-09-24
+>
+> **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
+> `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
+> `index.html` e `erp/` seguem publicados.
 
 > ## ⛔ ESTA INTERFACE FOI APOSENTADA EM 14/09/2026
 >
