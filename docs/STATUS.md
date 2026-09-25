@@ -1,10 +1,10 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-09-24
+> Atualizado: 2026-09-25
 >
 > **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
 > `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
-> `index.html` e `erp/` seguem publicados.
+> `index.html` e `erp/` seguem publicados. **No ar só em 25/09** — ver o dev-log.
 
 > ## ⛔ ESTA INTERFACE FOI APOSENTADA EM 14/09/2026
 >
@@ -94,6 +94,14 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 | `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
 
 ## Dev-log
+- 2026-09-25 — **`docs/`, `supabase/` e os `.md` saíram do site público — um dia depois do
+  commit.** O push do `.vercelignore` em 24/09 às 17:36 (`e8a1c82`) foi para o GitHub, mas o
+  deploy não saiu: a conta da Vercel (plano Hobby) passou de 100 deploys em 24h, somando todos os
+  apps. Na manhã de 25/09, `assistencia.vercel.app/docs/STATUS.md` ainda abria (200). Sem commit
+  novo para levar, o deploy saiu com um commit vazio (`e578d89`).
+  - Conferido no ar em 25/09, ~08:45: `/docs/STATUS.md` agora dá 404 (`NOT_FOUND` da Vercel) e
+    a raiz `/` segue 200.
+  - Daqui em diante o teto é controlado pela skill `controlar-deploys` (pasta `.claude`).
 - 2026-08-11 — Prioridade por recência nas 2 funções de IA (Dicas > doc novo > Notion; carimbo de data) — `assist-perguntar` v4, `assist-resumo-ia` v16. Materiais virou grid de cards (thumbnail YouTube + selo IA); aba renomeada "Materiais Técnicos". Cadastrados os PDFs oficiais Gerador (id 20) e Ar (id 21). Commits ba57639, 3241ef6, 560e836.
 - 2026-08-06/07 — v15 (precedência de setor + etiqueta consumida), fecha-na-Umbler, prioridade no card, cron inteligente reintroduzido e depois pausado, Materiais/PDF alimentando a IA.
 - 2026-07-31 — Índice único FULL corrigiu a parada de chamados; produção reiniciada limpa (482 concluídos).
