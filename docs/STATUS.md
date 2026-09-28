@@ -1,6 +1,6 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-09-25
+> Atualizado: 2026-09-28
 >
 > **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
 > `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
@@ -94,6 +94,7 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 | `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
 
 ## Dev-log
+- 2026-09-28 — **`/erp`: F5 volta para a mesma tela.** `entrarApp()` terminava em `nav('dashboard')` fixo. Agora `nav()` grava `sessionStorage['erp_tela']` e `entrarApp()` restaura se `telaPermitida()` (mesma checagem de `can(mod,'ver')` do `nav`) aprovar. `logout()` limpa. Skill `manter-tela-ao-atualizar`.
 - 2026-09-25 — **`docs/`, `supabase/` e os `.md` saíram do site público — um dia depois do
   commit.** O push do `.vercelignore` em 24/09 às 17:36 (`e8a1c82`) foi para o GitHub, mas o
   deploy não saiu: a conta da Vercel (plano Hobby) passou de 100 deploys em 24h, somando todos os

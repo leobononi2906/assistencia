@@ -226,7 +226,7 @@ async function doLogin(ev){
   return false;
 }
 window.doLogin=doLogin;
-function logout(){ sessionStorage.removeItem('erp_user'); sessionStorage.removeItem('erp_perm'); location.reload(); }
+function logout(){ sessionStorage.removeItem('erp_user'); sessionStorage.removeItem('erp_perm'); sessionStorage.removeItem('erp_tela'); location.reload(); }
 window.logout=logout;
 
 /* ---------- permissões ---------- */
@@ -248,7 +248,8 @@ function entrarApp(){
   $('#app').style.display='block';
   $('#user-name').textContent=window.usuarioAtual.nome+' · '+(window.usuarioAtual.perfil||'');
   buildMenu();
-  nav('dashboard');
+  const telaSalva=sessionStorage.getItem('erp_tela');
+  nav(telaSalva && telaPermitida(telaSalva) ? telaSalva : 'dashboard');
 }
 
 /* ---------- menu / navegação ---------- */
@@ -307,6 +308,12 @@ function buildMenu(){
   }).join('');
 }
 function modDaTela(id){ for(const g of MENU){ const it=g.itens.find(x=>x.id===id); if(it) return it.mod; } return null; }
+/* a tela existe e o usuário atual tem 'ver' no módulo dela? (mesma checagem do nav) */
+function telaPermitida(id){
+  if(!SCREENS[id]) return false;
+  const mod=modDaTela(id);
+  return !mod || can(mod,'ver');
+}
 const SCREENS={
   dashboard:{title:'Dashboard',load:loadDashboard},
   clientes:{title:'Clientes',load:()=>loadClientes()},
@@ -349,6 +356,7 @@ function nav(id){
     $('#screen').innerHTML=errBox('Você não tem permissão para acessar esta tela.','Fale com um administrador para liberar o módulo '+mod+'.');
     return;
   }
+  sessionStorage.setItem('erp_tela',id);
   document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('active',a.dataset.nav===id));
   $('#page-title').textContent=s.title;
   $('#screen').innerHTML=skeletonTable();
