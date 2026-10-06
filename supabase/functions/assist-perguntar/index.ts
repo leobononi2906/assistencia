@@ -61,6 +61,27 @@ function normalizar(s: string): string {
     .trim();
 }
 
+// O WhatsApp não entende markdown: `**x**` e `## x` chegam crus ao cliente.
+// O prompt já pede o formato certo; isto é a rede para o que escapar, e vale
+// também para as respostas guardadas antes da regra existir.
+function paraWhatsApp(s: string): string {
+  return String(s || "")
+    .replace(/\\n/g, "\n")                                   // \n literal → quebra real
+    .replace(/\r\n?/g, "\n")
+    .replace(/\[([^\]\n]+)\]\((https?:[^)\s]+)\)/g, "$1: $2") // [texto](url) → texto: url
+    .replace(/\*\*([^*\n]+)\*\*/g, "*$1*")                    // **x** → *x*
+    .replace(/__([^_\n]+)__/g, "*$1*")                        // __x__ → *x*
+    .replace(/^[ \t]*#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/gm, "*$1*") // ## Título → *Título*
+    .replace(/^[ \t]*[-*+][ \t]+/gm, "• ")                    // - item → • item
+    .replace(/^[ \t]*(-{3,}|\*{3,}|_{3,})[ \t]*$/gm, "")      // --- separador
+    .replace(/\*\*/g, "")                                     // ** que sobrou sem par
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// Muda quando a regra de formato do prompt muda: força refazer as guardadas.
+const VERSAO_PROMPT = "prompt:v2-whatsapp";
+
 // Impressão digital das fontes. Consulta barata de propósito: só carimbos e
 // contagens, nunca o conteúdo. É o que permite decidir pelo cache sem ler os
 // 34 mil caracteres da base.
@@ -77,6 +98,7 @@ async function fonteVersao(): Promise<string> {
     `kb:${maior(kbRows.map((r) => r.atualizado_em))}:${kbRows.length}`,
     `mat:${maior(matRows.flatMap((r) => [r.criado_em, r.processado_em]))}:${matRows.length}`,
     `reg:${(reg.data && reg.data.atualizado_em) || "0"}`,
+    VERSAO_PROMPT,
   ].join("|");
 }
 
@@ -117,7 +139,7 @@ Deno.serve(async (req) => {
       const r = achada.resposta || {};
       return json({
         ok: true,
-        resposta: r.resposta || "",
+        resposta: paraWhatsApp(r.resposta || ""),
         videos: Array.isArray(r.videos) ? r.videos : [],
         confianca: r.confianca || "media",
         cache: true,
@@ -171,6 +193,12 @@ Deno.serve(async (req) => {
       "Se a base NÃO cobrir a dúvida, seja honesto: diga que precisa confirmar e peça o dado que falta " +
       "(ex.: código de erro no display). NÃO invente solução. Responda SOMENTE com JSON válido, sem texto fora do JSON, " +
       'no formato: {"resposta":"","videos":[],"confianca":"alta|media|baixa"}. Português do Brasil.' +
+      "\n\nFORMATO DO TEXTO EM 'resposta' (vai colado no WhatsApp, que NÃO entende markdown): " +
+      "NÃO use markdown — nada de **, ##, títulos, tabelas nem [texto](link). " +
+      "Para destacar, use *um asterisco de cada lado* (negrito do WhatsApp), com moderação. " +
+      "Passo a passo: um passo por linha, numerado como 1) 2) 3). " +
+      "Separe saudação, explicação e fechamento com uma linha em branco (\\n\\n). " +
+      "Link, se precisar, solto no texto. Mensagem curta, no máximo um emoji." +
       "\n\nPRIORIDADE POR RECÊNCIA: quando duas fontes se contradisserem sobre o MESMO tema, vale SEMPRE a mais recente. " +
       "Ordem de prioridade: (1) DICAS DA EQUIPE — são as correções mais recentes e sempre prevalecem; " +
       "(2) DOCUMENTOS/MATERIAIS mais recentes — compare a data 'doc de DD/MM/AAAA'; " +
@@ -217,7 +245,7 @@ Deno.serve(async (req) => {
     }
 
     const saida = {
-      resposta: parsed.resposta || "",
+      resposta: paraWhatsApp(parsed.resposta || ""),
       videos: Array.isArray(parsed.videos) ? parsed.videos : [],
       confianca: parsed.confianca || "media",
     };
