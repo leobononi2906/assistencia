@@ -58,6 +58,13 @@ produção é uma chamada Whisper — ver seção 3).
 
 ### 2.2. Resumo estruturado que a IA gera (o "resumo_ia")
 
+> **Formato atual (06/10/2026)** — o exemplo abaixo é o da POC. Hoje o JSON é
+> `{produto, categoria, setor, urgencia, reclamacao, situacao, proximo_passo, defeito_percebido,
+> ja_tentado, falta_info, midias}`: frases curtas, campo vazio em vez de "não informado",
+> `falta_info` como itens separados por `;`, no máximo 3 soluções. `situacao` (em que pé está) e
+> `proximo_passo` (o que o atendente faz agora) foram criados porque o resumo era ilegível de relance.
+> Detalhes: `stonni-assistencia/docs/HANDOFF.md` (Chamados → Resumo IA).
+
 ```
 PRODUTO ......... Gerador (12/24V)
 RECLAMAÇÃO ...... Gerador não dá partida; cliente depende dele p/ ligar o caminhão.
