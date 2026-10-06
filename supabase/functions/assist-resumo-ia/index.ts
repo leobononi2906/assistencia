@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
       "BASE DE CONHECIMENTO fornecida. Use SOMENTE soluções coerentes com a base; se sugerir vídeo, " +
       "use apenas links presentes na BASE DE CONHECIMENTO ou na lista de MATERIAIS TÉCNICOS & VÍDEOS. Responda SOMENTE com JSON válido, " +
       "sem texto fora do JSON, no formato: " +
-      '{"resumo":{"produto":"","categoria":"","setor":"","reclamacao":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
+      '{"resumo":{"produto":"","categoria":"","setor":"","reclamacao":"","situacao":"","proximo_passo":"","defeito_percebido":"","ja_tentado":"","urgencia":"","falta_info":""},' +
       '"solucoes":[{"solucao":"","video_url":null,"confianca":"alta|media|baixa"}]}. ' +
       'O campo "categoria" DEVE ser exatamente um destes valores (classifique pela linha do produto reclamado): ' +
       '"Ar Condicionado", "Geladeira", "Gerador" ou "Outros". Use "Outros" quando não for nenhuma das três linhas ou quando não der para saber. ' +
@@ -238,6 +238,17 @@ Deno.serve(async (req) => {
       'SEM defeito e SEM pedido administrativo também são "Garantia" (atendimento técnico), NÃO "Operacoes". Se a conversa não tiver informação suficiente para ' +
       'decidir (ex.: áudios/vídeos não transcritos, sem texto útil), use "Garantia". ' +
       "Escreva em português do Brasil, objetivo. Ranqueie as soluções da mais provável para a menos provável." +
+      "\n\nCOMO ESCREVER (o atendente lê de relance, no meio do atendimento): " +
+      '"reclamacao": no máximo 2 frases curtas, só o problema que o cliente relata. ' +
+      '"situacao": 1 frase dizendo em que pé o caso está AGORA (ex.: "Aguardando coleta pela transportadora"; "Geladeira nova em envio"). ' +
+      '"proximo_passo": 1 frase no imperativo com a ação que o atendente deve fazer agora (ex.: "Cobrar a transportadora e avisar o cliente do prazo"). ' +
+      '"defeito_percebido" e "ja_tentado": no máximo 1 frase cada. ' +
+      '"falta_info": itens curtos separados por ";" (sem numeração), só o que de fato falta para resolver. ' +
+      '"urgencia": exatamente "baixa", "media" ou "alta". ' +
+      'Campo sem informação fica VAZIO (""): nunca escreva "Não aplicável", "Não informado", "Nenhum", "—". ' +
+      '"produto": nome curto do produto; vazio se não der para saber. ' +
+      "SOLUÇÕES: no máximo 3, cada uma com 1 ou 2 frases no imperativo, sem repetir o resumo. " +
+      'Confiança "alta" só quando a BASE cobre exatamente o caso; na dúvida, "media".' +
       "\n\nPRIORIDADE POR RECÊNCIA: quando duas fontes se contradisserem sobre o MESMO tema, vale SEMPRE a mais recente. " +
       "Ordem de prioridade: (1) DICAS DA EQUIPE — correções mais recentes, sempre prevalecem; " +
       "(2) DOCUMENTOS/MATERIAIS mais recentes — compare a data 'doc de DD/MM/AAAA'; " +
@@ -318,7 +329,7 @@ Deno.serve(async (req) => {
       .from("assist_chamados")
       .update({
         resumo_ia: parsed.resumo ?? null,
-        resumo_ia_solucoes: parsed.solucoes ?? null,
+        resumo_ia_solucoes: Array.isArray(parsed.solucoes) ? parsed.solucoes.slice(0, 3) : (parsed.solucoes ?? null),
         resumo_ia_em: new Date().toISOString(),
         resumo_ia_modelo: MODELO,
       })
@@ -342,7 +353,7 @@ Deno.serve(async (req) => {
       midias_falha: midiaFalha,
       midias_sem_chave: midiaSemChave,
       resumo: parsed.resumo,
-      solucoes: parsed.solucoes,
+      solucoes: Array.isArray(parsed.solucoes) ? parsed.solucoes.slice(0, 3) : parsed.solucoes,
     });
   } catch (err) {
     return json({ error: (err as Error).message }, 500);
