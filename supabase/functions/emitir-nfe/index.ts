@@ -12,7 +12,7 @@
 // provedor -> envia -> grava o retorno (RPC erp_registrar_retorno_nfe).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

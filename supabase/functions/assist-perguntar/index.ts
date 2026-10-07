@@ -30,7 +30,7 @@
 // caracteres nem chegam a ser lidos do banco.
 // ---------------------------------------------------------------------------
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

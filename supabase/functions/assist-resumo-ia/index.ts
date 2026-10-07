@@ -16,7 +16,7 @@
 //   OPENAI_API_KEY    (opcional)    — transcrição de áudio (Whisper); sem ele,
 //                                     áudio entra como "[não transcrito]".
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

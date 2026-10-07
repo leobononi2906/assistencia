@@ -7,7 +7,7 @@
 // Grava:    prt_materiais.texto_extraido, .resumo_tecnico, .processado_em
 // Segredo:  ANTHROPIC_API_KEY (obrigatório).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.11.0";
 
 const cors = {

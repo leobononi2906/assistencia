@@ -14,7 +14,7 @@
 //   NOTION_API_KEY (obrigatório) — token de uma integração interna do Notion,
 //     com as páginas de produto compartilhadas com ela.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
