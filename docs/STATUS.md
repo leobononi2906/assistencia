@@ -1,6 +1,6 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-09-28
+> Atualizado: 2026-10-08
 >
 > **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
 > `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
@@ -94,6 +94,29 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 | `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
 
 ## Dev-log
+- 2026-10-08 — **Conferência das 7 Edge Functions: o que está no ar × o que está no repo.** Baixadas
+  de produção (`supabase functions download`, token de leitura só de Edge Functions) e comparadas
+  com `supabase/functions/*/index.ts`, ignorando CRLF/LF. **Nada foi publicado nem alterado.**
+  - **Pushes de 07/10 (`b7495e8` e anteriores) levaram só código ao GitHub — nenhuma função foi
+    republicada.** `git push` não publica função.
+  - **`assist-perguntar` (v21), `assist-resumo-ia` (v32), `credenciar-parceiro` (v20):** a única
+    diferença é o import `supabase-js@2` (no ar) × `@2.45.4` (no repo). Comportamento idêntico.
+  - **`assist-resumo-cron` (v16):** o mesmo import + um comentário.
+  - **`assist-kb-sync` (v18):** o import, acentos nos textos de erro, "vídeo" com acento no
+    conteúdo gerado e um campo `ajuda` na resposta quando falta `NOTION_API_KEY`.
+  - **`assist-material-pdf` (v16):** o import e o **prompt do resumo técnico com acentos**
+    ("Você recebe…", "Faça um RESUMO TÉCNICO…") e travessão no lugar de hífen em dois textos. É a
+    única diferença que pode mudar o texto que a IA gera nos próximos PDFs; resumos já gerados não
+    mudam. Testar com um PDF antes de publicar.
+  - **`emitir-nfe`: NÃO existe em produção, de propósito.** O módulo fiscal do `/erp`
+    (`erp/fiscal.js:68`, `sb.functions.invoke('emitir-nfe')`) está em construção; `ERP-FISCAL.md` e
+    `ERP-STATUS.md` listam o deploy + o secret do token do provedor como pendência. Enquanto isso,
+    emitir NF-e pelo `/erp` dá 404. O `stonni-assistencia` não chama essa função.
+  - **Decisão (08/10):** não publicar agora — só polimento. Quando uma dessas funções for publicada
+    por outro motivo, o `@2.45.4` vai junto e repo e produção se alinham. Publicar pelo CLI no
+    PowerShell dele. **Verify JWT hoje:** desligado em `assist-material-pdf` e `assist-resumo-cron`
+    (o deploy delas leva `--no-verify-jwt`, em todo deploy); ligado em `assist-perguntar`,
+    `assist-resumo-ia`, `assist-kb-sync` e `credenciar-parceiro`.
 - 2026-09-28 — **`/erp`: F5 volta para a mesma tela.** `entrarApp()` terminava em `nav('dashboard')` fixo. Agora `nav()` grava `sessionStorage['erp_tela']` e `entrarApp()` restaura se `telaPermitida()` (mesma checagem de `can(mod,'ver')` do `nav`) aprovar. `logout()` limpa. Skill `manter-tela-ao-atualizar`.
 - 2026-09-25 — **`docs/`, `supabase/` e os `.md` saíram do site público — um dia depois do
   commit.** O push do `.vercelignore` em 24/09 às 17:36 (`e8a1c82`) foi para o GitHub, mas o
