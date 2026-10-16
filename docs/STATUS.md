@@ -1,6 +1,6 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-10-08
+> Atualizado: 2026-10-16
 >
 > **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
 > `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
@@ -94,6 +94,23 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 | `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
 
 ## Dev-log
+- 2026-10-06 — **Resumo IA mais curto e "Perguntar à IA" sem markdown (registrado em 16/10).** Entrada
+  atrasada: três commits da época ficaram sem registro. Só código/doc das Edge Functions; a
+  conferência de 08/10 (entrada abaixo) mostra produção sem diferença de comportamento
+  em relação ao repo, ou seja, as duas já estavam publicadas.
+  - **`assist-resumo-ia` (`55ae639`):** o resumo era ilegível de relance. Agora usa frases curtas
+    (reclamação em até 2 frases), campo sem informação fica vazio em vez de "Não informado", e
+    ganhou dois campos novos: **`situacao`** (em que pé o caso está) e **`proximo_passo`** (o que
+    o atendente faz agora). No máximo **3 soluções** por chamado (também cortado no código ao gravar
+    em `resumo_ia_solucoes`); confiança "alta" só quando a base cobre exatamente o caso.
+  - **`assist-perguntar` (`fe80b03`):** a resposta é colada no WhatsApp, que não entende markdown
+    (`**x**`, `##` chegavam crus ao cliente). O prompt passou a pedir texto de WhatsApp (negrito com
+    um asterisco, passos `1) 2) 3)`) e a função `paraWhatsApp()` converte o que escapar — na
+    resposta nova **e** nas guardadas em cache. `VERSAO_PROMPT` entrou na impressão digital das
+    fontes: quando a regra de formato mudar, as respostas em cache são refeitas.
+  - **Doc (`2e6b897`):** `docs/IA-RESUMO-E-SOLUCOES.md` §2.2 aponta o formato atual do `resumo_ia`.
+    Esta entrada só descreve o que o diff mostra; a tela que exibe `situacao`/`proximo_passo` está
+    no `stonni-assistencia` (`docs/HANDOFF.md`), não conferida aqui.
 - 2026-10-08 — **Conferência das 7 Edge Functions: o que está no ar × o que está no repo.** Baixadas
   de produção (`supabase functions download`, token de leitura só de Edge Functions) e comparadas
   com `supabase/functions/*/index.ts`, ignorando CRLF/LF. **Nada foi publicado nem alterado.**
