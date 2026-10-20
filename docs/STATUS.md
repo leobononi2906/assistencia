@@ -1,6 +1,6 @@
 # STATUS — Assistência Técnica (Garantia Stonni)
 
-> Atualizado: 2026-10-16
+> Atualizado: 2026-10-20
 >
 > **24/09/2026:** criado `.vercelignore` — `supabase/`, `docs/` e os `.md` respondiam 200 em
 > `assistencia.vercel.app` sem login (código das Edge Functions, migrations, ERP-*.md).
@@ -94,6 +94,9 @@ Umbler → Aplicação **"GERAL SUPABASE"** → edge `umbler-intake` → `assist
 | `docs/MAPA_TELAS_ESPELHO.md` | quais telas existem em duplicata na Rede Autorizada, Materiais e IA, e a regra do Leo (01/09) de que **a Assistência é a fonte da verdade**. Leia antes de portar correção entre os apps. |
 
 ## Dev-log
+- 2026-10-20 — **Tema escuro (claro / escuro / automático) no `/erp` (b90f98f).** Pedido do dono: todas as aplicações com tema escuro, sem bugar. Botão de tema na barra superior; o automático segue o aparelho e a escolha fica no navegador, aplicada antes da página pintar (`erp/erp-tema.js` no `<head>` de `erp/index.html`); `erp/relatorios.js` trocou cores fixas por variáveis. A página de redirecionamento `index.html` da raiz não foi tocada.
+  - **Este push publica o `/erp` de verdade:** o `.vercelignore` deste repo NÃO exclui `erp/` (ele só exclui `docs/`, `supabase/` e `*.md`); `assistencia.vercel.app/erp` é servido. O STATUS do repo `ERP` chama esta pasta de "protótipo descontinuado" e o daqui a chama de "app vivo": os dois documentos se contradizem, e fica para o dono dizer qual vale.
+  - Conferido no navegador local: tela de login no escuro com o botão de tema, `data-theme` aplicado. **As telas internas do `/erp` (abas, tabelas, modais, relatórios) não foram vistas no escuro** (login do dono): olhar com o login.
 - 2026-10-06 — **Resumo IA mais curto e "Perguntar à IA" sem markdown (registrado em 16/10).** Entrada
   atrasada: três commits da época ficaram sem registro. Só código/doc das Edge Functions; a
   conferência de 08/10 (entrada abaixo) mostra produção sem diferença de comportamento
