@@ -169,23 +169,23 @@ async function dreGerar(){
 window.dreGerar=dreGerar;
 
 function dreRowStyle(classe){
-  if(classe==='resultado') return 'font-weight:700;font-size:15px;border-top:2px solid var(--linha,#ccc)';
-  if(classe==='total') return 'font-weight:700;border-top:1px solid var(--linha,#ddd)';
+  if(classe==='resultado') return 'font-weight:700;font-size:15px;border-top:2px solid hsl(var(--border))';
+  if(classe==='total') return 'font-weight:700;border-top:1px solid hsl(var(--border))';
   if(classe==='grupo') return 'font-weight:600';
-  return 'color:var(--muted,#666);padding-left:18px';
+  return 'color:hsl(var(--muted-foreground));padding-left:18px';
 }
 function dreRender(){
   const st=window.__dre||{}; const d=st.dados||{}; const lin=d.linhas||[]; const ind=d.indicadores||{};
   let h='<div class="grid-kpi">'+
     '<div class="metric"><div class="lbl">Receita líquida</div><div class="val">'+fmtFull(ind.receita_liquida)+'</div></div>'+
     '<div class="metric"><div class="lbl">Lucro bruto</div><div class="val">'+fmtFull(ind.lucro_bruto)+'</div><div class="lbl">Margem '+fmtNum(ind.margem_bruta)+'%</div></div>'+
-    '<div class="metric"><div class="lbl">Resultado líquido</div><div class="val" style="color:'+((ind.resultado||0)>=0?'var(--ok,#1a7f37)':'var(--err,#c62828)')+'">'+fmtFull(ind.resultado)+'</div></div>'+
+    '<div class="metric"><div class="lbl">Resultado líquido</div><div class="val" style="color:'+((ind.resultado||0)>=0?'hsl(var(--success))':'hsl(var(--destructive))')+'">'+fmtFull(ind.resultado)+'</div></div>'+
     '</div>';
   h+='<div class="toolbar"><div class="spacer"></div><button class="btn btn-sm" onclick="dreImprimir()">Imprimir</button></div>';
   h+='<div class="tbl-wrap"><table class="data"><tbody>';
   lin.forEach(l=>{ const neg=(l.valor||0)<0;
-    h+='<tr style="'+dreRowStyle(l.classe)+'"><td>'+esc(l.label)+(l.obs?' <span style="font-weight:400;color:var(--muted,#888);font-size:11px">('+esc(l.obs)+')</span>':'')+
-       '</td><td class="mono" style="text-align:right'+(neg?';color:var(--err,#c62828)':'')+'">'+fmtFull(l.valor)+'</td></tr>'; });
+    h+='<tr style="'+dreRowStyle(l.classe)+'"><td>'+esc(l.label)+(l.obs?' <span style="font-weight:400;color:hsl(var(--muted-foreground));font-size:11px">('+esc(l.obs)+')</span>':'')+
+       '</td><td class="mono" style="text-align:right'+(neg?';color:hsl(var(--destructive))':'')+'">'+fmtFull(l.valor)+'</td></tr>'; });
   h+='</tbody></table></div>';
   $('#dre-res').innerHTML=h;
 }

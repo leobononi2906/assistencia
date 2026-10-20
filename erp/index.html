@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#2B50AA">
+<!-- Tema claro/escuro/sistema: SINCRONO, aplica data-theme antes da pintura. -->
+<script src="erp-tema.js?v=20261020a"></script>
 <title>ERP Bononi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,7 +18,30 @@
   --success-bg:158 60% 94%; --warning:32 100% 44%; --warning-bg:38 92% 95%;
   --destructive:4 70% 50%; --destructive-bg:4 81% 96%; --sidebar-background:222 70% 33%;
   --radius:12px; --radius-sm:8px;
+  --primary-text:222 70% 33%;
+  /* nomes que o botao do tema (erp-tema.js) le */
+  --surface-card:hsl(var(--card)); --surface-hover:hsl(var(--surface2));
+  --border-default:hsl(var(--border)); --text-body:hsl(var(--foreground)); --radius-md:var(--radius-sm);
 }
+/* Tema escuro (tripla HSL, como o resto dos tokens). Impressao sempre clara. */
+@media not print{
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --background:216 25% 8%; --foreground:210 25% 92%; --card:215 22% 12%;
+  --surface2:215 20% 16%; --primary:222 70% 45%; --primary-text:222 90% 74%;
+  --blue-mid:204 90% 62%; --blue-light:196 100% 55%; --blue-pale:205 45% 19%;
+  --muted-foreground:215 14% 66%; --text-muted:215 12% 58%; --border:215 18% 22%;
+  --success:158 60% 52%; --success-bg:158 45% 15%;
+  --warning:36 95% 58%; --warning-bg:36 55% 15%;
+  --destructive:4 90% 70%; --destructive-bg:4 45% 17%;
+  --sidebar-background:222 45% 14%;
+}
+:root[data-theme="dark"] .btn-ok,:root[data-theme="dark"] .toast.ok{background:hsl(158 80% 27%)}
+:root[data-theme="dark"] .btn-danger,:root[data-theme="dark"] .toast.err{background:hsl(4 70% 42%)}
+:root[data-theme="dark"] .toast{background:hsl(215 20% 22%);color:#fff}
+:root[data-theme="dark"] .modal-layer{background:rgba(0,0,0,.65)}
+}
+.topbar .user .bnn-tema-btn{height:30px;width:30px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',system-ui,sans-serif;font-size:14px;color:hsl(var(--foreground));
   background:hsl(var(--background));-webkit-font-smoothing:antialiased}
@@ -29,7 +55,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
   background:linear-gradient(135deg,hsl(222 70% 33%),hsl(204 100% 40%));z-index:50}
 .login-card{background:hsl(var(--card));border-radius:var(--radius);padding:32px;width:340px;
   box-shadow:0 12px 40px rgba(0,0,0,.25)}
-.login-card h1{font-size:20px;font-weight:700;color:hsl(var(--primary));text-align:center;margin-bottom:4px}
+.login-card h1{font-size:20px;font-weight:700;color:hsl(var(--primary-text));text-align:center;margin-bottom:4px}
 .login-card p{font-size:12px;color:hsl(var(--muted-foreground));text-align:center;margin-bottom:22px}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:10.5px;font-weight:600;text-transform:uppercase;
@@ -42,13 +68,13 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .btn:hover{background:hsl(222 70% 28%)}
 .btn-block{width:100%}
 .btn-sm{padding:5px 10px;font-size:12px}
-.btn-ghost{background:transparent;color:hsl(var(--primary));border:1px solid hsl(var(--border))}
+.btn-ghost{background:transparent;color:hsl(var(--primary-text));border:1px solid hsl(var(--border))}
 .btn-ghost:hover{background:hsl(var(--surface2))}
 .tabs{display:flex;gap:4px;border-bottom:1px solid hsl(var(--border));margin:14px 0 12px}
 .tabs .tab{padding:8px 16px;font-size:13px;font-weight:600;color:hsl(var(--text-muted));cursor:pointer;
   border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabs .tab:hover{color:hsl(var(--foreground))}
-.tabs .tab.active{color:hsl(var(--primary));border-bottom-color:hsl(var(--primary))}
+.tabs .tab.active{color:hsl(var(--primary-text));border-bottom-color:hsl(var(--primary-text))}
 .btn-danger{background:hsl(var(--destructive))}
 .btn-danger:hover{background:hsl(4 70% 42%)}
 .btn-ok{background:hsl(var(--success))}
@@ -137,7 +163,7 @@ body.modal-open{overflow:hidden}
 .chk input{width:auto}
 /* link p/ abrir documento relacionado (venda/OS/cliente) numa camada por cima */
 .doc-link{color:hsl(var(--blue-mid));cursor:pointer;font-weight:600;text-decoration:none;border-bottom:1px dashed hsla(204 100% 40%/.5)}
-.doc-link:hover{color:hsl(var(--primary));border-bottom-style:solid}
+.doc-link:hover{color:hsl(var(--primary-text));border-bottom-style:solid}
 /* combobox com busca/bipagem */
 .combo{position:relative}
 .combo .combo-in{width:100%;padding:9px 11px;border:1px solid hsl(var(--border));border-radius:var(--radius-sm);
@@ -184,7 +210,7 @@ body.modal-open{overflow:hidden}
   <div class="main">
     <div class="topbar">
       <div class="title" id="page-title">Dashboard</div>
-      <div class="user"><span id="user-name"></span><button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button></div>
+      <div class="user"><span id="user-name"></span><span id="tema-slot" style="display:inline-flex"></span><script>BnnTema.botao(document.getElementById("tema-slot"))</script><button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button></div>
     </div>
     <div class="content" id="screen"></div>
   </div>
@@ -209,7 +235,7 @@ body.modal-open{overflow:hidden}
 <script src="orcamentos.js"></script>
 <script src="estoque_mov.js"></script>
 <script src="estoque_posicao.js"></script>
-<script src="relatorios.js"></script>
+<script src="relatorios.js?v=20261020a"></script>
 <script src="etiquetas.js"></script>
 <script src="sistema.js"></script>
 </body>
