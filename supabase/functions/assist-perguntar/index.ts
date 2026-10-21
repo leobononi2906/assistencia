@@ -29,7 +29,19 @@
 // carimbos e contagens) ANTES de montar o prompt. Num acerto de cache os 34 mil
 // caracteres nem chegam a ser lidos do banco.
 // ---------------------------------------------------------------------------
+// SÓ O PRODUTO DA PERGUNTA (21/10/2026)
+//
+// Mandar a base inteira fazia a IA dizer "não encontrei" para o que estava lá:
+// das 74 perguntas de confiança baixa em 30 dias, 33 tinham resposta na base
+// (E04/E20/E40 do gerador, por exemplo). O mesmo código muda de sentido entre
+// produtos -- o E4 aparece em 17 fontes -- e o Haiku 4.5 se perdia no meio.
+// Agora o produto (o escolhido na tela, senão o citado na pergunta) separa as
+// páginas e os documentos técnicos que vão no prompt; sem produto reconhecível,
+// vai tudo, como antes. "Outros" não é produto. Os resumos dos documentos
+// técnicos entram como conhecimento, não só como lista de links.
+// ---------------------------------------------------------------------------
 
+import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const cors = {
@@ -43,7 +55,40 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const MODELO = "claude-haiku-4-5-20251001";
+// Haiku 5.5 pensa antes de responder (o raciocínio vem em blocos "thinking"
+// antes do texto) -- por isso a leitura filtra os blocos "text", e o
+// max_tokens precisa de folga para o raciocínio.
+const MODELO = "claude-haiku-5-5";
+
+const ESQUEMA_RESPOSTA = {
+  type: "object",
+  properties: {
+    resposta: { type: "string" },
+    videos: { type: "array", items: { type: "string" } },
+    confianca: { type: "string", enum: ["alta", "media", "baixa"] },
+  },
+  required: ["resposta", "videos", "confianca"],
+  additionalProperties: false,
+};
+
+// Famílias de produto: o que no texto (já normalizado) indica a família, e
+// quais páginas da base (nome normalizado) ela usa. `linha` casa com
+// prt_materiais.linha_produto.
+const FAMILIAS = [
+  { linha: "gerador", termos: /\bgerador|\bgerado\b|inverter/, kb: /^gerador/ },
+  { linha: "geladeira", termos: /geladeira|refrigerador|adventure|dual zone|\bst ?(18|30) ?l?\b|\b\d{2} ?(l|lt|lts|litros)\b/, kb: /^geladeira/ },
+  { linha: "lavadora", termos: /lavadora|maquina de lavar/, kb: /^lavadora/ },
+  { linha: "ar_condicionado", termos: /\bar\b|ar condicionado|climatizador|split|advant|\bg2\b|\bg3\b|slim|clean|compact|st ?4000|t4000|ca22/, kb: /^ar condicionado/ },
+];
+// Dentro do ar, o modelo citado estreita as páginas. Sem modelo (ou ST4000,
+// que não tem página), vão todas as do ar.
+const MODELOS_AR = [
+  { termos: /advant/, kb: /advantage/ },
+  { termos: /\bg2\b|\bg3\b/, kb: /\bg2\b|\bg3\b/ },
+  { termos: /split/, kb: /split/ },
+  { termos: /slim|clean/, kb: /slim/ },
+  { termos: /compact/, kb: /compact/ },
+];
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -79,8 +124,25 @@ function paraWhatsApp(s: string): string {
     .trim();
 }
 
+// Que parte da base vai no prompt. null = tudo (produto não reconhecido).
+function escolherEscopo(pergunta: string, produto: string | null) {
+  const texto = normalizar(`${produto || ""} ${pergunta}`);
+  const familias = FAMILIAS.filter((f) => f.termos.test(texto));
+  if (!familias.length) return null;
+  const modelosAr = MODELOS_AR.filter((m) => m.termos.test(texto));
+  return {
+    linhas: new Set(familias.map((f) => f.linha)),
+    paginaServe: (nome: string) => {
+      const n = normalizar(nome);
+      return familias.some((f) =>
+        f.kb.test(n) && (f.linha !== "ar_condicionado" || !modelosAr.length || modelosAr.some((m) => m.kb.test(n)))
+      );
+    },
+  };
+}
+
 // Muda quando a regra de formato do prompt muda: força refazer as guardadas.
-const VERSAO_PROMPT = "prompt:v2-whatsapp";
+const VERSAO_PROMPT = "prompt:v3-produto-haiku55";
 
 // Impressão digital das fontes. Consulta barata de propósito: só carimbos e
 // contagens, nunca o conteúdo. É o que permite decidir pelo cache sem ler os
@@ -127,7 +189,8 @@ Deno.serve(async (req) => {
     }
 
     const norm = normalizar(pergunta);
-    const prod = produto ? String(produto) : null;
+    // "Outros" é o valor padrão da tela, não um produto: vale como "não escolhido".
+    const prod = produto && normalizar(produto) !== "outros" ? String(produto) : null;
     const versao = await fonteVersao();
     const achada = await buscarGuardada(norm, prod);
 
@@ -155,12 +218,15 @@ Deno.serve(async (req) => {
       return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
     };
 
+    const escopo = escolherEscopo(String(pergunta), prod);
+
     const { data: kb } = await supabase
       .from("assist_kb_produto")
       .select("produto, conteudo_md, atualizado_em");
-    const baseConhecimento = (kb || [])
+    const paginas = (kb || []).filter((k) => !escopo || escopo.paginaServe(k.produto || ""));
+    const baseConhecimento = paginas
       .map((k) => `### PRODUTO: ${k.produto} (atualizado em ${fmtData(k.atualizado_em)})\n${k.conteudo_md}`)
-      .join("\n\n---\n\n") || "(base de conhecimento vazia)";
+      .join("\n\n---\n\n") || "(nenhuma página de produto para este assunto)";
 
     // Materiais técnicos & vídeos (prt_materiais) — leitura ao vivo, do mais NOVO ao mais antigo.
     const { data: materiais } = await supabase
@@ -170,6 +236,7 @@ Deno.serve(async (req) => {
       .order("criado_em", { ascending: false });
     const listaMateriais = (materiais || [])
       .filter((m) => m.url)
+      .filter((m) => !escopo || escopo.linhas.has(m.linha_produto || ""))
       .map((m) => {
         const cab = `- [${m.linha_produto || "?"}${m.modelo ? " / " + m.modelo : ""}] ${m.titulo} (${m.tipo}, doc de ${fmtData(m.criado_em)}): ${m.url}${m.descricao ? " — " + m.descricao : ""}`;
         return m.resumo_tecnico ? `${cab}\n  RESUMO DO DOCUMENTO: ${m.resumo_tecnico}` : cab;
@@ -186,13 +253,20 @@ Deno.serve(async (req) => {
 
     const sistema =
       "Você é o tira-dúvidas da assistência técnica do Grupo Bononi (produtos Stonni). " +
-      "Um ATENDENTE faz uma pergunta; responda com base SOMENTE na BASE DE CONHECIMENTO fornecida " +
-      "(e nas regras/dicas). Produza uma resposta CORDIAL e OBJETIVA, pronta para o atendente copiar e " +
+      "Um ATENDENTE faz uma pergunta; responda com base SOMENTE no conhecimento fornecido: as PÁGINAS DE PRODUTO, " +
+      "os DOCUMENTOS TÉCNICOS (o 'RESUMO DO DOCUMENTO' de cada um vale como base, tanto quanto as páginas) " +
+      "e as regras/dicas da equipe. Produza uma resposta CORDIAL e OBJETIVA, pronta para o atendente copiar e " +
       "mandar ao cliente no WhatsApp (linguagem simples; passo a passo quando fizer sentido). " +
-      "Se houver vídeo pertinente, inclua o link em 'videos' (use apenas links presentes na BASE ou nos MATERIAIS TÉCNICOS). " +
-      "Se a base NÃO cobrir a dúvida, seja honesto: diga que precisa confirmar e peça o dado que falta " +
-      "(ex.: código de erro no display). NÃO invente solução. Responda SOMENTE com JSON válido, sem texto fora do JSON, " +
-      'no formato: {"resposta":"","videos":[],"confianca":"alta|media|baixa"}. Português do Brasil.' +
+      "Se houver vídeo pertinente, inclua o link em 'videos' (use apenas links presentes nas páginas ou nos documentos). " +
+      "\n\nCÓDIGOS DE ERRO: o mesmo código significa coisas diferentes em produtos diferentes — use só o que vale " +
+      "para o produto da pergunta. Se o código ou o assunto aparece no conhecimento fornecido para esse produto, " +
+      "responda com a solução: nunca diga que não encontrou algo que está no texto. Se a solução muda conforme " +
+      "o modelo ou a voltagem (ex.: 12V × 24V), dê a de cada um em vez de só perguntar. " +
+      "Só quando o conhecimento realmente NÃO cobrir a dúvida: diga que precisa confirmar e peça o dado que falta " +
+      "(ex.: código de erro no display). NÃO invente solução." +
+      "\n\nCAMPOS: 'resposta' = o texto para o WhatsApp; 'videos' = links; 'confianca' = 'alta' quando a resposta " +
+      "está no conhecimento fornecido, 'media' quando está mas depende de um dado que o atendente não informou, " +
+      "'baixa' quando o conhecimento não cobre. Português do Brasil." +
       "\n\nFORMATO DO TEXTO EM 'resposta' (vai colado no WhatsApp, que NÃO entende markdown): " +
       "NÃO use markdown — nada de **, ##, títulos, tabelas nem [texto](link). " +
       "Para destacar, use *um asterisco de cada lado* (negrito do WhatsApp), com moderação. " +
@@ -201,38 +275,38 @@ Deno.serve(async (req) => {
       "Link, se precisar, solto no texto. Mensagem curta, no máximo um emoji." +
       "\n\nPRIORIDADE POR RECÊNCIA: quando duas fontes se contradisserem sobre o MESMO tema, vale SEMPRE a mais recente. " +
       "Ordem de prioridade: (1) DICAS DA EQUIPE — são as correções mais recentes e sempre prevalecem; " +
-      "(2) DOCUMENTOS/MATERIAIS mais recentes — compare a data 'doc de DD/MM/AAAA'; " +
-      "(3) BASE DE CONHECIMENTO do Notion — veja 'atualizado em DD/MM/AAAA'. " +
+      "(2) DOCUMENTOS TÉCNICOS mais recentes — compare a data 'doc de DD/MM/AAAA'; " +
+      "(3) PÁGINAS DE PRODUTO do Notion — veja 'atualizado em DD/MM/AAAA'. " +
       "Uma informação mais nova sobre o mesmo assunto SUBSTITUI a mais antiga." +
       (instrucoesEquipe ? `\n\nREGRAS DA EQUIPE:\n${instrucoesEquipe}` : "") +
       (dicasEquipe ? `\n\nDICAS DA EQUIPE:\n${dicasEquipe}` : "");
 
     const contexto =
       `PERGUNTA DO ATENDENTE: ${String(pergunta).trim()}\n\n` +
-      (produto ? `PRODUTO (dica do atendente): ${produto}\n\n` : "") +
-      `BASE DE CONHECIMENTO (Notion):\n${baseConhecimento}\n\n` +
-      `MATERIAIS TÉCNICOS & VÍDEOS DISPONÍVEIS (indique o link ao cliente quando ajudar):\n${listaMateriais}`;
+      (prod ? `PRODUTO (escolhido pelo atendente): ${prod}\n\n` : "") +
+      `PÁGINAS DE PRODUTO (Notion):\n${baseConhecimento}\n\n` +
+      `DOCUMENTOS TÉCNICOS & VÍDEOS (o resumo é conhecimento; o link pode ir ao cliente):\n${listaMateriais}`;
 
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
+    const anthropic = new Anthropic({ apiKey });
+    // deno-lint-ignore no-explicit-any
+    let msg: any;
+    try {
+      msg = await anthropic.messages.create({
         model: MODELO,
-        max_tokens: 1000,
+        max_tokens: 6000,
         system: sistema,
         messages: [{ role: "user", content: [{ type: "text", text: contexto }] }],
-      }),
-    });
-    if (!resp.ok) {
-      const t = await resp.text();
-      return json({ error: `Anthropic ${resp.status}: ${t}` }, 502);
+        output_config: { effort: "medium", format: { type: "json_schema", schema: ESQUEMA_RESPOSTA } },
+      // deno-lint-ignore no-explicit-any
+      } as any);
+    } catch (e) {
+      if (e instanceof Anthropic.APIError) return json({ error: `Anthropic ${e.status}: ${e.message}` }, 502);
+      throw e;
     }
-    const data = await resp.json();
-    const texto = (data?.content?.[0]?.text || "").trim();
+    if (msg.stop_reason === "refusal") return json({ error: "A IA recusou esta pergunta. Reformule e tente de novo." }, 502);
+    if (msg.stop_reason === "max_tokens") return json({ error: "A resposta da IA ficou grande demais e foi cortada. Tente de novo." }, 502);
+    // deno-lint-ignore no-explicit-any
+    const texto = (msg.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
 
     let parsed: { resposta?: string; videos?: string[]; confianca?: string } = {};
     try {
